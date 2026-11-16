@@ -285,7 +285,6 @@ function vInstall(){
 function vHome(){
   const nx = upcoming()[0]; let h = vInstall() + vPushCard(false);
   if (S.admin && pendingP().length) h += `<section class="card install"><b>${pendingP().length} giocator${pendingP().length>1?'i aspettano':'e aspetta'} la tua approvazione</b><button class="sec" data-act="go" data-t="rosa">Vai alla Rosa</button></section>`;
-  if (S.admin && !S.posts.length) h += `<section class="card"><h2>Primi passi</h2><p class="txt mute">1. Manda il link dell'app nel gruppo della squadra.\n2. Ognuno si registra e tu lo approvi nella Rosa.\n3. Tutti gli iscritti possono pubblicare comunicazioni e sondaggi (tasto +), eventi e formazioni.\n4. Le partite del campionato UISP compaiono da sole.</p></section>`;
   // Un solo riquadro: il prossimo evento, partita o allenamento.
   if (nx) { const isM = nx.type==='partita', pres = roster().filter(id=>ans(id,nx.id)==='si').length, nLu = isM ? getLus(nx).filter(l=>S.coach||l.published).length : 0;
     h += `<section class="card"><div class="row sp"><span class="lab">PROSSIMO APPUNTAMENTO</span><span class="row" style="gap:6px"><span class="chip ${isM?'partita':''}">${isM?'Partita':'Allenamento'}</span></span></div>
