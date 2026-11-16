@@ -1,0 +1,72 @@
+name: Aggiorna campionato UISP e pubblica l'app
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+  actions: write
+
+concurrency:
+  group: uisp
+  cancel-in-progress: false
+
+jobs:
+  aggiorna:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      changed: ${{ steps.pubblica.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Strumenti per leggere i PDF
+        run: |
+          sudo apt-get install -y -qq poppler-utils >/dev/null
+          pip install -q pypdf
+      - name: Leggi i comunicati UISP
+        run: python tools/uisp_update.py
+      - name: Salva se ci sono novità
+        id: pubblica
+        run: |
+          if git diff --quiet docs/campionato.json; then
+            echo "Nessuna novità"; echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            git config user.name "Robot Rimineser"
+            git config user.email "robot@users.noreply.github.com"
+            git add docs/campionato.json
+            git commit -m "Campionato aggiornato dal comunicato UISP"
+            git push
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Sveglia il robot delle notifiche
+        if: steps.pubblica.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run notifiche.yml --ref main || echo "robot notifiche non attivo"
+
+  pubblica-app:
+    needs: aggiorna
+    if: needs.aggiorna.outputs.changed == 'true' || github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+      - id: deploy
+        uses: actions/deploy-pages@v4
