@@ -96,9 +96,16 @@ function startMember(){
   refreshPush();
   watch(memberSubs, 'posts', query(C('posts'), orderBy('createdAt','desc'), limit(60)), s=>{ S.posts = s.docs.map(d=>({id:d.id, ...d.data()})); });
   watch(memberSubs, 'events', C('events'), s=>{ S.fsEvents = s.docs.map(d=>({id:d.id, ...d.data()})); mergeEvents(); });
-  watch(memberSubs, 'players', C('players'), s=>{ S.players = toMap(s); });
+  watch(memberSubs, 'players', C('players'), s=>{ S.players = toMap(s); ensureAdminPlayer(s); });
   watch(memberSubs, 'rsvp', C('rsvp'), s=>{ S.rsvp = toMap(s); });
   watch(memberSubs, 'votes', C('votes'), s=>{ S.votes = toMap(s); });
+}
+// L'amministratore è anche un iscritto come gli altri (di base giocatore): se non ha ancora la scheda, la creo.
+let adminFixed = false;
+function ensureAdminPlayer(s){
+  if (!S.admin || adminFixed || (s.metadata && s.metadata.fromCache) || S.players[S.uid]) return;
+  adminFixed = true;
+  write(()=>setDoc(D('players/'+S.uid), {name:S.authName, number:'', role:'', cat:'giocatore', approved:true, createdAt:Date.now()}, {merge:true}));
 }
 function stopMember(){ stop(memberSubs); memberOn = false; S.loaded = new Set(['team']); }
 function watchMe(){
@@ -486,7 +493,7 @@ const ACT = {
       if (pub && !was) notifyTeam('lineup', '⚽ Formazione pubblicata', `${L.name} per ${evName(e)} (${fmtD(e)}): modulo ${L.module}`, '#formazione');
       if (pub && !was) await write(()=>addDoc(C('posts'), {text:`Pubblicata la formazione "${L.name}" per ${evName(e)} di ${fmtD(e,{weekday:'long',day:'numeric',month:'long'})}: modulo ${L.module}. La trovate nella sezione Formazione.`, createdAt:Date.now(), author:S.uid}));
       draw(); } else L.published = was; },
-  me: () => { const p=S.players[S.uid]||{}; openSheet(`${head('Il mio profilo')}<form data-form="me"><label>Nome in squadra<input name="nome" required value="${esc(p.name||S.authName)}"></label><label>Numero di maglia<input type="number" min="1" max="99" name="numero" value="${esc(p.number||'')}"></label><label>Ruolo${roleSel(p.role)}</label><label>Categoria${catSel(p.cat||(S.admin?'allenatore':'giocatore'))}</label><button class="pri" type="submit">Salva</button></form>`); },
+  me: () => { const p=S.players[S.uid]||{}; openSheet(`${head('Il mio profilo')}<form data-form="me"><label>Nome in squadra<input name="nome" required value="${esc(p.name||S.authName)}"></label><label>Numero di maglia<input type="number" min="1" max="99" name="numero" value="${esc(p.number||'')}"></label><label>Ruolo${roleSel(p.role)}</label><label>Categoria${catSel(p.cat||'giocatore')}</label><button class="pri" type="submit">Salva</button></form>`); },
   addP: () => openSheet(`${head('Aggiungi giocatore')}<p class="mute" style="margin:0">Per chi non usa l'app: potrai segnare tu le sue presenze.</p><form data-form="addp"><label>Nome e cognome<input name="nome" required></label><label>Categoria${catSel('giocatore')}</label><label>Numero di maglia<input type="number" min="1" max="99" name="numero"></label><label>Ruolo${roleSel('')}</label><button class="pri" type="submit">Aggiungi</button></form>`),
   okP: d => write(()=>updateDoc(D('players/'+d.id), {approved:true}), 'Giocatore approvato'),
   rejP: (d,b) => { if (confirm2(b)) write(()=>deleteDoc(D('players/'+d.id)), 'Richiesta rifiutata'); },

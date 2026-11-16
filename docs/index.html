@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light only">
 <meta name="theme-color" content="#E30613">
 <meta name="description" content="L'app della squadra The Rimineser Football Project">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -22,12 +23,12 @@
    PICTURE: il campo da calcio a 7 con i giocatori, centro dell'app
    COLOUR and TYPE: rosso squadra, bianco, nero spogliatoio; Barlow Condensed + Inter
    LAYOUT: app a schede su telefono, barra in basso, una colonna */
-:root{color-scheme:light dark;
+:root{color-scheme:light;
 --bg:light-dark(#F4F4F4,#0E0F12);--card:light-dark(#FFFFFF,#1A1C21);--ink:light-dark(#111111,#F2F2F0);
 --mute:light-dark(#5C5F66,#A6A9B0);--line:light-dark(#E4E4E4,#2B2E35);--red:light-dark(#E30613,#FF3B4F);
 --redbg:light-dark(#FFE3E5,#45101A);--top:#E30613;--black:#111111;--pitch:#22A04B;--ok:light-dark(#00843D,#2BD46E);--okbg:light-dark(#D9F7E5,#0F3A22);
 --may:#FFB300;--mayink:light-dark(#8A5A00,#FFC94D);--maybg:light-dark(#FFF1CC,#3A2C08)}
-:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+:root[data-theme]{color-scheme:light}
 *{box-sizing:border-box;min-width:0}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Inter,system-ui,sans-serif;overflow-x:clip}
 h1,h2,h3,.cond{font-family:"Barlow Condensed",Inter,sans-serif;font-weight:700;line-height:1.05;margin:0}
