@@ -49,7 +49,7 @@ const upcoming = () => S.events.filter(isUp).sort((a,b)=>evT(a)-evT(b));
 const past = () => S.events.filter(e=>!isUp(e)).sort((a,b)=>evT(b)-evT(a));
 const fmtD = (e,o) => { const [y,m,d]=(e.date||'').split('-').map(Number); return y ? new Date(y,m-1,d).toLocaleDateString('it-IT', o||{weekday:'short',day:'numeric',month:'short'}) : ''; };
 const evName = e => e.type==='partita' ? 'vs '+(e.opponent||'Avversario') : 'Allenamento';
-const nameOf = id => ((S.config.coaches||[]).includes(id) ? 'Amministratore' : (S.players[id]?.name || 'Giocatore'));
+const nameOf = id => S.players[id]?.name || 'Giocatore';
 const short = n => n.split(' ')[0];
 const roster = () => Object.keys(S.players).filter(id=>S.players[id].approved).sort((a,b)=>((+S.players[a].number)||999)-((+S.players[b].number)||999)||nameOf(a).localeCompare(nameOf(b)));
 const squad = () => roster().filter(id=>catOf(id)==='giocatore');
@@ -310,7 +310,7 @@ function vPost(p){
     poll = p.options.map((o,i)=>{ const n=v.filter(x=>x[1]===i).length; return `<button class="opt ${my===i?'me':''}" aria-pressed="${my===i}" data-act="vote" data-p="${esc(p.id)}" data-i="${i}"><i style="width:${tot?n/tot*100:0}%"></i><span><span>${esc(o)}</span><span>${n}</span></span></button>`; }).join('')
       + `<details><summary>Chi ha votato (${tot})</summary>${p.options.map((o,i)=>`<div class="mute">${esc(o)}</div><div class="names">${v.filter(x=>x[1]===i).map(x=>`<span class="chip">${esc(nameOf(x[0]))}</span>`).join('')||'<span class="mute">—</span>'}</div>`).join('')}</details>`;
   }
-  return `<article class="card"><div class="row"><img class="crestimg" src="icons/logo-256.png" alt="" width="36" height="36" style="width:36px;height:36px"><div style="flex:1"><b>${esc(p.author ? nameOf(p.author) : 'The Rimineser F.P.')}</b><div class="mute" style="font-size:13px">${esc(d)}</div></div>${p.important?'<span class="chip partita">Importante</span>':''}${S.coach?`<button class="lnk" data-act="delPost" data-id="${esc(p.id)}">Elimina</button>`:''}</div>
+  return `<article class="card"><div class="row"><img class="crestimg" src="icons/logo-256.png" alt="" width="36" height="36" style="width:36px;height:36px"><div style="flex:1"><b>${esc(!p.author ? 'The Rimineser F.P.' : (S.config.coaches||[]).includes(p.author) ? 'Amministratore' : nameOf(p.author))}</b><div class="mute" style="font-size:13px">${esc(d)}</div></div>${p.important?'<span class="chip partita">Importante</span>':''}${S.coach?`<button class="lnk" data-act="delPost" data-id="${esc(p.id)}">Elimina</button>`:''}</div>
   <p class="txt">${esc(p.text)}</p>${poll}</article>`;
 }
 function vPresenze(){
