@@ -1,0 +1,58 @@
+rules_version = '2';
+// Regole di sicurezza del database della squadra The Rimineser F.P
+// - Il primo che preme "Sono l'amministratore" diventa amministratore (solo se la squadra non è ancora configurata).
+// - Chi si registra non vede nulla finché l'amministratore non lo approva.
+// - Tutti gli iscritti approvati hanno gli stessi diritti: comunicazioni, sondaggi, eventi, formazioni, presenze, impostazioni.
+// - Solo l'amministratore approva, modifica o toglie gli iscritti.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function teamPath() { return /databases/$(database)/documents/config/team; }
+    function isAdmin() { return signedIn() && exists(teamPath()) && request.auth.uid in get(teamPath()).data.coaches; }
+    function myPlayer() { return /databases/$(database)/documents/players/$(request.auth.uid); }
+    function isMember() { return isAdmin() || (signedIn() && exists(myPlayer()) && get(myPlayer()).data.approved == true); }
+
+    match /config/team {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.coaches == [request.auth.uid];
+      // gli iscritti possono cambiare le impostazioni, ma non l'elenco degli amministratori
+      allow update: if isAdmin() || (isMember() && request.resource.data.coaches == resource.data.coaches);
+      allow delete: if false;
+    }
+    match /posts/{id} {
+      allow read, write: if isMember();
+    }
+    match /events/{id} {
+      allow read, write: if isMember();
+    }
+    match /players/{uid} {
+      allow read: if isMember() || (signedIn() && request.auth.uid == uid);
+      allow create: if isAdmin() || (signedIn() && request.auth.uid == uid && request.resource.data.approved == false);
+      allow update: if isAdmin() || (signedIn() && request.auth.uid == uid && request.resource.data.approved == resource.data.approved);
+      allow delete: if isAdmin();
+    }
+    match /rsvp/{uid} {
+      allow read, write: if isMember();
+    }
+    match /votes/{uid} {
+      allow read: if isMember();
+      allow write: if isMember() && request.auth.uid == uid;
+    }
+    match /tokens/{uid} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+    }
+    match /outbox/{id} {
+      allow read, write: if isMember();
+    }
+    match /private/{id} {
+      allow read, write: if isMember();
+    }
+    match /league/{id} {
+      allow read: if isMember();
+      allow write: if false;
+    }
+    match /robot/{id} {
+      allow read, write: if false;   // solo il robot (accesso da server)
+    }
+  }
+}

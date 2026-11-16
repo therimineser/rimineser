@@ -1,0 +1,32 @@
+{
+  "name": "The Rimineser F.P.",
+  "short_name": "The Rimineser F.P.",
+  "description": "L'app della squadra The Rimineser Football Project: comunicazioni, presenze, formazioni e calendario.",
+  "lang": "it",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#E30613",
+  "theme_color": "#E30613",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
