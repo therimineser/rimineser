@@ -144,7 +144,7 @@ onAuthStateChanged(auth, u=>{
 /* ---------- pezzi di interfaccia ---------- */
 const icoPlus = '<svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
 function counts(eid){ const r={si:0,forse:0,no:0,none:0}; squad().forEach(id=>{ r[ans(id,eid)||'none']++; }); return r; }
-function rsvpBtns(eid){ if (asAdmin()) return `<div class="row" style="gap:8px"><span class="mute" style="flex:1">Sei in modalità Amministratore.</span><button class="sec" data-act="mode">Passa a Giocatore per segnarti</button></div>`; const my=ans(actId(),eid);
+function rsvpBtns(eid){ if (asAdmin()) return `<div style="display:flex;flex-direction:column;gap:8px"><span class="mute">Sei in modalità Amministratore: per segnarti alle presenze passa al tuo profilo giocatore.</span><button class="sec" data-act="mode">⇄ Passa a Giocatore</button></div>`; const my=ans(actId(),eid);
   return `<div class="btns">${['si','forse','no'].map(v=>`<button class="b ${my===v?v:''}" aria-pressed="${my===v}" data-act="rsvp" data-e="${esc(eid)}" data-v="${v}">${LAB[v]}</button>`).join('')}</div>`; }
 function bar(eid){ const c=counts(eid), n=Math.max(1,c.si+c.forse+c.no+c.none);
   return `<div class="bar" aria-hidden="true"><i style="width:${c.si/n*100}%;background:var(--ok)"></i><i style="width:${c.forse/n*100}%;background:var(--may)"></i><i style="width:${c.no/n*100}%;background:var(--ink)"></i></div>
