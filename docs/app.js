@@ -259,7 +259,7 @@ function vHome(){
   if (S.admin && !S.posts.length) h += `<section class="card"><h2>Primi passi</h2><p class="txt mute">1. Manda il link dell'app nel gruppo della squadra.\n2. Ognuno si registra e tu lo approvi nella Rosa.\n3. Tutti gli iscritti possono pubblicare comunicazioni e sondaggi (tasto +), eventi e formazioni.\n4. Le partite del campionato UISP compaiono da sole.</p></section>`;
   // Un solo riquadro: il prossimo evento, partita o allenamento.
   if (nx) { const isM = nx.type==='partita', pres = roster().filter(id=>ans(id,nx.id)==='si').length, nLu = isM ? getLus(nx).filter(l=>S.coach||l.published).length : 0;
-    h += `<section class="card"><div class="row sp"><span class="lab">PROSSIMO APPUNTAMENTO</span><span class="row" style="gap:6px"><span class="chip ${isM?'partita':''}">${isM?'Partita':'Allenamento'}</span>${isM?`<span class="chip">${nx.home===false?'Trasferta':'In casa'}</span>`:''}</span></div>
+    h += `<section class="card"><div class="row sp"><span class="lab">PROSSIMO APPUNTAMENTO</span><span class="row" style="gap:6px"><span class="chip ${isM?'partita':''}">${isM?'Partita':'Allenamento'}</span></span></div>
     <h2>${isM?'The Rimineser F.P. <span style="color:var(--red)">vs</span> '+esc(nx.opponent||'Avversario'):'Allenamento'}</h2>
     <div class="row" style="gap:14px"><span class="res" style="white-space:nowrap">${esc(nx.time||'--:--')}</span><span class="mute" style="text-transform:capitalize">${esc(fmtD(nx,{weekday:'long',day:'numeric',month:'long'}))}</span></div>
     <div class="row mute" style="gap:6px"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s7-6.5 7-12a7 7 0 0 0-14 0c0 5.5 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg>${esc(nx.location||'Campo da definire')}</div>
@@ -333,7 +333,7 @@ function vFormazione(){
 function evRow(e){
   const my = ans(S.uid,e.id), res = e.result && e.result.us!=null && e.result.them!=null;
   return `<div class="ev"><div class="ed"><b>${esc(fmtD(e,{day:'numeric'}))}</b><small>${esc(fmtD(e,{weekday:'short'}))}</small></div>
-  <div class="eb"><div class="row" style="gap:6px"><span class="chip ${e.type==='partita'?'partita':''}">${e.type==='partita'?'Partita':'Allenamento'}</span>${e.type==='partita'?`<span class="chip">${e.home===false?'Trasferta':'Casa'}</span>`:''}${e.uisp?`<span class="chip">UISP ${e.uisp}ª</span>`:''}${my?`<span class="chip ${my}">${LAB[my]}</span>`:''}</div>
+  <div class="eb"><div class="row" style="gap:6px"><span class="chip ${e.type==='partita'?'partita':''}">${e.type==='partita'?'Partita':'Allenamento'}</span>${e.uisp?`<span class="chip">UISP ${e.uisp}ª</span>`:''}${my?`<span class="chip ${my}">${LAB[my]}</span>`:''}</div>
   <h3>${esc(evName(e))}${res?` <span class="res">${esc(e.result.us)}–${esc(e.result.them)}</span>`:''}</h3>
   <span class="mute">${esc(e.time||'')}${e.location?' · '+esc(e.location):''}</span>${e.notes?`<span class="mute">${esc(e.notes)}</span>`:''}</div>
   ${S.coach?`<button class="lnk" data-act="editEv" data-id="${esc(e.id)}">Modifica</button>`:''}</div>`;
@@ -434,7 +434,6 @@ function evForm(e){
   <div class="slots"><label>Data<input type="date" name="data" required value="${esc(e.date||'')}"></label><label>Ora<input type="time" name="ora" required value="${esc(e.time||'')}"></label></div>
   <label>Avversario (solo partite)<input name="avversario" value="${esc(e.opponent||'')}"></label>
   <label>Campo / luogo<input name="luogo" value="${esc(e.location||'')}"></label>
-  <label>Casa o trasferta<select name="casa"><option value="1" ${e.home!==false?'selected':''}>In casa</option><option value="0" ${e.home===false?'selected':''}>Trasferta</option></select></label>
   <label>Note<textarea name="note" placeholder="Ritrovo, maglie, quota arbitro…">${esc(e.notes||'')}</textarea></label>
   <div class="slots"><label>Gol nostri<input type="number" min="0" name="noi" value="${esc(e.result?.us??'')}"></label><label>Gol avversari<input type="number" min="0" name="loro" value="${esc(e.result?.them??'')}"></label></div>
   <button class="pri" type="submit">Salva</button>${e.uisp?'<p class="mute" style="margin:0">Partita del campionato UISP: data, ora, campo e risultato si aggiornano da soli dai comunicati ufficiali.</p>':e.id?`<button class="sec" type="button" data-act="delEv" data-id="${esc(e.id)}">Elimina evento</button>`:''}</form>`);
@@ -519,7 +518,7 @@ const FORMS = {
     const data={text:val(f,'testo'), important:f.elements.imp.checked, createdAt:Date.now(), author:S.uid}; if (opts.length>1) data.options=opts;
     if (data.text && await write(()=>addDoc(C('posts'), data), 'Pubblicato')) { closeSheet(); notifyTeam(data.options?'poll':'post', data.options?'📊 Nuovo sondaggio':'📣 Nuova comunicazione', data.text, '#home'); } },
   ev: async f => { const id=f.dataset.id, old=S.events.find(e=>e.id===id)||{}, noi=val(f,'noi'), loro=val(f,'loro');
-    const data={type:val(f,'tipo'), date:val(f,'data'), time:val(f,'ora'), opponent:val(f,'avversario'), location:val(f,'luogo'), home:val(f,'casa')==='1', notes:val(f,'note'),
+    const data={type:val(f,'tipo'), date:val(f,'data'), time:val(f,'ora'), opponent:val(f,'avversario'), location:val(f,'luogo'), home:old.home!==false, notes:val(f,'note'),
       result: noi!=='' && loro!=='' ? {us:+noi, them:+loro} : null};
     if (!data.date) return toast('Inserisci la data.');
     if (old.lineup) data.lineup = old.lineup; if (old.lineups) data.lineups = old.lineups;
