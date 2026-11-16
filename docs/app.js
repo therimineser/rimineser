@@ -49,7 +49,7 @@ const upcoming = () => S.events.filter(isUp).sort((a,b)=>evT(a)-evT(b));
 const past = () => S.events.filter(e=>!isUp(e)).sort((a,b)=>evT(b)-evT(a));
 const fmtD = (e,o) => { const [y,m,d]=(e.date||'').split('-').map(Number); return y ? new Date(y,m-1,d).toLocaleDateString('it-IT', o||{weekday:'short',day:'numeric',month:'short'}) : ''; };
 const evName = e => e.type==='partita' ? 'vs '+(e.opponent||'Avversario') : 'Allenamento';
-const nameOf = id => S.players[id]?.name || 'Giocatore';
+const nameOf = id => ((S.config.coaches||[]).includes(id) ? 'Amministratore' : (S.players[id]?.name || 'Giocatore'));
 const short = n => n.split(' ')[0];
 const roster = () => Object.keys(S.players).filter(id=>S.players[id].approved).sort((a,b)=>((+S.players[a].number)||999)-((+S.players[b].number)||999)||nameOf(a).localeCompare(nameOf(b)));
 const squad = () => roster().filter(id=>catOf(id)==='giocatore');
