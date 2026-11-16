@@ -260,7 +260,7 @@ function vHome(){
   // Un solo riquadro: il prossimo evento, partita o allenamento.
   if (nx) { const isM = nx.type==='partita', pres = roster().filter(id=>ans(id,nx.id)==='si').length, nLu = isM ? getLus(nx).filter(l=>S.coach||l.published).length : 0;
     h += `<section class="card"><div class="row sp"><span class="lab">PROSSIMO APPUNTAMENTO</span><span class="row" style="gap:6px"><span class="chip ${isM?'partita':''}">${isM?'Partita':'Allenamento'}</span>${isM?`<span class="chip">${nx.home===false?'Trasferta':'In casa'}</span>`:''}</span></div>
-    <h2>${isM?'vs '+esc(nx.opponent||'Avversario'):'Allenamento'}</h2>
+    <h2>${isM?'The Rimineser F.P. <span style="color:var(--red)">vs</span> '+esc(nx.opponent||'Avversario'):'Allenamento'}</h2>
     <div class="row" style="gap:14px"><span class="res" style="white-space:nowrap">${esc(nx.time||'--:--')}</span><span class="mute" style="text-transform:capitalize">${esc(fmtD(nx,{weekday:'long',day:'numeric',month:'long'}))}</span></div>
     <div class="row mute" style="gap:6px"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s7-6.5 7-12a7 7 0 0 0-14 0c0 5.5 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg>${esc(nx.location||'Campo da definire')}</div>
     ${rsvpBtns(nx.id)}${bar(nx.id)}
