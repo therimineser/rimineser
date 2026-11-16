@@ -14,7 +14,8 @@
    "n": 0,
    "p": 0,
    "gf": 29,
-   "gs": 2
+   "gs": 2,
+   "cd": 2
   },
   {
    "team": "Rose and Crown",
@@ -24,7 +25,8 @@
    "n": 0,
    "p": 0,
    "gf": 29,
-   "gs": 7
+   "gs": 7,
+   "cd": 0
   },
   {
    "team": "The Rimineser F.P.",
@@ -34,7 +36,8 @@
    "n": 0,
    "p": 0,
    "gf": 18,
-   "gs": 6
+   "gs": 6,
+   "cd": 2
   },
   {
    "team": "Tinto Team",
@@ -44,7 +47,8 @@
    "n": 0,
    "p": 0,
    "gf": 20,
-   "gs": 11
+   "gs": 11,
+   "cd": 4
   },
   {
    "team": "Barrumba Calcio Rimini",
@@ -54,7 +58,8 @@
    "n": 0,
    "p": 0,
    "gf": 20,
-   "gs": 13
+   "gs": 13,
+   "cd": 4
   },
   {
    "team": "Oasi del Mare",
@@ -64,7 +69,8 @@
    "n": 0,
    "p": 1,
    "gf": 25,
-   "gs": 14
+   "gs": 14,
+   "cd": 1
   },
   {
    "team": "Vibes Viserbella",
@@ -74,7 +80,8 @@
    "n": 0,
    "p": 1,
    "gf": 12,
-   "gs": 6
+   "gs": 6,
+   "cd": 3
   },
   {
    "team": "Riccione's Brothers FC",
@@ -84,7 +91,8 @@
    "n": 0,
    "p": 2,
    "gf": 15,
-   "gs": 12
+   "gs": 12,
+   "cd": 3
   },
   {
    "team": "Los Diez",
@@ -94,7 +102,8 @@
    "n": 0,
    "p": 2,
    "gf": 12,
-   "gs": 10
+   "gs": 10,
+   "cd": 2
   },
   {
    "team": "Siamo Questi",
@@ -104,7 +113,8 @@
    "n": 0,
    "p": 2,
    "gf": 8,
-   "gs": 9
+   "gs": 9,
+   "cd": 1
   },
   {
    "team": "Quei Bravi Ragazzi",
@@ -114,7 +124,8 @@
    "n": 0,
    "p": 1,
    "gf": 17,
-   "gs": 7
+   "gs": 7,
+   "cd": 1
   },
   {
    "team": "Tiki FC",
@@ -124,7 +135,8 @@
    "n": 0,
    "p": 2,
    "gf": 15,
-   "gs": 17
+   "gs": 17,
+   "cd": 0
   },
   {
    "team": "A.C. Arzon",
@@ -134,7 +146,8 @@
    "n": 1,
    "p": 2,
    "gf": 10,
-   "gs": 7
+   "gs": 7,
+   "cd": 1
   },
   {
    "team": "Casa Beach 27 Riccione",
@@ -144,7 +157,8 @@
    "n": 1,
    "p": 2,
    "gf": 9,
-   "gs": 17
+   "gs": 17,
+   "cd": 1
   },
   {
    "team": "Nelson's",
@@ -154,7 +168,8 @@
    "n": 0,
    "p": 3,
    "gf": 5,
-   "gs": 9
+   "gs": 9,
+   "cd": 6
   },
   {
    "team": "Anfiteatro FC",
@@ -164,7 +179,8 @@
    "n": 0,
    "p": 3,
    "gf": 14,
-   "gs": 24
+   "gs": 24,
+   "cd": 1
   },
   {
    "team": "Colorimini FC",
@@ -174,7 +190,8 @@
    "n": 0,
    "p": 3,
    "gf": 8,
-   "gs": 29
+   "gs": 29,
+   "cd": 1
   },
   {
    "team": "Post Meridian FC",
@@ -184,7 +201,8 @@
    "n": 0,
    "p": 3,
    "gf": 9,
-   "gs": 21
+   "gs": 21,
+   "cd": 2
   },
   {
    "team": "Manicommio F.C.",
@@ -194,7 +212,8 @@
    "n": 0,
    "p": 2,
    "gf": 6,
-   "gs": 11
+   "gs": 11,
+   "cd": 1
   },
   {
    "team": "Apay Ewallet Team",
@@ -204,7 +223,8 @@
    "n": 0,
    "p": 2,
    "gf": 6,
-   "gs": 14
+   "gs": 14,
+   "cd": 1
   },
   {
    "team": "Ziba's FC",
@@ -214,7 +234,8 @@
    "n": 0,
    "p": 4,
    "gf": 10,
-   "gs": 21
+   "gs": 21,
+   "cd": 0
   },
   {
    "team": "Flamingo FC",
@@ -224,7 +245,8 @@
    "n": 0,
    "p": 4,
    "gf": 14,
-   "gs": 21
+   "gs": 21,
+   "cd": 4
   },
   {
    "team": "Vergiano Calcio",
@@ -234,7 +256,8 @@
    "n": 0,
    "p": 4,
    "gf": 6,
-   "gs": 30
+   "gs": 30,
+   "cd": 0
   }
  ],
  "rounds": [
@@ -911,7 +934,12 @@
    "goals": 3
   }
  ],
- "processed": [],
+ "processed": [
+  "Calcio a 7 _ giornata 1 _ N. 2 del 23-10-26 - gg 1.pdf",
+  "Calcio a 7 _ giornata 2 _ N. 3 del 30-10-26 - gg 2.pdf",
+  "Calcio a 7 _ giornata 3 _ N. 4 del 06-11-26 - gg 3.pdf",
+  "Calcio a 7 _ giornata 4 _ N. 5 del 13-11-26 - gg 4.pdf"
+ ],
  "discipline": {
   "ammonizioni": [
    {
@@ -953,5 +981,102 @@
    }
   ],
   "squalifiche": []
+ },
+ "cards": {
+  "Nelson's": {
+   "amm": 3,
+   "esp": 0,
+   "diff": 0
+  },
+  "Tinto Team": {
+   "amm": 4,
+   "esp": 0,
+   "diff": 0
+  },
+  "Post Meridian FC": {
+   "amm": 2,
+   "esp": 0,
+   "diff": 0
+  },
+  "Siamo Questi": {
+   "amm": 1,
+   "esp": 0,
+   "diff": 0
+  },
+  "Barrumba Calcio Rimini": {
+   "amm": 3,
+   "esp": 0,
+   "diff": 3
+  },
+  "Manicommio F.C.": {
+   "amm": 1,
+   "esp": 0,
+   "diff": 0
+  },
+  "Casa Beach 27 Riccione": {
+   "amm": 1,
+   "esp": 0,
+   "diff": 0
+  },
+  "Riccione's Brothers FC": {
+   "amm": 3,
+   "esp": 0,
+   "diff": 0
+  },
+  "Apay Ewallet Team": {
+   "amm": 1,
+   "esp": 0,
+   "diff": 0
+  },
+  "AC Ciechi": {
+   "amm": 2,
+   "esp": 0,
+   "diff": 0
+  },
+  "Vibes Viserbella": {
+   "amm": 3,
+   "esp": 0,
+   "diff": 0
+  },
+  "Quei Bravi Ragazzi": {
+   "amm": 1,
+   "esp": 0,
+   "diff": 0
+  },
+  "Flamingo FC": {
+   "amm": 1,
+   "esp": 0,
+   "diff": 0
+  },
+  "Los Diez": {
+   "amm": 2,
+   "esp": 0,
+   "diff": 0
+  },
+  "A.C. Arzon": {
+   "amm": 1,
+   "esp": 0,
+   "diff": 0
+  },
+  "The Rimineser F.P.": {
+   "amm": 2,
+   "esp": 0,
+   "diff": 0
+  },
+  "Oasi del Mare": {
+   "amm": 1,
+   "esp": 0,
+   "diff": 0
+  },
+  "Colorimini FC": {
+   "amm": 1,
+   "esp": 0,
+   "diff": 0
+  },
+  "Anfiteatro FC": {
+   "amm": 1,
+   "esp": 0,
+   "diff": 0
+  }
  }
 }
