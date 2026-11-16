@@ -1,16 +1,10 @@
-// ⚠️ INCOLLA QUI la configurazione del tuo progetto Firebase
-// (Console Firebase > Impostazioni progetto > Le tue app > App web > "Configurazione SDK").
-// Sostituisci i valori tra virgolette con i tuoi. Questi dati non sono segreti:
-// la sicurezza è garantita dalle regole del database (firestore.rules).
 export const firebaseConfig = {
-  apiKey: "INCOLLA-QUI",
-  authDomain: "INCOLLA-QUI.firebaseapp.com",
-  projectId: "INCOLLA-QUI",
-  storageBucket: "INCOLLA-QUI.appspot.com",
-  messagingSenderId: "INCOLLA-QUI",
-  appId: "INCOLLA-QUI"
+  apiKey: "AIzaSyDxmpFOXHokxEbGNwZBYnJNh0t6MR6QDeI",
+  authDomain: "rimineser.firebaseapp.com",
+  projectId: "rimineser",
+  storageBucket: "rimineser.firebasestorage.app",
+  messagingSenderId: "857201407404",
+  appId: "1:857201407404:web:5808a3b90a7625ec37f609"
 };
 
-// ⚠️ Chiave per le notifiche push (Console Firebase > Impostazioni progetto > Cloud Messaging >
-// Configurazione web > Certificati push web > "Genera coppia di chiavi"). Incolla la chiave qui.
-export const vapidKey = "INCOLLA-QUI";
+export const vapidKey = "BELlg67wzfQOzaamDeNfPJSkuMjtBuCsJPeQBof7bCx2KyeGKS5VhI8lsgBxuqhQ6SV7uNQXC2ZrsA5Apw_BCn8";
