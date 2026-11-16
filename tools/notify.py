@@ -196,6 +196,11 @@ def main():
             cache['rsvp'] = st.list('rsvp')
         return cache['rsvp']
 
+    def answered(u, eid):
+        # l'amministratore risponde con il suo profilo giocatore (uid + "_g")
+        r = rsvp_all()
+        return any(((r.get(k) or {}).get('answers') or {}).get(eid) for k in (u, u + '_g'))
+
     # 1) coda del Mister
     outbox = st.list('outbox')
     for oid, o in sorted(outbox.items(), key=lambda kv: kv[1].get('createdAt', 0)):
@@ -204,8 +209,7 @@ def main():
         kind = o.get('kind', 'post')
         targets = everyone
         if kind == 'remind' and o.get('eventId'):
-            rsvp = rsvp_all()
-            targets = [u for u in everyone if not ((rsvp.get(u) or {}).get('answers') or {}).get(o['eventId'])]
+            targets = [u for u in everyone if not answered(u, o['eventId'])]
         if kind == 'test':
             targets = [u for u in everyone if u in (team.get('coaches') or [])] or everyone
         n = sender.send(targets, {'title': o.get('title', 'The Rimineser F.P.'), 'body': o.get('body', ''), 'url': o.get('url', '#home'), 'tag': kind + '-' + oid}, PREF_OF.get(kind))
@@ -219,11 +223,10 @@ def main():
     if now.hour >= REMIND_FROM_HOUR:
         L = league()
         evs = all_events(st.list('events'), L)
-        rsvp = rsvp_all()
         for eid, e in evs.items():
             if e.get('date') != tomorrow or reminded.get(eid):
                 continue
-            targets = [u for u in everyone if not ((rsvp.get(u) or {}).get('answers') or {}).get(eid)]
+            targets = [u for u in everyone if not answered(u, eid)]
             n = sender.send(targets, {'title': '⏰ Domani: ' + ev_title(e), 'body': 'Ore %s%s. Non hai ancora risposto: ci sei?' % (e.get('time', ''), (' · ' + e['location']) if e.get('location') else ''),
                                       'url': '#presenze', 'tag': 'remind-' + eid}, 'remind')
             log('Promemoria %s → %d telefoni' % (eid, n))

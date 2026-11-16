@@ -49,12 +49,19 @@ const upcoming = () => S.events.filter(isUp).sort((a,b)=>evT(a)-evT(b));
 const past = () => S.events.filter(e=>!isUp(e)).sort((a,b)=>evT(b)-evT(a));
 const fmtD = (e,o) => { const [y,m,d]=(e.date||'').split('-').map(Number); return y ? new Date(y,m-1,d).toLocaleDateString('it-IT', o||{weekday:'short',day:'numeric',month:'short'}) : ''; };
 const evName = e => e.type==='partita' ? 'vs '+(e.opponent||'Avversario') : 'Allenamento';
-const nameOf = id => S.players[id]?.name || 'Giocatore';
+const nameOf = id => isAdminId(id) ? (S.players[id+'_g']?.name || 'Amministratore') : (S.players[id]?.name || 'Giocatore');
 const short = n => n.split(' ')[0];
-const roster = () => Object.keys(S.players).filter(id=>S.players[id].approved).sort((a,b)=>((+S.players[a].number)||999)-((+S.players[b].number)||999)||nameOf(a).localeCompare(nameOf(b)));
+const roster = () => Object.keys(S.players).filter(id=>S.players[id].approved && !isAdminId(id)).sort((a,b)=>((+S.players[a].number)||999)-((+S.players[b].number)||999)||nameOf(a).localeCompare(nameOf(b)));
 const squad = () => roster().filter(id=>catOf(id)==='giocatore');
-const pendingP = () => Object.keys(S.players).filter(id=>!S.players[id].approved);
+const pendingP = () => Object.keys(S.players).filter(id=>!S.players[id].approved && !isAdminId(id));
 const ans = (id,eid) => S.rsvp[id]?.answers?.[eid] || '';
+// L'amministratore ha due profili: "Amministratore" (account) e il suo profilo giocatore (id = uid + "_g").
+const gid = () => S.uid + '_g';
+const isAdminId = id => (S.config.coaches||[]).includes(id);
+let mode = 'admin'; try { mode = localStorage.getItem('rim-mode') || 'admin'; } catch(_) {}
+const asAdmin = () => S.admin && mode !== 'player';
+const actId = () => S.admin ? gid() : S.uid;   // chi risponde alle presenze / profilo giocatore
+const mine = id => id === S.uid || (S.admin && id === gid());
 const standalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent);
 
@@ -96,16 +103,19 @@ function startMember(){
   refreshPush();
   watch(memberSubs, 'posts', query(C('posts'), orderBy('createdAt','desc'), limit(60)), s=>{ S.posts = s.docs.map(d=>({id:d.id, ...d.data()})); });
   watch(memberSubs, 'events', C('events'), s=>{ S.fsEvents = s.docs.map(d=>({id:d.id, ...d.data()})); mergeEvents(); });
-  watch(memberSubs, 'players', C('players'), s=>{ S.players = toMap(s); ensureAdminPlayer(s); });
-  watch(memberSubs, 'rsvp', C('rsvp'), s=>{ S.rsvp = toMap(s); });
+  watch(memberSubs, 'players', C('players'), s=>{ S.players = toMap(s); ensureAdminPlayer(); });
+  watch(memberSubs, 'rsvp', C('rsvp'), s=>{ S.rsvp = toMap(s); ensureAdminPlayer(); });
   watch(memberSubs, 'votes', C('votes'), s=>{ S.votes = toMap(s); });
 }
 // L'amministratore è anche un iscritto come gli altri (di base giocatore): se non ha ancora la scheda, la creo.
 let adminFixed = false;
-function ensureAdminPlayer(s){
-  if (!S.admin || adminFixed || (s.metadata && s.metadata.fromCache) || S.players[S.uid]) return;
+function ensureAdminPlayer(){
+  if (!S.admin || adminFixed || !S.loaded.has('players') || !S.loaded.has('rsvp')) return;
   adminFixed = true;
-  write(()=>setDoc(D('players/'+S.uid), {name:S.authName, number:'', role:'', cat:'giocatore', approved:true, createdAt:Date.now()}, {merge:true}));
+  const g = gid(), old = S.players[S.uid];
+  if (!S.players[g]) write(()=>setDoc(D('players/'+g), {name:(old&&old.name)||S.authName, number:(old&&old.number)||'', role:(old&&old.role)||'', cat:'giocatore', approved:true, owner:S.uid, createdAt:Date.now()}));
+  if (old) write(()=>deleteDoc(D('players/'+S.uid)));
+  const r = S.rsvp[S.uid]; if (r && r.answers && Object.keys(r.answers).length && !S.rsvp[g]) write(()=>setDoc(D('rsvp/'+g), {answers:{...r.answers}}));
 }
 function stopMember(){ stop(memberSubs); memberOn = false; S.loaded = new Set(['team']); }
 function watchMe(){
@@ -134,7 +144,7 @@ onAuthStateChanged(auth, u=>{
 /* ---------- pezzi di interfaccia ---------- */
 const icoPlus = '<svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
 function counts(eid){ const r={si:0,forse:0,no:0,none:0}; squad().forEach(id=>{ r[ans(id,eid)||'none']++; }); return r; }
-function rsvpBtns(eid){ const my=ans(S.uid,eid);
+function rsvpBtns(eid){ if (asAdmin()) return `<div class="row" style="gap:8px"><span class="mute" style="flex:1">Sei in modalità Amministratore.</span><button class="sec" data-act="mode">Passa a Giocatore per segnarti</button></div>`; const my=ans(actId(),eid);
   return `<div class="btns">${['si','forse','no'].map(v=>`<button class="b ${my===v?v:''}" aria-pressed="${my===v}" data-act="rsvp" data-e="${esc(eid)}" data-v="${v}">${LAB[v]}</button>`).join('')}</div>`; }
 function bar(eid){ const c=counts(eid), n=Math.max(1,c.si+c.forse+c.no+c.none);
   return `<div class="bar" aria-hidden="true"><i style="width:${c.si/n*100}%;background:var(--ok)"></i><i style="width:${c.forse/n*100}%;background:var(--may)"></i><i style="width:${c.no/n*100}%;background:var(--ink)"></i></div>
@@ -284,7 +294,7 @@ function vInstall(){
 }
 function vHome(){
   const nx = upcoming()[0]; let h = vInstall() + vPushCard(false);
-  if (S.admin && pendingP().length) h += `<section class="card install"><b>${pendingP().length} giocator${pendingP().length>1?'i aspettano':'e aspetta'} la tua approvazione</b><button class="sec" data-act="go" data-t="rosa">Vai alla Rosa</button></section>`;
+  if (asAdmin() && pendingP().length) h += `<section class="card install"><b>${pendingP().length} giocator${pendingP().length>1?'i aspettano':'e aspetta'} la tua approvazione</b><button class="sec" data-act="go" data-t="rosa">Vai alla Rosa</button></section>`;
   // Un solo riquadro: il prossimo evento, partita o allenamento.
   if (nx) { const isM = nx.type==='partita', pres = roster().filter(id=>ans(id,nx.id)==='si').length, nLu = isM ? getLus(nx).filter(l=>S.coach||l.published).length : 0;
     h += `<section class="card"><div class="row sp"><span class="lab">PROSSIMO APPUNTAMENTO</span><span class="row" style="gap:6px"><span class="chip ${isM?'partita':''}">${isM?'Partita':'Allenamento'}</span></span></div>
@@ -359,7 +369,7 @@ function vFormazione(){
   return h;
 }
 function evRow(e){
-  const my = ans(S.uid,e.id), res = e.result && e.result.us!=null && e.result.them!=null;
+  const my = ans(actId(),e.id), res = e.result && e.result.us!=null && e.result.them!=null;
   return `<div class="ev"><div class="ed"><b>${esc(fmtD(e,{day:'numeric'}))}</b><small>${esc(fmtD(e,{weekday:'short'}))}</small></div>
   <div class="eb"><div class="row" style="gap:6px"><span class="chip ${e.type==='partita'?'partita':''}">${e.type==='partita'?'Partita':'Allenamento'}</span>${e.uisp?`<span class="chip">UISP ${e.uisp}ª</span>`:''}${my?`<span class="chip ${my}">${LAB[my]}</span>`:''}</div>
   <h3>${esc(evName(e))}${res?` <span class="res">${esc(e.result.us)}–${esc(e.result.them)}</span>`:''}</h3>
@@ -390,11 +400,11 @@ function vArchivio(){
 }
 function vRosa(){
   const r = roster(), pe = pendingP();
-  let h = `<div class="row sp"><h2>Rosa</h2><div class="row" style="gap:6px">${S.admin?'<button class="sec" data-act="addP">+ Iscritto</button>':''}<button class="sec" data-act="team">Impostazioni</button></div></div>`;
-  if (S.admin && pe.length) h += `<section class="card install"><b>Da approvare</b>${pe.map(id=>`<div class="row sp"><span>${esc(nameOf(id))} <span class="mute">· ${esc(CATS.find(c=>c[0]===catOf(id))[2])}</span></span><span class="row" style="gap:4px"><button class="lnk" data-act="rejP" data-id="${esc(id)}">Rifiuta</button><button class="pri" data-act="okP" data-id="${esc(id)}">Approva</button></span></div>`).join('')}</section>`;
+  let h = `<div class="row sp"><h2>Rosa</h2><div class="row" style="gap:6px">${asAdmin()?'<button class="sec" data-act="addP">+ Iscritto</button>':''}<button class="sec" data-act="team">Impostazioni</button></div></div>`;
+  if (asAdmin() && pe.length) h += `<section class="card install"><b>Da approvare</b>${pe.map(id=>`<div class="row sp"><span>${esc(nameOf(id))} <span class="mute">· ${esc(CATS.find(c=>c[0]===catOf(id))[2])}</span></span><span class="row" style="gap:4px"><button class="lnk" data-act="rejP" data-id="${esc(id)}">Rifiuta</button><button class="pri" data-act="okP" data-id="${esc(id)}">Approva</button></span></div>`).join('')}</section>`;
   h += `<div class="btns"><button class="pri" data-act="me">Il mio profilo</button><button class="sec" data-act="logout">Esci</button></div>` + vPushCard(true);
   h += r.length ? CATS.map(([k,pl])=>{ const ids=r.filter(id=>catOf(id)===k); if (!ids.length) return '';
-    return `<section class="card"><span class="lab">${pl.toUpperCase()} · ${ids.length}</span>${ids.map(id=>{ const p=S.players[id]||{}; return `<div class="row" style="padding:6px 0"><span class="num">${esc(k==='giocatore'?(p.number||'–'):pl[0])}</span><div style="flex:1"><b>${esc(nameOf(id))}</b>${id===S.uid?' <span class="chip">Tu</span>':''}<div class="mute" style="font-size:13px">${k==='giocatore'?esc(p.role||'Ruolo non indicato'):esc(CATS.find(c=>c[0]===k)[2])}${p.manual?' · aggiunto dall\'amministratore':''}</div></div>${S.admin&&id!==S.uid?`<button class="lnk" data-act="editP" data-id="${esc(id)}">Modifica</button>`:''}</div>`; }).join('')}</section>`; }).join('') : '<section class="card"><div class="empty">Nessuno ancora in rosa.</div></section>';
+    return `<section class="card"><span class="lab">${pl.toUpperCase()} · ${ids.length}</span>${ids.map(id=>{ const p=S.players[id]||{}; return `<div class="row" style="padding:6px 0"><span class="num">${esc(k==='giocatore'?(p.number||'–'):pl[0])}</span><div style="flex:1"><b>${esc(nameOf(id))}</b>${mine(id)?' <span class="chip">Tu</span>':''}<div class="mute" style="font-size:13px">${k==='giocatore'?esc(p.role||'Ruolo non indicato'):esc(CATS.find(c=>c[0]===k)[2])}${p.manual?' · aggiunto dall\'amministratore':''}</div></div>${asAdmin()&&!mine(id)?`<button class="lnk" data-act="editP" data-id="${esc(id)}">Modifica</button>`:''}</div>`; }).join('')}</section>`; }).join('') : '<section class="card"><div class="empty">Nessuno ancora in rosa.</div></section>';
   return h;
 }
 
@@ -409,7 +419,7 @@ const TABS = [
 ];
 function shell(){
   if ($('#app')) return;
-  $('#root').innerHTML = `<header class="top"><img class="crestimg" src="icons/logo-256.png" alt="" width="46" height="46"><div class="grow"><h1>THE RIMINESER F.P.</h1><small id="who">Football Project · Calcio a 7</small></div>
+  $('#root').innerHTML = `<header class="top"><img class="crestimg" src="icons/logo-256.png" alt="" width="46" height="46"><div class="grow"><h1>THE RIMINESER F.P.</h1><small id="who">Football Project · Calcio a 7</small><button id="modeBtn" class="modepill" data-act="mode" hidden></button></div>
   <button class="ib" data-act="go" data-t="rosa" aria-label="Rosa della squadra"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18.5 14.8c1.6.8 2.7 2.5 3 5.2"/></svg></button></header>
   <main id="app"></main>
   <nav class="tabs" id="tabs">${TABS.map(([t,l,p])=>`<button data-act="go" data-t="${t}"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>${l}</button>`).join('')}</nav>`;
@@ -436,7 +446,8 @@ function draw(){
   const a = document.activeElement;
   if (a && $('#app').contains(a) && /INPUT|TEXTAREA|SELECT/.test(a.tagName) && a.type!=='checkbox') { S.pending = true; return; }
   S.pending = false;
-  $('#who').textContent = S.admin ? 'Amministratore · Calcio a 7' : 'Football Project · Calcio a 7';
+  $('#who').textContent = asAdmin() ? 'Amministratore · Calcio a 7' : S.admin ? nameOf(gid())+' · Giocatore' : 'Football Project · Calcio a 7';
+  const mb = $('#modeBtn'); if (mb) { mb.hidden = !S.admin; mb.textContent = asAdmin() ? '⇄ Passa a Giocatore' : '⇄ Passa ad Amministratore'; }
   document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on', b.dataset.t===S.tab));
   let h = '';
   if (!['posts','events','players','rsvp','votes'].every(k=>S.loaded.has(k)) && !S.slow) h = `<div class="empty">Caricamento…</div>`;
@@ -484,7 +495,8 @@ const ACT = {
       if (err) err.textContent = e.code==='auth/popup-blocked' ? 'Il telefono ha bloccato la finestra di Google: riprova o usa email e password.' : 'Accesso con Google non riuscito qui: usa email e password.'; } },
   install: async () => { if (!installEvt) return; installEvt.prompt(); try { await installEvt.userChoice; } catch(_){} installEvt = null; draw(); },
   beCoach: () => write(()=>setDoc(D('config/team'), {coaches:[S.uid], instagram:'', createdAt:Date.now()}), 'Sei l\'amministratore della squadra!'),
-  rsvp: d => setRsvp(S.uid, d.e, ans(S.uid,d.e)===d.v ? '' : d.v),
+  rsvp: d => setRsvp(actId(), d.e, ans(actId(),d.e)===d.v ? '' : d.v),
+  mode: () => { mode = asAdmin() ? 'player' : 'admin'; try { localStorage.setItem('rim-mode', mode); } catch(_) {} draw(); toast(asAdmin() ? 'Modalità Amministratore' : 'Modalità Giocatore'); },
   cyc: d => { const o=['','si','forse','no']; setRsvp(d.id, d.e, o[(o.indexOf(ans(d.id,d.e))+1)%4]); },
   vote: d => { const cur={...(S.votes[S.uid]?.answers||{})}, i=+d.i; if (cur[d.p]===i) delete cur[d.p]; else cur[d.p]=i; write(()=>setDoc(D('votes/'+S.uid), {answers:cur})); },
   remind: d => { const e=S.events.find(x=>x.id===d.e); if (!e) return; const miss=squad().filter(id=>!ans(id,e.id)).map(nameOf);
@@ -518,9 +530,9 @@ const ACT = {
     const L = Dr.items[Dr.idx], was = L.published; L.bench = L.bench.filter(id=>!L.slots.includes(id)); L.published = pub;
     if (await write(()=>setDoc(D('events/'+e.id), {lineups:Dr.items}, {merge:true}), pub?(was?'Formazione aggiornata':'Formazione pubblicata'):(was?'Formazione nascosta ai giocatori':'Bozza salvata'))) {
       if (pub && !was) notifyTeam('lineup', '⚽ Formazione pubblicata', `${L.name} per ${evName(e)} (${fmtD(e)}): modulo ${L.module}`, '#formazione');
-      if (pub && !was) await write(()=>addDoc(C('posts'), {text:`Pubblicata la formazione "${L.name}" per ${evName(e)} di ${fmtD(e,{weekday:'long',day:'numeric',month:'long'})}: modulo ${L.module}. La trovate nella sezione Formazione.`, createdAt:Date.now(), author:S.uid}));
+      if (pub && !was) await write(()=>addDoc(C('posts'), {text:`Pubblicata la formazione "${L.name}" per ${evName(e)} di ${fmtD(e,{weekday:'long',day:'numeric',month:'long'})}: modulo ${L.module}. La trovate nella sezione Formazione.`, createdAt:Date.now(), author:asAdmin()?S.uid:actId()}));
       draw(); } else L.published = was; },
-  me: () => { const p=S.players[S.uid]||{}; openSheet(`${head('Il mio profilo')}<form data-form="me"><label>Nome in squadra<input name="nome" required value="${esc(p.name||S.authName)}"></label><label>Numero di maglia<input type="number" min="1" max="99" name="numero" value="${esc(p.number||'')}"></label><label>Ruolo${roleSel(p.role)}</label><label>Categoria${catSel(p.cat||'giocatore')}</label><button class="pri" type="submit">Salva</button></form>`); },
+  me: () => { const p=S.players[actId()]||{}; openSheet(`${head('Il mio profilo')}<form data-form="me"><label>Nome in squadra<input name="nome" required value="${esc(p.name||S.authName)}"></label><label>Numero di maglia<input type="number" min="1" max="99" name="numero" value="${esc(p.number||'')}"></label><label>Ruolo${roleSel(p.role)}</label><label>Categoria${catSel(p.cat||'giocatore')}</label><button class="pri" type="submit">Salva</button></form>`); },
   addP: () => openSheet(`${head('Aggiungi giocatore')}<p class="mute" style="margin:0">Per chi non usa l'app: potrai segnare tu le sue presenze.</p><form data-form="addp"><label>Nome e cognome<input name="nome" required></label><label>Categoria${catSel('giocatore')}</label><label>Numero di maglia<input type="number" min="1" max="99" name="numero"></label><label>Ruolo${roleSel('')}</label><button class="pri" type="submit">Aggiungi</button></form>`),
   okP: d => write(()=>updateDoc(D('players/'+d.id), {approved:true}), 'Giocatore approvato'),
   rejP: (d,b) => { if (confirm2(b)) write(()=>deleteDoc(D('players/'+d.id)), 'Richiesta rifiutata'); },
@@ -543,7 +555,7 @@ const FORMS = {
       else await signInWithEmailAndPassword(auth, email, pwd);
     } catch(e){ err.textContent = AUTH_ERR[e.code] || 'Qualcosa è andato storto, riprova.'; } },
   post: async f => { const opts=val(f,'opzioni').split('\n').map(s=>s.trim()).filter(Boolean).slice(0,10);
-    const data={text:val(f,'testo'), important:f.elements.imp.checked, createdAt:Date.now(), author:S.uid}; if (opts.length>1) data.options=opts;
+    const data={text:val(f,'testo'), important:f.elements.imp.checked, createdAt:Date.now(), author:asAdmin()?S.uid:actId()}; if (opts.length>1) data.options=opts;
     if (data.text && await write(()=>addDoc(C('posts'), data), 'Pubblicato')) { closeSheet(); notifyTeam(data.options?'poll':'post', data.options?'📊 Nuovo sondaggio':'📣 Nuova comunicazione', data.text, '#home'); } },
   ev: async f => { const id=f.dataset.id, old=S.events.find(e=>e.id===id)||{}, noi=val(f,'noi'), loro=val(f,'loro');
     const data={type:val(f,'tipo'), date:val(f,'data'), time:val(f,'ora'), opponent:val(f,'avversario'), location:val(f,'luogo'), home:old.home!==false, notes:val(f,'note'),
@@ -553,7 +565,7 @@ const FORMS = {
     const ref = id ? D('events/'+id) : doc(C('events'));
     if (await write(()=>setDoc(ref, data, {merge:true}), 'Evento salvato')) closeSheet(); },
   me: async f => { const data={name:val(f,'nome'), number:val(f,'numero'), role:val(f,'ruolo'), cat:val(f,'cat')||'giocatore'}; if (!data.name) return;
-    const ok = S.admin ? await write(()=>setDoc(D('players/'+S.uid), {...data, approved:true}, {merge:true}), 'Profilo salvato')
+    const ok = S.admin ? await write(()=>setDoc(D('players/'+gid()), {...data, approved:true, owner:S.uid}, {merge:true}), 'Profilo giocatore salvato')
                        : await write(()=>updateDoc(D('players/'+S.uid), data), 'Profilo salvato');
     if (ok) { closeSheet(); if (auth.currentUser) updateProfile(auth.currentUser, {displayName:data.name}).catch(()=>{}); } },
   editp: async f => { const data={name:val(f,'nome'), cat:val(f,'cat'), number:val(f,'numero'), role:val(f,'ruolo')}; if (data.name && await write(()=>updateDoc(D('players/'+f.dataset.id), data), 'Salvato')) closeSheet(); },
