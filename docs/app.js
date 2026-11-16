@@ -221,6 +221,33 @@ function mRow(m){
     <span class="${played&&m.hg>m.ag?'w':''}">${esc(m.home)}</span><span class="${played&&m.ag>m.hg?'w':''}">${esc(m.away)}</span></div>
     <div class="ms">${played?`<b>${m.hg}</b><b>${m.ag}</b>`:'<span class="mute">vs</span>'}</div></div>`;
 }
+function hbars(rows, opts){
+  const max = Math.max(1, ...rows.map(r=>r.v));
+  return `<div class="hb" role="list">${rows.map(r=>`<div class="hbr ${r.sel?'sel':''}" role="listitem" title="${esc(r.name)}: ${r.v} ${opts.unit}"><span class="hbn">${esc(r.name)}</span><span class="hbt"><i style="width:${Math.max(r.v?3:0, r.v/max*100)}%;background:${r.sel?opts.on:opts.off}"></i></span><b class="hbv">${r.v}</b></div>`).join('')}</div>`;
+}
+function vStats(L){
+  const teams = L.standings.map(r=>r.team);
+  if (!S.steam || !teams.includes(S.steam)) S.steam = (L.standings.find(r=>isUs(r.team))||L.standings[0]||{}).team;
+  const T = S.steam, row = L.standings.find(r=>r.team===T) || {}, same = t => norm(t)===norm(T);
+  const cardsOf = t => { const k = Object.keys(L.cards||{}).find(x=>norm(x)===norm(t)); return (L.cards||{})[k] || {amm:0,esp:0,diff:0}; };
+  const C = cardsOf(T), g = row.g || 0;
+  const games = []; L.rounds.forEach(r=>r.matches.forEach(m=>{ if (m.hg==null) return; if (same(m.home)) games.push({n:r.n, f:m.hg, s:m.ag, opp:m.away}); else if (same(m.away)) games.push({n:r.n, f:m.ag, s:m.hg, opp:m.home}); }));
+  const clean = games.filter(x=>x.s===0).length;
+  const tile = (v,l) => `<div class="tile"><b>${v}</b><span>${l}</span></div>`;
+  let h = `<label>Squadra<select data-ch="steam">${teams.map(t=>`<option ${t===T?'selected':''}>${esc(t)}</option>`).join('')}</select></label>
+  <section class="card"><span class="lab">${esc(T).toUpperCase()}</span><div class="tiles">
+    ${tile(row.pt??'–','Punti')}${tile(row.gf??'–','Gol fatti')}${tile(row.gs??'–','Gol subiti')}${tile(row.gf!=null?dr(row):'–','Differenza')}
+    ${tile(g?(row.gf/g).toFixed(1):'–','Gol fatti a partita')}${tile(g?(row.gs/g).toFixed(1):'–','Gol subiti a partita')}${tile(clean,'Porta inviolata')}${tile(row.cd??'–','Punti disciplina')}
+    ${tile(C.amm,'Ammonizioni')}${tile(C.diff,'Diffide')}${tile(C.esp,'Squalifiche / espulsioni')}${tile(g,'Partite giocate')}</div></section>`;
+  const maxG = Math.max(1, ...games.map(x=>Math.max(x.f,x.s)));
+  h += `<section class="card"><span class="lab">GOL PER GIORNATA</span><div class="legend"><span><i style="background:#2B6CB0"></i>Fatti</span><span><i style="background:#E30613"></i>Subiti</span></div>
+    ${games.length?`<div class="vb">${games.map(x=>`<div class="vbc" title="${x.n}ª giornata vs ${esc(x.opp)}: ${x.f}-${x.s}"><div class="vbb"><span><em>${x.f}</em><i style="height:${x.f/maxG*100}%;background:#2B6CB0"></i></span><span><em>${x.s}</em><i style="height:${x.s/maxG*100}%;background:#E30613"></i></span></div><small>${x.n}ª</small></div>`).join('')}</div>`:'<p class="mute">Nessuna partita giocata.</p>'}</section>`;
+  h += `<section class="card"><span class="lab">GOL FATTI · TUTTE LE SQUADRE</span>${hbars([...L.standings].sort((a,b)=>b.gf-a.gf).map(r=>({name:r.team,v:r.gf,sel:same(r.team)})),{on:'#2B6CB0',off:'#C5D6EA',unit:'gol fatti'})}</section>`;
+  h += `<section class="card"><span class="lab">GOL SUBITI · MIGLIORI DIFESE IN ALTO</span>${hbars([...L.standings].sort((a,b)=>a.gs-b.gs).map(r=>({name:r.team,v:r.gs,sel:same(r.team)})),{on:'#E30613',off:'#F4C2C6',unit:'gol subiti'})}</section>`;
+  h += `<section class="card"><span class="lab">AMMONIZIONI · TUTTE LE SQUADRE</span>${hbars(L.standings.map(r=>({name:r.team,v:cardsOf(r.team).amm,sel:same(r.team)})).sort((a,b)=>b.v-a.v),{on:'#111111',off:'#CFCFCF',unit:'ammonizioni'})}<p class="mute" style="margin:0;font-size:13px">Contate dai provvedimenti dei comunicati UISP.</p></section>`;
+  if (L.standings.some(r=>r.cd!=null)) h += `<section class="card"><span class="lab">PUNTI DISCIPLINA · I PIÙ CORRETTI IN ALTO</span>${hbars([...L.standings].filter(r=>r.cd!=null).sort((a,b)=>a.cd-b.cd).map(r=>({name:r.team,v:r.cd,sel:same(r.team)})),{on:'#111111',off:'#CFCFCF',unit:'punti disciplina'})}</section>`;
+  return h;
+}
 function vCampionato(){
   const L = LG(); if (!L) return `<h2>Campionato</h2><div class="empty">Dati del campionato non disponibili.</div>`;
   const me = ourPos(), nr = nextRound();
@@ -228,13 +255,15 @@ function vCampionato(){
   let h = `<h2>Campionato</h2><p class="mute" style="margin:-6px 0 0">${esc(L.org)} · ${esc(L.name)} ${esc(L.season)}</p>`;
   if (me) h += `<section class="card dark"><div class="score"><div><b>${me.pos}°</b>Posizione</div><div><b>${me.pt}</b>Punti</div><div><b>${me.v}-${me.n}-${me.p}</b>V-N-P</div></div>
     ${ourNext?`<p class="txt" style="margin:0;color:#C9CDD6">Prossima: <b style="color:#fff">${esc(isUs(ourNext.home)?ourNext.away:ourNext.home)}</b> · ${esc(lDate(ourNext))} ore ${esc(ourNext.time||'')} · campo ${esc(ourNext.field||'')}</p>`:''}</section>`;
-  h += `<div class="mods" role="tablist" aria-label="Sezioni campionato">${[['classifica','Classifica'],['risultati','Risultati'],['calendario','Prossimo turno'],['marcatori','Marcatori'],['disciplina','Cartellini']].map(([k,l])=>`<button role="tab" class="${S.ltab===k?'on':''}" aria-selected="${S.ltab===k}" data-act="ltab" data-k="${k}">${l}</button>`).join('')}</div>`;
+  h += `<div class="mods" role="tablist" aria-label="Sezioni campionato">${[['classifica','Classifica'],['statistiche','Statistiche'],['risultati','Risultati'],['calendario','Calendario'],['marcatori','Marcatori'],['disciplina','Cartellini']].map(([k,l])=>`<button role="tab" class="${S.ltab===k?'on':''}" aria-selected="${S.ltab===k}" data-act="ltab" data-k="${k}">${l}</button>`).join('')}</div>`;
   if (S.ltab==='classifica') h += `<section class="card" style="padding:8px 6px"><div class="scroll"><table class="tbl"><thead><tr><th>#</th><th style="text-align:left">Squadra</th><th>Pt</th><th>G</th><th>V</th><th>N</th><th>P</th><th>DR</th></tr></thead><tbody>${L.standings.map((r,i)=>`<tr class="${isUs(r.team)?'us':''}"><td>${i+1}</td><td class="tn">${esc(r.team)}</td><td><b>${r.pt}</b></td><td>${r.g}</td><td>${r.v}</td><td>${r.n}</td><td>${r.p}</td><td>${dr(r)}</td></tr>`).join('')}</tbody></table></div></section>`;
   if (S.ltab==='risultati'){ const played = L.rounds.filter(r=>r.matches.some(m=>m.hg!=null)); if (!S.lround || !played.find(r=>r.n===S.lround)) S.lround = (lastPlayed()||{}).n;
     const r = played.find(x=>x.n===S.lround);
     h += `<div class="mods">${played.map(x=>`<button class="${x.n===S.lround?'on':''}" data-act="lround" data-n="${x.n}" aria-label="Giornata ${x.n}">${x.n}ª</button>`).join('')}</div>`;
     h += r ? `<section class="card"><span class="lab">${r.n}ª GIORNATA</span>${r.matches.map(mRow).join('')}${r.rest?`<p class="mute" style="margin:0">Riposa: ${esc(r.rest)}</p>`:''}</section>` : '<div class="empty">Nessun risultato ancora.</div>'; }
-  if (S.ltab==='calendario') h += nr ? `<section class="card"><span class="lab">${nr.n}ª GIORNATA</span>${[...nr.matches].sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time)).map(mRow).join('')}${nr.rest?`<p class="mute" style="margin:0">Riposa: ${esc(nr.rest)}</p>`:''}</section>` : '<div class="empty">Il programma del prossimo turno non è ancora uscito.</div>';
+  if (S.ltab==='calendario') { const fut = L.rounds.filter(r=>r.matches.some(m=>m.hg==null));
+    h += fut.length ? fut.map(r=>`<section class="card"><span class="lab">${r.n}ª GIORNATA</span>${[...r.matches].filter(m=>m.hg==null).sort((a,b)=>((a.date||'')+(a.time||'')).localeCompare((b.date||'')+(b.time||''))).map(mRow).join('')}${r.rest?`<p class="mute" style="margin:0">Riposa: ${esc(r.rest)}</p>`:''}</section>`).join('') + '<p class="mute" style="font-size:13px">UISP pubblica il programma una giornata alla volta: le prossime compariranno da sole.</p>' : '<div class="empty">Il programma delle prossime giornate non è ancora uscito.</div>'; }
+  if (S.ltab==='statistiche') h += vStats(L);
   if (S.ltab==='marcatori') { const sc = L.scorers||[], ours = sc.filter(x=>!x.team||isUs(x.team));
     h += `<section class="card"><span class="lab">I NOSTRI MARCATORI</span>${ours.length?ours.map(x=>`<div class="row sp" style="padding:4px 0"><span>${esc(x.name)}</span><b class="res">${x.goals}</b></div>`).join(''):'<p class="mute">Ancora nessun gol in classifica.</p>'}</section>`;
     if (sc.some(x=>x.team)) h += `<section class="card"><span class="lab">CLASSIFICA MARCATORI</span>${sc.slice(0,15).map(x=>`<div class="mrow ${isUs(x.team)?'us':''}" ${isUs(x.team)?'':'style="padding:8px 0"'}><div class="mt"><b>${esc(x.name)}</b><span class="mute" style="font-size:13px">${esc(x.team)}</span></div><b class="res">${x.goals}</b></div>`).join('')}</section>`; }
@@ -539,6 +568,7 @@ document.addEventListener('click', e=>{ const b=e.target.closest('[data-act]'); 
 document.addEventListener('submit', e=>{ const f=e.target; if (f.dataset.form && FORMS[f.dataset.form]) { e.preventDefault(); FORMS[f.dataset.form](f); } });
 document.addEventListener('change', e=>{ const t=e.target, c=t.dataset.ch; if (!c) return;
   if (c==='fe') { S.fe=t.value; S.draft=null; t.blur(); draw(); }
+  if (c==='steam') { S.steam = t.value; t.blur(); draw(); return; }
   if (c==='mycat') { write(()=>updateDoc(D('players/'+S.uid), {cat:t.value}), 'Salvato'); return; }
   if (c==='pref') { const prefs={...((S.myTok||{}).prefs||{}), [t.value]: t.checked}; write(()=>setDoc(D('tokens/'+S.uid), {prefs}, {merge:true})); return; }
   const L = S.draft && S.draft.items[S.draft.idx];

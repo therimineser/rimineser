@@ -14,7 +14,7 @@ App web installabile (PWA) per la squadra di calcio a 7 **The Rimineser F.P.** (
 - **Presenze**: per evento, divise per categoria (Giocatori, Allenatori, Dirigenza, Pubblico); chiunque può cambiare la risposta altrui; pulsante notifica a chi non ha risposto; copia promemoria WhatsApp.
 - **Formazione**: più formazioni per partita (A, B…), moduli 2-3-1, 3-2-1, 3-1-2, 2-2-2, 2-1-2-1, panchina, tattica, pubblica/nascondi, copia dall'ultima partita.
 - **Calendario**: eventi manuali + partite UISP create in automatico (id `uisp-<giornata>`; data/ora/campo/risultato arrivano dai comunicati).
-- **Campionato**: classifica, risultati per giornata, prossimo turno, marcatori, cartellini (da `docs/campionato.json`).
+- **Campionato**: classifica, statistiche con grafici (gol per giornata, gol fatti/subiti, ammonizioni, punti disciplina), risultati, calendario (tutte le giornate pubblicate da UISP), marcatori, cartellini (da `docs/campionato.json`; cartellini cumulati in `cards`).
 - **Archivio**: partite giocate con risultato, formazioni e tattica; bilancio V/N/P.
 - **Rosa**: iscritti per categoria, profilo personale, approvazioni (solo admin), impostazioni (Instagram, gettone GitHub).
 - **Accesso**: email/password e "Accedi con Google" (popup; su iPhone da icona può non funzionare → email).

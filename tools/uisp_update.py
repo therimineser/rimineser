@@ -244,7 +244,10 @@ def parse_standings(lines):
             break
         name = m.group(1).strip()
         nums = [int(x) for x in m.groups()[1:8]]
-        rows.append({'team': pretty(name), 'pt': nums[0], 'g': nums[1], 'v': nums[2], 'n': nums[3], 'p': nums[4], 'gf': nums[5], 'gs': nums[6]})
+        row = {'team': pretty(name), 'pt': nums[0], 'g': nums[1], 'v': nums[2], 'n': nums[3], 'p': nums[4], 'gf': nums[5], 'gs': nums[6]}
+        if m.group(9) is not None:
+            row['cd'] = int(m.group(9))  # punti disciplina
+        rows.append(row)
         pos, k = m.end(), k + 1
     return rows
 
@@ -425,6 +428,12 @@ def merge(data, p):
         data['scorers'] = p['scorers']
     if any(p['discipline'].values()):
         data['discipline'] = p['discipline']
+    # cartellini cumulati per squadra (ogni comunicato elenca solo i provvedimenti nuovi)
+    cards = data.setdefault('cards', {})
+    for kind, key in (('ammonizioni', 'amm'), ('squalifiche', 'esp'), ('diffide', 'diff')):
+        for x in p['discipline'].get(kind, []):
+            c = cards.setdefault(x['team'], {'amm': 0, 'esp': 0, 'diff': 0})
+            c[key] += 1
     if p['date'] > data.get('updated', ''):
         data['updated'] = p['date']
     data['rounds'] = [r for r in data['rounds'] if r['matches']]
