@@ -4,8 +4,8 @@ Scheda del progetto per chi (persona o Claude) riprende il lavoro. Nessun segret
 
 ## Cos'è
 App web installabile (PWA) per la squadra di calcio a 7 **The Rimineser F.P.** (Rimini, campionato UISP).
-- Online: https://giaclucidi-maker.github.io/rimineser/
-- Amministratore: Giacomo (account GitHub `giaclucidi-maker`). Unico ruolo speciale: approva/modifica/toglie gli iscritti.
+- Online: https://therimineser.github.io/rimineser/
+- Amministratore: Giacomo (account GitHub `therimineser`). Unico ruolo speciale: approva/modifica/toglie gli iscritti.
 - Tutti gli iscritti approvati hanno gli stessi diritti (comunicazioni, sondaggi, eventi, formazioni, presenze, impostazioni).
 - Lingua dell'app e delle risposte: italiano. Colori: rosso #E30613, bianco, nero; tema sempre chiaro.
 
