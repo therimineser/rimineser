@@ -1,0 +1,32 @@
+name: Notifiche
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: '*/15 * * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: notifiche
+  cancel-in-progress: false
+
+jobs:
+  invia:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            tools
+            docs/campionato.json
+          sparse-checkout-cone-mode: false
+      - name: Invia le notifiche
+        env:
+          FIREBASE_SA: ${{ secrets.FIREBASE_SA }}
+        run: |
+          python3 -m pip install -q --disable-pip-version-check --user --break-system-packages google-auth requests 2>/dev/null \
+            || python3 -m pip install -q --disable-pip-version-check --user google-auth requests
+          python3 tools/notify.py
