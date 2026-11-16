@@ -1,6 +1,6 @@
 // The Rimineser F.P. – app della squadra (PWA + Firebase)
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
-import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, signOut, updateProfile } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, signOut, updateProfile, GoogleAuthProvider, signInWithPopup } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, collection, onSnapshot, setDoc, updateDoc, deleteDoc, addDoc, getDoc, query, orderBy, limit } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 import * as CFG from './firebase-config.js';
 const firebaseConfig = CFG.firebaseConfig;
@@ -389,13 +389,14 @@ function vLogin(){
     <p class="err" id="authErr" role="alert"></p>
     <button class="pri" type="submit">${m==='up'?'Registrati':m==='reset'?'Invia email di recupero':'Accedi'}</button>
   </form>
+  ${m!=='reset'?`<div class="or"><span>oppure</span></div><button class="gbtn" data-act="google"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>Accedi con Google</button>`:''}
   ${m==='in'?'<button class="lnk" data-act="lmode" data-m="up">Prima volta? Registrati</button><button class="lnk" data-act="lmode" data-m="reset">Password dimenticata?</button>':'<button class="lnk" data-act="lmode" data-m="in">Ho già un account: accedi</button>'}</div>`;
 }
 function draw(){
   if (S.phase==='login') { $('#root').innerHTML = vLogin(); return; }
   if (S.phase==='loading') { $('#root').innerHTML = `<div class="login"><img src="icons/logo-256.png" alt="Logo The Rimineser F.P." width="220" height="220"><p>Caricamento…</p></div>`; return; }
   if (S.phase==='setup') { $('#root').innerHTML = `<div class="login"><img src="icons/logo-256.png" alt="Logo The Rimineser F.P." width="220" height="220"><h1>Squadra da configurare</h1><p style="max-width:380px;text-align:center">L'app non ha ancora un amministratore. Se sei tu a gestire l'app, premi il pulsante: potrai approvare gli iscritti.</p><button class="pri" data-act="beCoach">Sono l'amministratore</button><button class="lnk" data-act="logout">Esci</button></div>`; return; }
-  if (S.phase==='pending') { $('#root').innerHTML = `<div class="login"><img src="icons/logo-256.png" alt="Logo The Rimineser F.P." width="220" height="220"><h1>Richiesta inviata</h1><p style="max-width:380px;text-align:center">Ciao ${esc(S.authName)}! L'amministratore deve approvare il tuo ingresso in squadra. Appena lo fa, questa schermata si aggiorna da sola.</p><button class="lnk" data-act="logout">Esci</button></div>`; return; }
+  if (S.phase==='pending') { $('#root').innerHTML = `<div class="login"><img src="icons/logo-256.png" alt="Logo The Rimineser F.P." width="220" height="220"><h1>Richiesta inviata</h1><p style="max-width:380px;text-align:center">Ciao ${esc(S.authName)}! L'amministratore deve approvare il tuo ingresso in squadra. Appena lo fa, questa schermata si aggiorna da sola.</p><label style="width:100%;max-width:380px">Entro in squadra come<select data-ch="mycat">${CATS.map(([k,,l])=>`<option value="${k}" ${((S.me||{}).cat||'giocatore')===k?'selected':''}>${l}</option>`).join('')}</select></label><button class="lnk" data-act="logout">Esci</button></div>`; return; }
   shell();
   const a = document.activeElement;
   if (a && $('#app').contains(a) && /INPUT|TEXTAREA|SELECT/.test(a.tagName) && a.type!=='checkbox') { S.pending = true; return; }
@@ -443,6 +444,10 @@ const ACT = {
   close: () => closeSheet(),
   lmode: d => { S.login = d.m; draw(); },
   logout: () => signOut(auth),
+  google: async () => { const err=$('#authErr'); if (err) err.textContent='';
+    try { await signInWithPopup(auth, new GoogleAuthProvider()); }
+    catch(e){ if (e.code==='auth/popup-closed-by-user' || e.code==='auth/cancelled-popup-request') return;
+      if (err) err.textContent = e.code==='auth/popup-blocked' ? 'Il telefono ha bloccato la finestra di Google: riprova o usa email e password.' : 'Accesso con Google non riuscito qui: usa email e password.'; } },
   install: async () => { if (!installEvt) return; installEvt.prompt(); try { await installEvt.userChoice; } catch(_){} installEvt = null; draw(); },
   beCoach: () => write(()=>setDoc(D('config/team'), {coaches:[S.uid], instagram:'', createdAt:Date.now()}), 'Sei l\'amministratore della squadra!'),
   rsvp: d => setRsvp(S.uid, d.e, ans(S.uid,d.e)===d.v ? '' : d.v),
@@ -528,6 +533,7 @@ document.addEventListener('click', e=>{ const b=e.target.closest('[data-act]'); 
 document.addEventListener('submit', e=>{ const f=e.target; if (f.dataset.form && FORMS[f.dataset.form]) { e.preventDefault(); FORMS[f.dataset.form](f); } });
 document.addEventListener('change', e=>{ const t=e.target, c=t.dataset.ch; if (!c) return;
   if (c==='fe') { S.fe=t.value; S.draft=null; t.blur(); draw(); }
+  if (c==='mycat') { write(()=>updateDoc(D('players/'+S.uid), {cat:t.value}), 'Salvato'); return; }
   if (c==='pref') { const prefs={...((S.myTok||{}).prefs||{}), [t.value]: t.checked}; write(()=>setDoc(D('tokens/'+S.uid), {prefs}, {merge:true})); return; }
   const L = S.draft && S.draft.items[S.draft.idx];
   if (c==='slot') { const i=+t.dataset.i; L.slots=L.slots.map((x,j)=>j!==i&&x===t.value&&t.value?'':x); L.slots[i]=t.value; L.bench=L.bench.filter(x=>x!==t.value); t.blur(); draw(); }
