@@ -2,7 +2,7 @@ name: Aggiorna campionato UISP e pubblica l'app
 
 on:
   schedule:
-    - cron: '*/30 * * * *'
+    - cron: '*/5 * * * *'
   workflow_dispatch: {}
   push:
     branches: [main]
@@ -25,15 +25,17 @@ jobs:
       changed: ${{ steps.pubblica.outputs.changed }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
+      - name: Controllo rapido sito UISP
+        id: check
+        run: python3 tools/uisp_update.py --check
       - name: Strumenti per leggere i PDF
+        if: steps.check.outputs.new == 'true'
         run: |
           sudo apt-get install -y -qq poppler-utils >/dev/null
-          pip install -q pypdf
+          python3 -m pip install -q --user --break-system-packages pypdf 2>/dev/null || python3 -m pip install -q --user pypdf
       - name: Leggi i comunicati UISP
-        run: python tools/uisp_update.py
+        if: steps.check.outputs.new == 'true'
+        run: python3 tools/uisp_update.py
       - name: Salva se ci sono novità
         id: pubblica
         run: |

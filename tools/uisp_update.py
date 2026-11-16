@@ -458,6 +458,15 @@ def main():
     before = json.dumps(data, sort_keys=True)
     data.setdefault('processed', [])
     data.setdefault('rounds', [])
+    if '--check' in sys.argv:
+        # controllo rapido: c'è un comunicato non ancora letto? (scrive new=true/false per GitHub Actions)
+        new = [u for u, d in discover() if file_name(u) not in data['processed']]
+        log('Comunicati nuovi:', len(new))
+        out = os.environ.get('GITHUB_OUTPUT')
+        if out:
+            with open(out, 'a') as f:
+                f.write('new=%s\n' % ('true' if new else 'false'))
+        return
     if '--text' in sys.argv:
         txt = open(sys.argv[sys.argv.index('--text') + 1], encoding='utf-8').read()
         name = sys.argv[sys.argv.index('--name') + 1]

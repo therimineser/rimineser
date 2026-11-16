@@ -25,7 +25,7 @@ App web installabile (PWA) per la squadra di calcio a 7 **The Rimineser F.P.** (
   - `index.html` (stili), `app.js` (tutta la logica, ES module, Firebase JS SDK 12.19.0 da gstatic), `firebase-config.js` (config pubblica + vapidKey), `sw.js` (cache + push), `manifest.webmanifest`, `icons/`, `campionato.json` (scritto dal robot).
 - `tools/uisp_update.py` = robot UISP: cerca i PDF "Calcio a 7 … del dd-mm-yy" su uisp.it/rimini, estrae testo (pypdf/pdftotext), legge risultati/classifica/prossimo turno/marcatori/provvedimenti, valida e unisce in `docs/campionato.json`. Test: `python tools/uisp_update.py --text tests/gg4.txt --name "Calcio a 7 _ giornata 4 _ N. 5 del 13-11-26 - gg 4.pdf"`.
 - `tools/notify.py` = robot notifiche: Firestore REST + FCM v1 con il segreto `FIREBASE_SA`; invia la coda `outbox`, i promemoria, l'avviso UISP; stato in `robot/state`.
-- `.github/workflows/uisp.yml` = ogni 30 min + su push: aggiorna campionato, committa, pubblica Pages, sveglia notifiche.
+- `.github/workflows/uisp.yml` = ogni 5 min (controllo rapido, legge solo se c'è un PDF nuovo) + su push: aggiorna campionato, committa, pubblica Pages, sveglia notifiche.
 - `.github/workflows/notifiche.yml` = ogni 15 min + workflow_dispatch (l'app lo sveglia con il gettone salvato in Firestore `private/robot`).
 - `firestore.rules` = regole (copiate a mano nella console Firebase: se cambiano, vanno ri-incollate lì).
 
