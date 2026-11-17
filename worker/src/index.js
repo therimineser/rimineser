@@ -3,7 +3,7 @@
 //  - ogni minuto (Cron Trigger): coda, promemoria, comunicato UISP.
 // Segreto necessario: FIREBASE_SA (la stessa chiave JSON dell'account di servizio usata su GitHub).
 import { run } from './robot.js';
-import { verifyIdToken } from './google.js';
+import { verifyIdToken, accessToken, Store } from './google.js';
 
 const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Max-Age': '86400' };
 const reply = (status, data) => new Response(JSON.stringify(data), { status, headers: { ...CORS, 'Content-Type': 'application/json', 'X-Robots-Tag': 'noindex' } });
@@ -14,6 +14,16 @@ export function counted(fetchFn, max = 48) {
   const f = (...a) => { n++; return fetchFn(...a); };
   f.left = () => max - n;
   return f;
+}
+
+// L'errore finisce in robot/state.workerErr: il robot di riserva su GitHub lo copia nel ramo "registro".
+async function reportError(env, e) {
+  console.log('ERRORE', e && e.message);
+  try {
+    const sa = JSON.parse(env.FIREBASE_SA);
+    const st = new Store(sa.project_id, await accessToken(sa, fetch), fetch);
+    await st.patch('robot/state', { workerErr: String((e && e.message) || e).slice(0, 300), workerErrAt: Date.now() });
+  } catch (_) {}
 }
 
 export default {
@@ -32,12 +42,12 @@ export default {
       const r = await run(env, { mode: 'ping', fetch: f });
       return reply(200, { ok: true, sent: r.sent });
     } catch (e) {
-      console.log('ERRORE', e.message);
+      await reportError(env, e);
       return reply(500, { error: 'errore del robot' });
     }
   },
   async scheduled(event, env, ctx) {
     if (!env.FIREBASE_SA) return console.log('FIREBASE_SA mancante: niente da fare');
-    ctx.waitUntil(run(env, { mode: 'cron', fetch: counted(fetch) }).catch(e => console.log('ERRORE', e.message)));
+    ctx.waitUntil(run(env, { mode: 'cron', fetch: counted(fetch) }).catch(e => reportError(env, e)));
   },
 };

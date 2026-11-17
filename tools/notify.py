@@ -190,6 +190,10 @@ def main():
     # Il robot su Cloudflare (worker/) lavora ogni minuto e scrive robot/state.workerAt:
     # se è vivo questo robot fa solo da registro (copia le sue righe nel ramo "registro") e non invia niente.
     state0 = st.get('robot/state') or {}
+    we, wea = state0.get('workerErr'), state0.get('workerErrAt')
+    if we and isinstance(wea, (int, float)) and wea != state0.get('workerErrShown'):
+        log('Cloudflare ERRORE (%d min fa): %s' % ((dt.datetime.now().timestamp() * 1000 - wea) // 60000, we))
+        st.patch('robot/state', {'workerErrShown': wea})
     wa = state0.get('workerAt')
     if isinstance(wa, (int, float)) and dt.datetime.now().timestamp() * 1000 - wa < WORKER_ALIVE_MS:
         lines = (st.get('robot/log') or {}).get('lines') or []
