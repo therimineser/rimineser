@@ -30,8 +30,13 @@ App web installabile (PWA) per la squadra di calcio a 7 **The Rimineser F.P.** (
 - `.github/workflows/notifiche.yml` = ogni 5 min + workflow_dispatch (l'app lo sveglia con il gettone salvato in Firestore `private/robot`).
 - `firestore.rules` = regole (copiate a mano nella console Firebase: se cambiano, vanno ri-incollate lì).
 
+## Test
+- Regole: `.github/workflows/test-regole.yml` gira sull'emulatore Firebase a ogni modifica di `firestore.rules` o `tests/rules/` e scrive l'esito in `tests/rules/risultato.txt` (leggibile con git anche senza accesso ai log di Actions).
+- Robot notifiche: `python3 tests/test_notify.py` (Firestore/FCM finti, orologio controllato).
+- App: la prova nel browser usa un finto Firebase (imports di app.js puntati a un `fake.js` in memoria) con Playwright; non è nel repo.
+
 ## Dati Firestore (progetto Firebase `rimineser`, europe-west8)
-`config/team` {coaches:[uid admin], instagram} · `players/{uid}` {name, number, role, cat, approved, manual?} · `posts/{id}` {text, important, options?, author, createdAt} · `events/{id}` {type, date, time, opponent, location, home, notes, result, lineups[]} · `rsvp/{uid}` {answers:{eventId: si|forse|no}} · `votes/{uid}` {answers:{postId: idx}} · `tokens/{uid}` {tokens:{fcmToken: ts}, prefs} · `outbox/{id}` · `private/robot` {token} · `robot/state`.
+`config/team` {coaches:[uid admin], instagram} · `players/{uid}` {name, number, cat, approved, manual?} · `posts/{id}` {text, important, options?, author, createdAt} · `events/{id}` {type, date, time, opponent, location, home, notes, result, lineups[]} · `rsvp/{uid}` {answers:{eventId: si|forse|no}} · `votes/{uid}` {answers:{postId: idx}} · `tokens/{uid}` {tokens:{fcmToken: ts}, prefs} · `outbox/{id}` · `private/robot` {token} · `robot/state`.
 
 ## Come si aggiorna
 Modificare i file in `docs/` e fare push su `main`: il workflow ripubblica in ~1-2 minuti e i telefoni prendono la versione nuova alla riapertura (service worker network-first). Nel workflow non toccare `docs/campionato.json` a mano (lo gestisce il robot).
