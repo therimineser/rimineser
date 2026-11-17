@@ -217,10 +217,11 @@ function attendees(e, live){
   const chip = (id,cls) => live && S.coach ? `<button class="chip ${cls}" data-act="cyc" data-id="${esc(id)}" data-e="${esc(e.id)}" aria-label="Cambia risposta di ${esc(nameOf(id))}">${esc(nameOf(id))}</button>` : `<span class="chip ${cls}">${esc(nameOf(id))}</span>`;
   const h = CATS.map(([k,pl])=>{ const ids=roster().filter(id=>catOf(id)===k); if (!ids.length) return '';
     const g={si:[],forse:[],no:[],'':[]}; ids.forEach(id=>g[ans(id,e.id)].push(id));
-    const rest = g.no.length + g[''].length;
-    return `<div><div class="row sp"><b>${pl}</b><span class="mute">${g.si.length} present${g.si.length===1?'e':'i'}${g.forse.length?' · '+g.forse.length+' forse':''}</span></div>
+    const nr = g[''].length;
+    return `<div><div class="row sp"><b>${pl}</b><span class="mute">${g.si.length} present${g.si.length===1?'e':'i'}${g.forse.length?' · '+g.forse.length+' forse':''}${g.no.length?' · '+g.no.length+' assent'+(g.no.length===1?'e':'i'):''}${nr?' · '+nr+' senza risposta':''}</span></div>
       <div class="names">${g.si.map(id=>chip(id,'si')).join('')}${g.forse.map(id=>chip(id,'forse')).join('')||(g.si.length?'':'<span class="mute">Nessuno ancora</span>')}</div>
-      ${rest?`<details><summary>Assenti e senza risposta (${rest})</summary><div class="names">${g.no.map(id=>chip(id,'no')).join('')}${g[''].map(id=>chip(id,'')).join('')}</div></details>`:''}</div>`; }).join('');
+      ${g.no.length?`<details><summary>Assenti (${g.no.length})</summary><div class="names">${g.no.map(id=>chip(id,'no')).join('')}</div></details>`:''}
+      ${nr?`<details><summary>Non hanno ancora risposto (${nr})</summary><div class="names">${g[''].map(id=>chip(id,'')).join('')}</div></details>`:''}</div>`; }).join('');
   return h || '<p class="mute">Nessuno in rosa.</p>';
 }
 function pitch(lu, sm){
