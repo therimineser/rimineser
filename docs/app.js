@@ -130,7 +130,7 @@ function watchMe(){
   if (meOn) return; meOn = true;
   watch(baseSubs, 'me', D('players/'+S.uid), async s=>{
     if (!s.exists()) { S.me = null; S.phase = 'pending';
-      await write(()=>setDoc(D('players/'+S.uid), { name:S.authName, number:'', cat:regCat||'giocatore', approved:false, createdAt:Date.now() }));
+      if (await write(()=>setDoc(D('players/'+S.uid), { name:S.authName, number:'', cat:regCat||'giocatore', approved:false, createdAt:Date.now() }))) pingRobot();
       return; }
     S.me = s.data();
     if (S.me.rejected && !S.me.approved) { S.coach = false; S.phase = 'rejected'; stopMember(); return; }
@@ -200,11 +200,19 @@ async function refreshPush(){
   if (DEMO || !pushSupported() || Notification.permission !== 'granted' || !CFG.vapidKey || String(CFG.vapidKey).startsWith('INCOLLA')) return;
   try { const tok = await pushToken(); if (!(S.myTok && (S.myTok.tokens||{})[tok])) await savePush(tok); } catch(_) {}
 }
-// Chi pubblica mette la notifica in coda e sveglia subito il robot su GitHub.
+// Chi pubblica mette la notifica in coda e chiama subito il robot su Cloudflare (CFG.notifyUrl), che la invia in 1-2 secondi.
+// Se il robot Cloudflare non risponde: l'amministratore sveglia quello su GitHub, per gli altri vale il giro automatico.
 async function notifyTeam(kind, title, body, url, extra){
   if (!S.coach) return;
-  await write(()=>addDoc(C('outbox'), { kind, title, body:String(body||'').slice(0,180), url:url||'#home', createdAt:Date.now(), sent:false, ...(extra||{}) }));
-  wakeRobot();
+  if (await write(()=>addDoc(C('outbox'), { kind, title, body:String(body||'').slice(0,180), url:url||'#home', createdAt:Date.now(), sent:false, ...(extra||{}) })))
+    if (!(await pingRobot())) wakeRobot();
+}
+async function pingRobot(){
+  if (!CFG.notifyUrl || !auth.currentUser) return false;
+  try {
+    const r = await fetch(CFG.notifyUrl, { method:'POST', headers:{ 'Authorization':'Bearer '+await auth.currentUser.getIdToken() } });
+    return r.ok;
+  } catch(_) { return false; }
 }
 async function wakeRobot(){
   if (!S.admin) return;   // il gettone lo legge solo l'amministratore: per gli altri parte il giro automatico del robot
@@ -215,8 +223,8 @@ async function wakeRobot(){
     const repo = S.robot.repo || location.pathname.split('/')[1] || 'rimineser';
     if (!owner) return;
     const r = await fetch(`https://api.github.com/repos/${owner}/${repo}/actions/workflows/notifiche.yml/dispatches`, { method:'POST', headers:{ 'Authorization':'Bearer '+tok, 'Accept':'application/vnd.github+json' }, body: JSON.stringify({ ref:'main' }) });
-    if (!r.ok) toast('Notifica in coda: partirà entro 15 minuti.');
-  } catch(_) { toast('Notifica in coda: partirà entro 15 minuti.'); }
+    if (!r.ok) toast('Notifica in coda: partirà a breve.');
+  } catch(_) { toast('Notifica in coda: partirà a breve.'); }
 }
 function vPushCard(full){
   if (pushOn()) return full ? `<section class="card"><span class="lab">NOTIFICHE ATTIVE</span>${PREFS.map(([k,l])=>`<label class="ck"><input type="checkbox" data-ch="pref" value="${k}" ${((S.myTok||{}).prefs||{})[k]!==false?'checked':''}>${l}</label>`).join('')}</section>` : '';

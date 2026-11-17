@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """Robot delle notifiche push dell'app The Rimineser F.P.
 
-Gira su GitHub Actions (.github/workflows/notifiche.yml):
-- subito, quando il Mister pubblica qualcosa (l'app sveglia il robot);
-- ogni 15 minuti, per sicurezza e per i promemoria;
-- dopo ogni nuovo comunicato UISP.
+Il robot principale ora è su Cloudflare (worker/, invio in 1-2 secondi). Questo resta come RISERVA
+su GitHub Actions (.github/workflows/notifiche.yml): se il Worker non gira da più di 4 minuti, fa tutto lui;
+altrimenti copia soltanto il registro del Worker nel ramo "registro".
 
 Cosa fa:
 1. invia le notifiche messe in coda dall'app del Mister (collezione "outbox");
@@ -29,6 +28,7 @@ except Exception:
     pass
 REMIND_FROM_HOUR = 12      # allenamenti: il giorno prima, dalle 12 in poi
 MATCH_REMINDERS = (24, 12, 2)   # partite: ore prima dell'inizio
+WORKER_ALIVE_MS = 4 * 60 * 1000   # robot Cloudflare considerato vivo se ha girato negli ultimi 4 minuti
 PREF_OF = {'post': 'posts', 'poll': 'posts', 'lineup': 'lineup', 'remind': 'remind', 'uisp': 'uisp', 'test': None}
 
 
@@ -186,6 +186,21 @@ def main():
     session = AuthorizedSession(creds)
     project = info['project_id']
     st = Store(session, project)
+
+    # Il robot su Cloudflare (worker/) lavora ogni minuto e scrive robot/state.workerAt:
+    # se è vivo questo robot fa solo da registro (copia le sue righe nel ramo "registro") e non invia niente.
+    state0 = st.get('robot/state') or {}
+    wa = state0.get('workerAt')
+    if isinstance(wa, (int, float)) and dt.datetime.now().timestamp() * 1000 - wa < WORKER_ALIVE_MS:
+        lines = (st.get('robot/log') or {}).get('lines') or []
+        shown = state0.get('logShown') or ''
+        new = [l for l in lines if isinstance(l, str) and l > shown]
+        for l in new:
+            log('Cloudflare: ' + l)
+        if new:
+            st.patch('robot/state', {'logShown': new[-1]})
+        log('Robot Cloudflare attivo (ultimo giro %d s fa): qui niente da inviare.' % ((dt.datetime.now().timestamp() * 1000 - wa) // 1000))
+        return
 
     tokens = st.list('tokens')
     if not tokens:

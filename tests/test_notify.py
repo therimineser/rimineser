@@ -153,6 +153,16 @@ base(NOW); DB['tokens/p3'] = {'tokens': {'dead-1': 1, 'tok-p3': 2}}; TOKOWNER['d
 DB['outbox/a'] = {'kind': 'post', 'title': 'x', 'sent': False}
 run(); check(list(DB['tokens/p3']['tokens']) == ['tok-p3'], 'Telefono non più valido: rimosso, l\'altro resta', DB['tokens/p3'])
 
+# robot Cloudflare vivo: la riserva su GitHub non invia niente e copia il registro
+import time
+base(NOW); DB['outbox/a'] = {'kind': 'post', 'title': 'x', 'sent': False}
+DB['robot/state']['workerAt'] = int(time.time() * 1000) - 60000
+DB['robot/log'] = {'lines': ['2026-11-17 14:00:01 · ping · Coda: "x" → 7 telefoni']}
+check(not run() and DB['outbox/a']['sent'] is False, 'Worker vivo: la riserva GitHub non invia')
+check(DB['robot/state'].get('logShown', '').startswith('2026-11-17 14:00:01'), 'Worker vivo: registro copiato una volta')
+DB['robot/state']['workerAt'] = int(time.time() * 1000) - 10 * 60000
+check(who(run()) == ['admin', 'c1', 'f1', 'm1', 'p2', 'p3', 'p4'], 'Worker fermo da 10 minuti: la riserva GitHub invia lei')
+
 bad = [r for r in R if not r[0]]
 for r in bad: print('FALLITO', r[1], '->', str(r[2])[:300])
 print('Robot notifiche: %d/%d controlli superati' % (len(R) - len(bad), len(R)))

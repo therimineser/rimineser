@@ -8,3 +8,6 @@ export const firebaseConfig = {
 };
 
 export const vapidKey = "BELlg67wzfQOzaamDeNfPJSkuMjtBuCsJPeQBof7bCx2KyeGKS5VhI8lsgBxuqhQ6SV7uNQXC2ZrsA5Apw_BCn8";
+
+// Indirizzo del robot notifiche su Cloudflare (worker/). Vuoto = si usa solo il robot su GitHub.
+export const notifyUrl = "";
