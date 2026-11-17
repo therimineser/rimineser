@@ -568,7 +568,17 @@ const scSecs = d => d.base + (d.start ? Math.floor((Date.now()-d.start)/1000) : 
 const scMin = s => Math.floor(s/60)+1;
 const mmss = s => String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
 const scCount = (acts, k, t, h) => acts.filter(a=>a.k===k && a.t===t && (!h || a.h===h)).length;
-function scPlayers(eid){ const pres = roster().filter(id=>isPl(id) && ans(id,eid)==='si' && roleAt(id,eid)!=='dirigente'); return pres.length ? pres : squad(); }
+// Chi può aver segnato/fatto assist: prima i giocatori della FORMAZIONE della partita (titolari + panchina, dalle formazioni
+// pubblicate; se nessuna è pubblicata, da quelle salvate). Se non c'è formazione: i presenti, poi tutta la rosa.
+function scGroups(eid){
+  const e = S.events.find(x=>x.id===eid), lus = getLus(e), use = lus.some(l=>l.published) ? lus.filter(l=>l.published) : lus;
+  const ok = id => id && S.players[id], uniq = a => [...new Set(a)];
+  const field = uniq(use.flatMap(l=>(l.slots||[]).filter(ok))), bench = uniq(use.flatMap(l=>(l.bench||[]).filter(ok))).filter(id=>!field.includes(id));
+  if (field.length || bench.length) return [['In campo', field], ['Panchina', bench]].filter(g=>g[1].length);
+  const pres = roster().filter(id=>isPl(id) && ans(id,eid)==='si' && roleAt(id,eid)!=='dirigente');
+  return [[pres.length ? 'Presenti (nessuna formazione salvata)' : 'Rosa (nessuna formazione salvata)', pres.length ? pres : squad()]];
+}
+function scPlayers(eid){ return scGroups(eid).flatMap(g=>g[1]); }
 function vScouting(){
   const matches = [...upcoming(), ...past()].filter(e=>e.type==='partita');
   if (!matches.length) return `<h2>Scouting</h2><div class="empty">Nessuna partita in calendario.</div>`;
@@ -628,9 +638,10 @@ function scAskHow(i){
 }
 // dopo gol/cartellino nostro: chi è stato? (facoltativo)
 function scAsk(i, field){
-  const x = S.scout, a = x.acts[i], ids = scPlayers(x.eid).filter(id=>id!==a.p);
+  const x = S.scout, a = x.acts[i], groups = scGroups(x.eid).map(([l,ids])=>[l, ids.filter(id=>id!==a.p)]).filter(g=>g[1].length);
   const q = field==='a' ? 'Assist di chi?' : a.k==='goal' ? 'Chi ha segnato?' : `${SC_LAB[a.k]} a chi?`;
-  openSheet(`${head(q)}<div class="sc-players">${ids.map(id=>`<button class="sc-pl" data-act="scPick" data-i="${i}" data-f="${field}" data-id="${esc(id)}"><b>${esc(S.players[id]?.number||'–')}</b><span>${esc(short(nameOf(id)))}</span></button>`).join('')}</div>
+  const pl = id => `<button class="sc-pl" data-act="scPick" data-i="${i}" data-f="${field}" data-id="${esc(id)}"><b>${esc(S.players[id]?.number||'–')}</b><span>${esc(short(nameOf(id)))}</span></button>`;
+  openSheet(`${head(q)}${groups.map(([l,ids])=>`<span class="lab">${esc(l.toUpperCase())}</span><div class="sc-players">${ids.map(pl).join('')}</div>`).join('')}
     <button class="sec" data-act="scPick" data-i="${i}" data-f="${field}" data-id="">${field==='a'?'Nessun assist':'Salta'}</button>`);
 }
 // il cronometro si aggiorna da solo senza ridisegnare la pagina
