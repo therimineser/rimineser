@@ -1,7 +1,7 @@
 // The Rimineser F.P. – app della squadra (PWA + Firebase)
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, signOut, updateProfile, GoogleAuthProvider, signInWithPopup } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, collection, onSnapshot, setDoc, updateDoc, deleteDoc, deleteField, addDoc, getDoc, query, orderBy, limit, serverTimestamp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, collection, onSnapshot, setDoc, updateDoc, deleteDoc, deleteField, addDoc, getDoc, query, orderBy, limit, serverTimestamp, increment } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 import * as CFG from './firebase-config.js';
 const firebaseConfig = CFG.firebaseConfig;
 const DEMO = firebaseConfig.apiKey === 'demo';
@@ -106,6 +106,7 @@ const toMap = s => Object.fromEntries(s.docs.map(d=>[d.id, d.data()]));
 function startMember(){
   if (memberOn) return; memberOn = true;
   presenceOn(true);
+  if (!viewCounted) { viewCounted = true; setTimeout(countView, 0); }
   let tokChecked = false;
   watch(memberSubs, 'mytok', D('tokens/'+S.uid), s=>{ S.myTok = s.exists() ? s.data() : null; if (!tokChecked) { tokChecked = true; refreshPush(); } });
   watch(memberSubs, 'posts', query(C('posts'), orderBy('createdAt','desc'), limit(60)), s=>{ S.posts = s.docs.map(d=>({id:d.id, ...d.data()})); });
@@ -170,6 +171,43 @@ function watchPresence(on){
 }
 // il conteggio arriva dal robot (ogni minuto): chi sta guardando la Rosa è online di sicuro, quindi almeno 1
 const onlineCount = () => typeof S.online === 'number' ? Math.max(1, S.online) : null;
+
+/* ---------- visualizzazioni (solo conteggi, nessun nome né orario) ---------- */
+// Un'apertura = l'app parte, oppure torna in primo piano dopo almeno 30 minuti in secondo piano.
+// stats/views-AAAA-MM = {total, dGG, day: ultimo giorno incrementato} (giorno di Roma); le regole permettono solo +1 e la lettura solo all'amministratore.
+const romeDate = (d=new Date()) => new Intl.DateTimeFormat('en-CA', {timeZone:'Europe/Rome', year:'numeric', month:'2-digit', day:'2-digit'}).format(d);
+let viewCounted = false, hiddenAt = 0;
+function countView(){
+  if (DEMO || S.phase!=='app') return;
+  const [y,m,d] = romeDate().split('-');
+  setDoc(D(`stats/views-${y}-${m}`), { total: increment(1), ['d'+d]: increment(1), day: 'd'+d }, { merge:true }).catch(()=>{});
+}
+document.addEventListener('visibilitychange', ()=>{
+  if (document.visibilityState==='hidden') hiddenAt = Date.now();
+  else if (hiddenAt && Date.now()-hiddenAt >= 30*60*1000) { hiddenAt = 0; countView(); }
+});
+const MESI = ['gen','feb','mar','apr','mag','giu','lug','ago','set','ott','nov','dic'];
+async function loadViews(){
+  const now = new Date(), out = [];
+  for (let i = 0; i < 6; i++) {
+    const [y,m] = romeDate(new Date(now.getFullYear(), now.getMonth()-i, 15)).split('-');
+    const s = await getDoc(D(`stats/views-${y}-${m}`)).catch(()=>null);
+    out.push({ y, m, data: s && s.exists() ? s.data() : {} });
+  }
+  S.views = { at: Date.now(), months: out }; draw();
+}
+function vViews(){
+  if (!S.views || Date.now() - S.views.at > 5*60*1000) { if (!S.viewsLoading) { S.viewsLoading = true; loadViews().finally(()=>{ S.viewsLoading = false; }); } }
+  const V = S.views; if (!V) return `<section class="card"><span class="lab">VISUALIZZAZIONI</span><span class="mute">Caricamento…</span></section>`;
+  const [, , d] = romeDate().split('-'), [, , dy] = romeDate(new Date(Date.now()-86400000)).split('-');
+  const cur = V.months[0].data, prevM = V.months[1].data, sameMonth = dy <= d;
+  const today = cur['d'+d]||0, yest = sameMonth ? (cur['d'+dy]||0) : (prevM['d'+dy]||0);
+  const days = Array.from({length:+d}, (_,i)=>cur['d'+String(i+1).padStart(2,'0')]||0), max = Math.max(1, ...days);
+  return `<section class="card"><span class="lab">VISUALIZZAZIONI</span><span class="mute">Quante volte è stata aperta l'app da tutti gli iscritti (te compreso). Solo numeri: nessun nome e nessun orario.</span>
+    <div class="row" style="gap:8px">${[['Oggi',today],['Ieri',yest],['Questo mese',cur.total||0]].map(([l,n])=>`<div class="vstat"><b>${n}</b><span>${l}</span></div>`).join('')}</div>
+    <div class="vbars" role="img" aria-label="Aperture per giorno di questo mese">${days.map((n,i)=>`<i style="height:${Math.round(n/max*100)}%" title="${i+1}: ${n}"></i>`).join('')}</div>
+    <div class="mute" style="font-size:13px">${V.months.filter((x,i)=>!i||x.data.total).map(x=>`${MESI[+x.m-1]} ${x.y}: <b>${x.data.total||0}</b>`).join(' · ')}</div></section>`;
+}
 
 /* ---------- pezzi di interfaccia ---------- */
 const icoPlus = '<svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
@@ -462,6 +500,7 @@ function vImpostazioni(){
     <div class="btns"><button class="pri" data-act="me">Il mio profilo</button><button class="sec" data-act="logout">Esci</button></div></section>`;
   if (asAdmin() && pe.length) h += `<section class="card install"><b>Da approvare</b>${pe.map(id=>`<div class="row sp"><span>${esc(nameOf(id))} <span class="mute">· ${esc(CATS.find(c=>c[0]===catOf(id))[2])}</span></span><span class="row" style="gap:4px"><button class="lnk" data-act="rejP" data-id="${esc(id)}">Rifiuta</button><button class="pri" data-act="okP" data-id="${esc(id)}">Approva</button></span></div>`).join('')}</section>`;
   h += vPushCard(true) || `<section class="card"><span class="lab">NOTIFICHE</span><span class="mute">Su questo dispositivo le notifiche non sono disponibili.</span></section>`;
+  if (asAdmin()) h += vViews();
   if (asAdmin()) h += `<section class="card"><span class="lab">AMMINISTRATORE</span><span class="mute">Aggiungi in rosa chi non usa l'app: potrai segnare tu le sue presenze.</span><button class="pri" data-act="addP">+ Aggiungi nuovo iscritto</button></section>`;
   if (asAdmin()) h += `<section class="card"><span class="lab">SQUADRA</span><form data-form="team"><label>Profilo Instagram<input name="ig" value="${esc(S.config.instagram||'')}" placeholder="@nomeprofilo"></label>
     <div class="btns"><button class="pri" type="submit">Salva</button><button class="sec" type="button" data-act="pushTest">Invia notifica di prova</button></div></form></section>`;

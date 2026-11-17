@@ -71,9 +71,27 @@ service cloud.firestore {
       allow create, update: if isMember() && request.auth.uid == uid && request.resource.data.keys().hasOnly(['at']) && request.resource.data.at == request.time;
       allow delete: if signedIn() && request.auth.uid == uid;
     }
+    // Visualizzazioni: stats/views-AAAA-MM = {total, dGG}. Ogni iscritto può solo aggiungere +1 al totale del mese
+    // e +1 a UN giorno; nel documento non c'è nessun nome né orario. Le legge solo l'amministratore.
+    function viewsDoc(id) { return id.matches('views-[0-9]{4}-[0-9]{2}'); }
+    function dayKey(k) { return k.matches('d[0-3][0-9]'); }
+    // "day" dice quale giorno viene incrementato (es. "d17"): il documento resta solo {total, dGG..., day}
+    function viewCreateOk() {
+      let d = request.resource.data;
+      return dayKey(d.get('day', '')) && d.keys().hasOnly(['total', 'day', d.day]) && d.keys().size() == 3 && d.total == 1 && d[d.day] == 1;
+    }
+    function viewUpdateOk() {
+      let d = request.resource.data;
+      let k = d.get('day', '');
+      return dayKey(k) && d.diff(resource.data).affectedKeys().hasOnly(['total', 'day', k]) && d.diff(resource.data).affectedKeys().hasAll(['total', k])
+             && d.total == resource.data.total + 1 && d[k] == resource.data.get(k, 0) + 1;
+    }
     match /stats/{id} {
-      allow read: if isMember();   // stats/online = {n}: solo quante persone sono online, mai chi
-      allow write: if false;       // lo scrive il robot
+      // stats/online = {n}: solo quante persone sono online, mai chi (lo scrive il robot)
+      allow read: if (id == 'online' && isMember()) || isAdmin();
+      allow create: if isMember() && viewsDoc(id) && viewCreateOk();
+      allow update: if isMember() && viewsDoc(id) && viewUpdateOk();
+      allow delete: if false;
     }
     match /private/{id} {
       // gettone GitHub: solo l'amministratore

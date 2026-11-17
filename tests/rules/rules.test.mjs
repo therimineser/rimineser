@@ -1,6 +1,6 @@
 // Test delle regole Firestore (eseguiti dal robot GitHub "Test regole" sull'emulatore ufficiale).
 import { initializeTestEnvironment, assertSucceeds, assertFails } from '@firebase/rules-unit-testing';
-import { doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, addDoc, collection, deleteField, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, addDoc, collection, deleteField, serverTimestamp, increment } from 'firebase/firestore';
 import { readFileSync, writeFileSync } from 'node:fs';
 
 const env = await initializeTestEnvironment({
@@ -120,6 +120,32 @@ await t('in attesa: legge chi è online', false, () => getDoc(doc(db('pend'), 'p
 await t('non registrato: legge chi è online', false, () => getDoc(doc(db(null), 'presence/m1')));
 await t('membro: toglie il proprio battito', true, () => deleteDoc(doc(db('p2'), 'presence/p2')));
 await t('membro: toglie il battito di un altro', false, () => deleteDoc(doc(db('p2'), 'presence/m1')));
+// visualizzazioni (solo conteggi anonimi)
+await t('membro: conta un\'apertura (mese nuovo)', true, () => setDoc(doc(db('p2'), 'stats/views-2026-11'), { total: increment(1), d17: increment(1), day: 'd17' }, { merge: true }));
+await t('membro: conta un\'apertura (mese esistente)', true, async () => {
+  await env.withSecurityRulesDisabled(c => setDoc(doc(c.firestore(), 'stats/views-2026-11'), { total: 5, d17: 3, day: 'd17' }));
+  return setDoc(doc(db('p2'), 'stats/views-2026-11'), { total: increment(1), d17: increment(1), day: 'd17' }, { merge: true }); });
+await t('membro: conta un\'apertura in un giorno nuovo del mese', true, async () => {
+  await env.withSecurityRulesDisabled(c => setDoc(doc(c.firestore(), 'stats/views-2026-11'), { total: 5, d17: 3, day: 'd17' }));
+  return setDoc(doc(db('p2'), 'stats/views-2026-11'), { total: increment(1), d18: increment(1), day: 'd18' }, { merge: true }); });
+await t('membro: aggiunge +5 visualizzazioni', false, async () => {
+  await env.withSecurityRulesDisabled(c => setDoc(doc(c.firestore(), 'stats/views-2026-11'), { total: 5, d17: 3, day: 'd17' }));
+  return setDoc(doc(db('p2'), 'stats/views-2026-11'), { total: increment(5), d17: increment(5), day: 'd17' }, { merge: true }); });
+await t('membro: azzera le visualizzazioni', false, async () => {
+  await env.withSecurityRulesDisabled(c => setDoc(doc(c.firestore(), 'stats/views-2026-11'), { total: 5, d17: 3, day: 'd17' }));
+  return setDoc(doc(db('p2'), 'stats/views-2026-11'), { total: 0, d17: 0, day: 'd17' }); });
+await t('membro: scrive il proprio nome nelle visualizzazioni', false, () => setDoc(doc(db('p2'), 'stats/views-2026-11'), { total: increment(1), d17: increment(1), day: 'd17', chi: 'p2' }, { merge: true }));
+await t('membro: +1 su due giorni insieme', false, () => setDoc(doc(db('p2'), 'stats/views-2026-11'), { total: increment(1), d17: increment(1), d18: increment(1), day: 'd17' }, { merge: true }));
+await t('membro: +1 al totale senza giorno', false, () => setDoc(doc(db('p2'), 'stats/views-2026-11'), { total: increment(1) }, { merge: true }));
+await t('membro: "day" che non corrisponde al giorno incrementato', false, async () => {
+  await env.withSecurityRulesDisabled(c => setDoc(doc(c.firestore(), 'stats/views-2026-11'), { total: 5, d17: 3, day: 'd17' }));
+  return setDoc(doc(db('p2'), 'stats/views-2026-11'), { total: increment(1), d18: increment(1), day: 'd17' }, { merge: true }); });
+await t('membro: documento visualizzazioni con nome inventato', false, () => setDoc(doc(db('p2'), 'stats/views-p2'), { total: 1, d17: 1 }));
+await t('membro: scrive il numero di online', false, () => setDoc(doc(db('p2'), 'stats/online'), { n: 1 }));
+await t('membro: legge le visualizzazioni', false, () => getDoc(doc(db('p2'), 'stats/views-2026-11')));
+await t('admin: legge le visualizzazioni', true, () => getDoc(doc(db('admin'), 'stats/views-2026-11')));
+await t('in attesa: conta un\'apertura', false, () => setDoc(doc(db('pend'), 'stats/views-2026-11'), { total: increment(1), d17: increment(1), day: 'd17' }, { merge: true }));
+await t('membro: cancella le visualizzazioni', false, () => deleteDoc(doc(db('p2'), 'stats/views-2026-11')));
 await t('membro: legge la coda notifiche', false, () => getDoc(doc(db('p2'), 'outbox/qualcosa')));
 await t('membro: comunicazione troppo lunga (capitano)', false, () => addDoc(collection(db('c1'), 'posts'), { text: 'x'.repeat(6000) }));
 
