@@ -181,6 +181,9 @@ check(eq(who(await go()), ['admin']), 'Esempio: solo all\'amministratore'); chec
 base(T0); EX = { id: 'tutte', notifiche: [{ title: 'A' }, { title: 'B' }, { title: 'C' }] };
 s = await go(); check(eq(who(s), ['admin']) && eq(s.map(([, d]) => d.title), ['A', 'B', 'C']) && new Set(s.map(([, d]) => d.tag)).size === 3, 'Esempi multipli: tutti, in ordine, solo all\'amministratore', s.map(([u, d]) => u + ':' + d.title));
 
+base(T0); EX = { id: 'lente', unaAlMinuto: true, notifiche: [{ title: 'A' }, { title: 'B' }, { title: 'C' }] };
+const seq = []; for (let i = 0; i < 5; i++) { NOW = T0 + i * 60000; seq.push((await go()).map(([, d]) => d.title).join('')); }
+check(eq(seq, ['A', 'B', 'C', '', '']), 'Esempi "una al minuto": uno per giro, in ordine, poi basta', seq);
 // 5. token scaduto pulito
 base(T0); put('tokens/p3', { tokens: { 'dead-1': 1, 'tok-p3': 2 } }); TOKOWNER['dead-1'] = 'p3'; put('outbox/a', { kind: 'post', title: 'x', sent: false });
 await go('ping'); check(eq(Object.keys(get('tokens/p3').tokens), ['tok-p3']), 'Telefono non più valido: rimosso, l\'altro resta', get('tokens/p3'));

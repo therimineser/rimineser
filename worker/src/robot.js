@@ -196,7 +196,7 @@ export async function run(env, opt) {
 
     // notifica di esempio (tools/esempio-notifica.json caricato da Claude): solo all'amministratore, una volta
     const ex = await getJson(f, env.EXAMPLE_URL);
-    if (ex && ex.id && !(state.esempi || []).includes(ex.id) && !busy()) {
+    if (ex && ex.id && !ex.unaAlMinuto && !(state.esempi || []).includes(ex.id) && !busy()) {
       changed.esempi = [...(state.esempi || []), ex.id].slice(-20);
       if (await claim('esempio-' + ex.id)) {
         const t = await tokens();
@@ -205,6 +205,17 @@ export async function run(env, opt) {
         let n = 0;   // una alla volta, così arrivano nell'ordine del file
         for (const [i, m] of list.entries()) n += await send(admins, { title: m.title || 'Prova', body: m.body || '', url: m.url || '#home', tag: `esempio-${ex.id}-${i}` }, null);
         log(`Notifiche di esempio "${ex.id}" (${list.length}) → ${n} invii all'amministratore`);
+      }
+    } else if (ex && ex.id && ex.unaAlMinuto && Array.isArray(ex.notifiche) && !(state.esempi || []).includes(ex.id) && !busy()) {
+      // una al minuto (troppe notifiche insieme Chrome le scambia per spam): avanzamento in esempi come "id#n"
+      const done = new Set(state.esempi || []);
+      const i = ex.notifiche.findIndex((_, k) => !done.has(`${ex.id}#${k}`));
+      const finished = i < 0;
+      changed.esempi = [...(state.esempi || []), finished ? ex.id : `${ex.id}#${i}`].slice(-40);
+      if (!finished && await claim(`esempio-${ex.id}-${i}`)) {
+        const t = await tokens(), m = ex.notifiche[i];
+        const n = await send((await coaches()).filter(u => u in t), { title: m.title || 'Prova', body: m.body || '', url: m.url || '#home', tag: `esempio-${ex.id}-${i}` }, null);
+        log(`Notifica di esempio ${i + 1}/${ex.notifiche.length} "${m.title}" → ${n} telefoni`);
       }
     }
 

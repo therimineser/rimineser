@@ -312,7 +312,7 @@ def main():
             ex = json.load(f)
     except Exception:
         ex = None
-    if ex and ex.get('id') and ex['id'] not in (state.get('esempi') or []):
+    if ex and ex.get('id') and not ex.get('unaAlMinuto') and ex['id'] not in (state.get('esempi') or []):   # 'unaAlMinuto': solo il Worker
         admins_all = [u for u in (team.get('coaches') or []) if u in tokens]
         lst = ex['notifiche'] if isinstance(ex.get('notifiche'), list) else [ex]
         n = 0
