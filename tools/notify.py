@@ -29,6 +29,16 @@ except Exception:
 REMIND_FROM_HOUR = 12      # allenamenti: il giorno prima, dalle 12 in poi
 MATCH_REMINDERS = (24, 12, 2)   # partite: ore prima dell'inizio
 WORKER_ALIVE_MS = 4 * 60 * 1000   # robot Cloudflare considerato vivo se ha girato negli ultimi 4 minuti
+PREF_FALLBACK = {'r24': 'remind', 'r12': 'remind', 'r2': 'remind'}   # promemoria partita separati; senza scelta vale "remind"
+
+
+def pref_on(p, k):
+    p = p or {}
+    if k in p:
+        return p[k] is not False
+    return p.get(PREF_FALLBACK[k]) is not False if k in PREF_FALLBACK else True
+
+
 PREF_OF = {'post': 'posts', 'poll': 'posts', 'lineup': 'lineup', 'remind': 'remind', 'uisp': 'uisp', 'test': None}
 
 
@@ -156,7 +166,7 @@ class Sender:
         jobs = []
         for uid in uids:
             d = self.docs.get(uid) or {}
-            if pref and (d.get('prefs') or {}).get(pref) is False:
+            if pref and not pref_on(d.get('prefs'), pref):
                 continue
             for tok in (d.get('tokens') or {}):
                 jobs.append((uid, tok))
@@ -284,8 +294,8 @@ def main():
             title = '⚽ %s: The Rimineser F.P. vs %s' % (when, e.get('opponent') or 'avversario')
             yes = [u for u in everyone if answer(u, eid) in ('si', 'forse')]
             none = [u for u in everyone if not answer(u, eid)]
-            n = sender.send(yes, {'title': title, 'body': 'Ore %s%s. Ci vediamo in campo!' % (e.get('time', ''), where), 'url': '#home', 'tag': 'match-' + eid}, 'remind')
-            n += sender.send(none, {'title': title, 'body': 'Ore %s%s. Non hai ancora risposto: ci sei?' % (e.get('time', ''), where), 'url': '#presenze', 'tag': 'match-' + eid}, 'remind')
+            n = sender.send(yes, {'title': title, 'body': 'Ore %s%s. Ci vediamo in campo!' % (e.get('time', ''), where), 'url': '#home', 'tag': 'match-' + eid}, 'r%d' % h)
+            n += sender.send(none, {'title': title, 'body': 'Ore %s%s. Non hai ancora risposto: ci sei?' % (e.get('time', ''), where), 'url': '#presenze', 'tag': 'match-' + eid}, 'r%d' % h)
             log('Promemoria partita %s (%d ore prima) → %d telefoni' % (eid, h, n))
         elif e.get('date') == tomorrow and now.hour >= REMIND_FROM_HOUR and not reminded.get(eid):
             targets = [u for u in everyone if not answer(u, eid)]

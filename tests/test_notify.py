@@ -140,6 +140,12 @@ check(not run(), 'Partita iniziata: nessun promemoria')
 match_setup(dt.datetime(2026, 11, 20, 19, 30, tzinfo=TZ), {})
 s = run(); check(len({d['title'] for u, d in s}) == 1 and 'Tra 2 ore' in s[0][1]['title'], 'Robot in ritardo: manda solo il promemoria più vicino, non tre di fila', [d['title'] for u, d in s][:3])
 check(not run(), 'Robot in ritardo: poi niente doppioni')
+# promemoria partite: scelta separata 24/12/2 ore
+match_setup(dt.datetime(2026, 11, 19, 21, 3, tzinfo=TZ), {})
+DB['tokens/p2']['prefs'] = {'r24': False}; DB['tokens/p3']['prefs'] = {'remind': False}; DB['tokens/p4']['prefs'] = {'remind': False, 'r24': True}
+s = run(); check('p2' not in who(s) and 'p3' not in who(s) and 'p4' in who(s), 'Promemoria 24h: scelta separata rispettata', who(s))
+notify.now_rome = lambda: dt.datetime(2026, 11, 20, 9, 5, tzinfo=TZ)
+s = run(); check('p2' in who(s) and 'p3' not in who(s) and 'p4' not in who(s), 'Promemoria 12h: chi ha tolto solo il 24h lo riceve', who(s))
 # allenamento
 base(dt.datetime(2026, 11, 18, 11, 0, tzinfo=TZ))
 DB['events/tr'] = {'type': 'allenamento', 'date': '2026-11-19', 'time': '20:30'}

@@ -156,6 +156,11 @@ base(at('2026-11-19', '21:01'));
 LEAGUE = { team: 'The Rimineser F.P.', updated: 'x', standings: [], rounds: [{ n: 7, matches: [{ home: 'Oasi del Mare', away: 'THE RIMINESER F.P.', date: '2026-11-20', time: '21:00', field: 'Riccione' }] }] };
 s = await go(); check(s.length === 7 && s[0][1].title === '⚽ Domani: The Rimineser F.P. vs Oasi del Mare' && s[0][1].body.includes('Campo Riccione'), 'Partita UISP: promemoria dal calendario del campionato', s[0]);
 
+// promemoria partite: scelta separata 24/12/2 ore (con la vecchia scelta "remind" come valore di partenza)
+await match(at('2026-11-19', '21:03'), {});
+get('tokens/p2').prefs = { r24: false }; get('tokens/p3').prefs = { remind: false }; get('tokens/p4').prefs = { remind: false, r24: true };
+s = await go(); check(!who(s).includes('p2') && !who(s).includes('p3') && who(s).includes('p4') && who(s).includes('c1'), 'Promemoria 24h: rispetta la scelta separata (e la vecchia "remind")', who(s));
+NOW = at('2026-11-20', '09:05'); s = await go(); check(who(s).includes('p2') && !who(s).includes('p3') && !who(s).includes('p4'), 'Promemoria 12h: chi ha tolto solo il 24h lo riceve', who(s));
 // allenamento
 base(at('2026-11-18', '11:00')); put('events/tr', { type: 'allenamento', date: '2026-11-19', time: '20:30' }); put('rsvp/p2', { answers: { tr: 'si' } });
 check(!(await go()).length, 'Allenamento: prima delle 12 del giorno prima niente');

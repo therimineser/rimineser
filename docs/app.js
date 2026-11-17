@@ -175,7 +175,11 @@ function pitch(lu, sm){
 }
 
 /* ---------- notifiche ---------- */
-const PREFS = [['posts','Comunicazioni e sondaggi'],['lineup','Formazione pubblicata'],['remind','Promemoria partite (24, 12 e 2 ore prima) e presenze'],['uisp','Risultati e classifica UISP']];
+const PREFS = [['posts','Comunicazioni e sondaggi'],['lineup','Formazione pubblicata'],['r24','Promemoria partita 24 ore prima'],['r12','Promemoria partita 12 ore prima'],['r2','Promemoria partita 2 ore prima'],['remind','Promemoria allenamenti e presenze'],['uisp','Risultati e classifica UISP']];
+// prima c'era un'unica scelta "remind" anche per le partite: chi l'aveva tolta resta senza promemoria partite finché non li riattiva
+const PREF_FALLBACK = { r24:'remind', r12:'remind', r2:'remind' };
+const prefOn = (p, k) => (p||{})[k] !== undefined ? p[k] !== false : PREF_FALLBACK[k] ? (p||{})[PREF_FALLBACK[k]] !== false : true;
+const allPrefs = p => Object.fromEntries(PREFS.map(([k])=>[k, prefOn(p, k)]));
 const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
 const pushOn = () => pushSupported() && Notification.permission === 'granted' && S.myTok && Object.keys(S.myTok.tokens||{}).length > 0;
 async function pushToken(){
@@ -185,7 +189,7 @@ async function pushToken(){
   return m.getToken(m.getMessaging(app), { vapidKey: CFG.vapidKey, serviceWorkerRegistration: reg });
 }
 async function savePush(tok){
-  const prefs = { posts:true, lineup:true, remind:true, uisp:true, ...((S.myTok||{}).prefs||{}) };
+  const prefs = allPrefs((S.myTok||{}).prefs);
   await setDoc(D('tokens/'+S.uid), { tokens:{ [tok]: Date.now() }, prefs }, { merge:true });
 }
 async function enablePush(){
@@ -233,7 +237,7 @@ async function wakeRobot(){
   } catch(_) { toast('Notifica in coda: partirà a breve.'); }
 }
 function vPushCard(full){
-  if (pushOn()) return full ? `<section class="card"><span class="lab">NOTIFICHE ATTIVE</span>${PREFS.map(([k,l])=>`<label class="ck"><input type="checkbox" data-ch="pref" value="${k}" ${((S.myTok||{}).prefs||{})[k]!==false?'checked':''}>${l}</label>`).join('')}</section>` : '';
+  if (pushOn()) return full ? `<section class="card"><span class="lab">NOTIFICHE ATTIVE</span>${PREFS.map(([k,l])=>`<label class="ck"><input type="checkbox" data-ch="pref" value="${k}" ${prefOn((S.myTok||{}).prefs, k)?'checked':''}>${l}</label>`).join('')}</section>` : '';
   if (isIOS() && !standalone()) return full ? `<section class="card install"><b>Notifiche su iPhone</b><span class="mute">Prima aggiungi l'app alla schermata Home (Condividi → Aggiungi alla schermata Home), poi aprila dall'icona e attiva le notifiche qui.</span></section>` : '';
   if (pushSupported() && Notification.permission === 'denied') return full ? `<section class="card install"><b>Notifiche bloccate</b><span class="mute">Le hai bloccate: riattivale dalle impostazioni del telefono per questo sito, poi ricarica l'app.</span></section>` : '';
   if (!pushSupported() && !DEMO) return '';
@@ -424,11 +428,23 @@ function vArchivio(){
 }
 function vRosa(){
   const r = roster(), pe = pendingP();
-  let h = `<div class="row sp"><h2>Rosa</h2><div class="row" style="gap:6px">${asAdmin()?'<button class="sec" data-act="addP">+ Iscritto</button>':''}<button class="sec" data-act="team">Impostazioni</button></div></div>`;
+  let h = `<div class="row sp"><h2>Rosa</h2></div>`;
   if (asAdmin() && pe.length) h += `<section class="card install"><b>Da approvare</b>${pe.map(id=>`<div class="row sp"><span>${esc(nameOf(id))} <span class="mute">· ${esc(CATS.find(c=>c[0]===catOf(id))[2])}</span></span><span class="row" style="gap:4px"><button class="lnk" data-act="rejP" data-id="${esc(id)}">Rifiuta</button><button class="pri" data-act="okP" data-id="${esc(id)}">Approva</button></span></div>`).join('')}</section>`;
-  h += `<div class="btns"><button class="pri" data-act="me">Il mio profilo</button><button class="sec" data-act="logout">Esci</button></div>` + vPushCard(true);
+  h += `<div class="btns"><button class="pri" data-act="me">Il mio profilo</button><button class="sec" data-act="logout">Esci</button></div>`;
   h += r.length ? CATS.map(([k,pl])=>{ const ids=r.filter(id=>catOf(id)===k); if (!ids.length) return '';
     return `<section class="card"><span class="lab">${pl.toUpperCase()} · ${ids.length}</span>${ids.map(id=>{ const p=S.players[id]||{}; return `<div class="row" style="padding:6px 0"><span class="num">${esc(isPl(id)?(p.number||'–'):pl[0])}</span><div style="flex:1"><b>${esc(nameOf(id))}</b>${mine(id)?' <span class="chip">Tu</span>':''}<div class="mute" style="font-size:13px">${esc(CATS.find(c=>c[0]===k)[2])}${p.manual?' · aggiunto dall\'amministratore':''}</div></div>${asAdmin()&&!mine(id)?`<button class="lnk" data-act="editP" data-id="${esc(id)}">Modifica</button>`:''}</div>`; }).join('')}</section>`; }).join('') : '<section class="card"><div class="empty">Nessuno ancora in rosa.</div></section>';
+  return h;
+}
+
+function vImpostazioni(){
+  if (S.admin && !S.robot) getDoc(D('private/robot')).then(d=>{ S.robot = d.exists() ? d.data() : {}; draw(); }).catch(()=>{ S.robot = {}; });
+  let h = `<div class="row sp"><h2>Impostazioni</h2></div>`;
+  h += vPushCard(true) || `<section class="card"><span class="lab">NOTIFICHE</span><span class="mute">Su questo dispositivo le notifiche non sono disponibili.</span></section>`;
+  if (asAdmin()) h += `<section class="card"><span class="lab">AMMINISTRATORE</span><span class="mute">Aggiungi in rosa chi non usa l'app: potrai segnare tu le sue presenze.</span><button class="pri" data-act="addP">+ Aggiungi nuovo iscritto</button></section>`;
+  h += `<section class="card"><span class="lab">SQUADRA</span><form data-form="team"><label>Profilo Instagram<input name="ig" value="${esc(S.config.instagram||'')}" placeholder="@nomeprofilo"></label>
+    ${S.admin?`<label>Gettone GitHub (riserva per le notifiche)<input name="ghtok" type="password" autocomplete="off" value="${esc((S.robot||{}).token||'')}" placeholder="github_pat_…"></label>
+    <p class="mute" style="margin:0">Visibile solo all'amministratore. Serve solo se il robot veloce delle notifiche non risponde.</p>`:''}
+    <div class="btns"><button class="pri" type="submit">Salva</button>${S.admin?'<button class="sec" type="button" data-act="pushTest">Invia notifica di prova</button>':''}</div></form></section>`;
   return h;
 }
 
@@ -444,6 +460,7 @@ const TABS = [
 function shell(){
   if ($('#app')) return;
   $('#root').innerHTML = `<header class="top"><img class="crestimg" src="icons/logo-256.png" alt="" width="46" height="46"><div class="grow"><h1>THE RIMINESER F.P.</h1><small id="who">Football Project · Calcio a 7</small><button id="modeBtn" class="modepill" data-act="mode" hidden></button></div>
+  <button class="ib" data-act="go" data-t="impostazioni" aria-label="Impostazioni"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
   <button class="ib" data-act="go" data-t="rosa" aria-label="Rosa della squadra"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18.5 14.8c1.6.8 2.7 2.5 3 5.2"/></svg></button></header>
   <main id="app"></main>
   <nav class="tabs" id="tabs">${TABS.map(([t,l,p])=>`<button data-act="go" data-t="${t}"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>${l}</button>`).join('')}</nav>`;
@@ -473,12 +490,12 @@ function draw(){
   S.pending = false;
   $('#who').textContent = asAdmin() ? 'Amministratore · Calcio a 7' : S.admin ? nameOf(gid())+' · Giocatore' : 'Football Project · Calcio a 7';
   const mb = $('#modeBtn'); if (mb) { mb.hidden = !S.admin; mb.textContent = asAdmin() ? '⇄ Passa a Giocatore' : '⇄ Passa ad Amministratore'; }
-  document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on', b.dataset.t===S.tab));
+  document.querySelectorAll('#tabs button, .top .ib').forEach(b=>b.classList.toggle('on', b.dataset.t===S.tab));
   let h = '';
   if (!['posts','events','players','rsvp','votes'].every(k=>S.loaded.has(k)) && !S.slow) h = `<div class="empty">Caricamento…</div>`;
   else {
     if (S.slow) h += `<div class="card" role="status" style="background:var(--maybg)">Connessione lenta o assente: i dati potrebbero non essere aggiornati.</div>`;
-    h += ({home:vHome,presenze:vPresenze,formazione:vFormazione,calendario:vCalendario,campionato:vCampionato,archivio:vArchivio,rosa:vRosa}[S.tab]||vHome)();
+    h += ({home:vHome,presenze:vPresenze,formazione:vFormazione,calendario:vCalendario,campionato:vCampionato,archivio:vArchivio,rosa:vRosa,impostazioni:vImpostazioni}[S.tab]||vHome)();
   }
   $('#app').innerHTML = h;
 }
@@ -559,12 +576,7 @@ const ACT = {
   addP: () => openSheet(`${head('Aggiungi giocatore')}<p class="mute" style="margin:0">Per chi non usa l'app: potrai segnare tu le sue presenze.</p><form data-form="addp"><label>Nome e cognome<input name="nome" required></label><label>Categoria${catSel('giocatore')}</label><label>Numero di maglia<input type="number" min="1" max="99" name="numero"></label><button class="pri" type="submit">Aggiungi</button></form>`),
   okP: d => write(()=>updateDoc(D('players/'+d.id), {approved:true, rejected:false}), 'Giocatore approvato'),
   rejP: (d,b) => { if (confirm2(b)) write(()=>updateDoc(D('players/'+d.id), {rejected:true}), 'Richiesta rifiutata'); },
-  delP: async (d,b) => { if (confirm2(b) && await write(()=>deleteDoc(D('players/'+d.id)), 'Rimosso dalla rosa')) closeSheet(); },
-  team: async () => { if (!S.robot) { try { const d = await getDoc(D('private/robot')); S.robot = d.exists() ? d.data() : {}; } catch(_) { S.robot = {}; } }
-    openSheet(`${head('Impostazioni squadra')}<form data-form="team"><label>Profilo Instagram<input name="ig" value="${esc(S.config.instagram||'')}" placeholder="@nomeprofilo"></label>
-    ${S.admin?`<label>Gettone GitHub per notifiche immediate<input name="ghtok" type="password" autocomplete="off" value="${esc(S.robot.token||'')}" placeholder="github_pat_…"></label>
-    <p class="mute" style="margin:0">Visibile solo all'amministratore. Serve a far partire le notifiche in pochi secondi; senza, partono entro 5 minuti.</p>`:''}
-    <button class="pri" type="submit">Salva</button>${S.admin?'<button class="sec" type="button" data-act="pushTest">Invia notifica di prova</button>':''}</form>`); }
+  delP: async (d,b) => { if (confirm2(b) && await write(()=>deleteDoc(D('players/'+d.id)), 'Rimosso dalla rosa')) closeSheet(); }
 };
 const AUTH_ERR = { 'auth/invalid-credential':'Email o password non corretti.', 'auth/wrong-password':'Email o password non corretti.', 'auth/user-not-found':'Email o password non corretti.',
   'auth/email-already-in-use':'Questa email è già registrata: accedi.', 'auth/weak-password':'La password deve avere almeno 6 caratteri.', 'auth/invalid-email':'Email non valida.',
@@ -605,12 +617,12 @@ document.addEventListener('change', e=>{ const t=e.target, c=t.dataset.ch; if (!
   if (c==='fe') { S.fe=t.value; S.draft=null; t.blur(); draw(); }
   if (c==='steam') { S.steam = t.value; t.blur(); draw(); return; }
   if (c==='mycat') { write(()=>updateDoc(D('players/'+S.uid), {cat:t.value}), 'Salvato'); return; }
-  if (c==='pref') { const prefs={...((S.myTok||{}).prefs||{}), [t.value]: t.checked}; write(()=>setDoc(D('tokens/'+S.uid), {prefs}, {merge:true})); return; }
+  if (c==='pref') { const prefs={...allPrefs((S.myTok||{}).prefs), [t.value]: t.checked}; write(()=>setDoc(D('tokens/'+S.uid), {prefs}, {merge:true})); return; }
   const L = S.draft && S.draft.items[S.draft.idx];
   if (c==='slot') { const i=+t.dataset.i; L.slots=L.slots.map((x,j)=>j!==i&&x===t.value&&t.value?'':x); L.slots[i]=t.value; L.bench=L.bench.filter(x=>x!==t.value); t.blur(); draw(); }
   if (c==='bench') L.bench = t.checked ? [...L.bench, t.value] : L.bench.filter(x=>x!==t.value);
 });
 document.addEventListener('input', e=>{ const k=e.target.dataset.in, L=S.draft&&S.draft.items[S.draft.idx]; if (!L) return; if (k==='tac') L.tactic = e.target.value; if (k==='luname') L.name = e.target.value; });
 addEventListener('beforeinstallprompt', e=>{ e.preventDefault(); installEvt = e; if (S.phase==='app') draw(); });
-const fromHash = () => { const h=location.hash.slice(1); if (['home','presenze','formazione','calendario','campionato','archivio','rosa'].includes(h)) { S.tab=h; if (S.phase==='app') draw(); } };
+const fromHash = () => { const h=location.hash.slice(1); if (['home','presenze','formazione','calendario','campionato','archivio','rosa','impostazioni'].includes(h)) { S.tab=h; if (S.phase==='app') draw(); } };
 addEventListener('hashchange', fromHash); fromHash();

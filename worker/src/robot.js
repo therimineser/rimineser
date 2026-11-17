@@ -14,6 +14,9 @@ const MATCH_REMINDERS = [24, 12, 2];   // partite: ore prima dell'inizio
 const REMIND_FROM_HOUR = 12;           // allenamenti: il giorno prima, dalle 12
 const RESERVE = 6;                     // chiamate tenute da parte per le scritture finali
 const PREF_OF = { post: 'posts', poll: 'posts', lineup: 'lineup', remind: 'remind', uisp: 'uisp', test: null };
+// promemoria partita: scelta separata per 24/12/2 ore (r24, r12, r2); chi non l'ha ancora fatta segue la vecchia scelta "remind"
+const PREF_FALLBACK = { r24: 'remind', r12: 'remind', r2: 'remind' };
+export const prefOn = (p, k) => { p = p || {}; if (p[k] !== undefined) return p[k] !== false; return PREF_FALLBACK[k] ? p[PREF_FALLBACK[k]] !== false : true; };
 const CAT = { mister: 'Mister', capitano: 'Capitano', giocatore: 'Giocatore', allenatore: 'Allenatore', preparatore: 'Preparatore atletico', dirigente: 'Dirigente', social: 'Social media manager', pubblico: 'Pubblico' };
 
 // ---------------------------------------------------------------- ora di Roma
@@ -84,7 +87,7 @@ export async function run(env, opt) {
     const t = await tokens(), jobs = [];
     for (const u of uids) {
       const d = t[u] || {};
-      if (pref && (d.prefs || {})[pref] === false) continue;
+      if (pref && !prefOn(d.prefs, pref)) continue;
       for (const tok of Object.keys(d.tokens || {})) jobs.push({ u, t: tok, m: msg });
     }
     await deliver(jobs);
@@ -177,8 +180,8 @@ export async function run(env, opt) {
         const title = `⚽ ${when}: The Rimineser F.P. vs ${e.opponent || 'avversario'}`;
         const all = await everyone(), yes = [], none = [];
         for (const u of all) { const a = await answer(u, e.id); if (a === 'si' || a === 'forse') yes.push(u); else if (!a) none.push(u); }
-        let n = await send(yes, { title, body: `Ore ${e.time || ''}${where}. Ci vediamo in campo!`, url: '#home', tag: 'match-' + e.id }, 'remind');
-        n += await send(none, { title, body: `Ore ${e.time || ''}${where}. Non hai ancora risposto: ci sei?`, url: '#presenze', tag: 'match-' + e.id }, 'remind');
+        let n = await send(yes, { title, body: `Ore ${e.time || ''}${where}. Ci vediamo in campo!`, url: '#home', tag: 'match-' + e.id }, 'r' + h);
+        n += await send(none, { title, body: `Ore ${e.time || ''}${where}. Non hai ancora risposto: ci sei?`, url: '#presenze', tag: 'match-' + e.id }, 'r' + h);
         log(`Promemoria partita ${e.id} (${h} ore prima) → ${n} telefoni`);
       } else if (e.date === tomorrow && R.hour >= REMIND_FROM_HOUR && !reminded[e.id] && !busy()) {
         reminded[e.id] = true;
