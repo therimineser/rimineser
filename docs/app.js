@@ -219,7 +219,7 @@ function rsvpBtns(eid){ if (asAdmin()) return `<div style="display:flex;flex-dir
 const icoBench = '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11h16M6 11V7h12v4M5 11v7M19 11v7M8 15h8"/></svg>';
 function dirBtn(eid, on){
   if (!isPl(actId())) return '';
-  return `<button class="b bdir ${on?'on':''}" aria-pressed="${on}" data-act="asDir" data-e="${esc(eid)}">${icoBench}${on?'Presente come dirigenza ✓':'Vengo come dirigenza'}</button>`;
+  return `<button class="b bdir ${on?'on':''}" aria-pressed="${on}" data-act="asDir" data-e="${esc(eid)}">${icoBench}${on?'Presente come dirigenza ✓':'Presente come dirigenza'}</button>`;
 }
 function bar(eid){ const c=counts(eid), n=Math.max(1,c.si+c.forse+c.no+c.none);
   return `<div class="bar" aria-hidden="true"><i style="width:${c.si/n*100}%;background:var(--ok)"></i><i style="width:${c.forse/n*100}%;background:var(--may)"></i><i style="width:${c.no/n*100}%;background:var(--ink)"></i></div>
