@@ -526,57 +526,80 @@ function vImpostazioni(){
   return h;
 }
 
-/* ---------- scouting: statistiche a bordo campo ----------
-   Un operatore tocca prima il giocatore (resta selezionato) e poi l'azione. Ogni tocco = {p: giocatore, k: azione, s: secondi di gioco}.
+/* ---------- scouting: statistiche di SQUADRA a bordo campo ----------
+   Un tocco = un'azione, senza scegliere il giocatore. Tiri, gol, angoli, falli e cartellini anche per gli avversari ("Loro").
+   Solo per gol, assist e cartellini nostri si chiede (facoltativo) il giocatore.
+   Ogni tocco = {k: azione, t: 'us'|'them', s: secondi, h: tempo, p?: giocatore, a?: assist}.
    ANTEPRIMA: i dati restano sul telefono di chi li segna (localStorage "rim-scout-<evento>"), anche senza rete al campo. */
-const SC_GROUPS = [
-  ['Passaggi', [['pass_ok','✓ Passaggio','ok'],['pass_ko','✗ Passaggio','ko'],['key','Passaggio chiave',''],['assist','Assist','ok'],['cross_ok','✓ Cross','ok'],['cross_ko','✗ Cross','ko']]],
-  ['Tiri', [['on_in','In porta · area','ok'],['on_out','In porta · fuori area','ok'],['off_in','Fuori · area','ko'],['off_out','Fuori · fuori area','ko'],['blk','Tiro respinto',''],['goal','⚽ Gol','goal']]],
-  ['Duelli e difesa', [['drib_ok','✓ Dribbling','ok'],['drib_ko','✗ Dribbling','ko'],['tkl_ok','Contrasto vinto','ok'],['tkl_ko','Contrasto perso','ko'],['inter','Intercetto','ok'],['recov','Palla recuperata','ok'],['lost','Palla persa','ko'],['clear','Spazzata','']]],
-  ['Falli e cartellini', [['foul_c','Fallo fatto','ko'],['foul_s','Fallo subito',''],['offside','Fuorigioco','ko'],['yellow','🟨 Giallo','ko'],['red','🟥 Rosso','ko']]],
-  ['Portiere', [['save','Parata','ok'],['gk_out','Uscita','ok'],['conc','Gol subito','ko']]]
+const SC_US = [   // solo per noi
+  ['Passaggi', [['pass_ok','✓ Passaggio','ok'],['pass_ko','✗ Passaggio','ko'],['key','Passaggio chiave',''],['cross_ok','✓ Cross','ok'],['cross_ko','✗ Cross','ko']]],
+  ['Possesso', [['recov','Palla recuperata','ok'],['lost','Palla persa','ko'],['offside','Fuorigioco','ko']]]
 ];
-const SC_LAB = Object.fromEntries(SC_GROUPS.flatMap(([,a])=>a.map(([k,l])=>[k,l])));
+const SC_BOTH = [ // noi | loro
+  ['Tiri', [['on_in','In porta · area'],['on_out','In porta · fuori area'],['off_in','Fuori · area'],['off_out','Fuori · fuori area'],['blk','Tiro respinto'],['goal','⚽ Gol']]],
+  ['Altro', [['corner','Calcio d\'angolo'],['foul','Fallo'],['yellow','🟨 Giallo'],['red','🟥 Rosso'],['save','Parata del portiere']]]
+];
+const SC_LAB = Object.fromEntries([...SC_US, ...SC_BOTH].flatMap(([,a])=>a.map(([k,l])=>[k,l])));
+const SC_WHO = ['goal','yellow','red'];   // per questi (nostri) si chiede il giocatore
 const scKey = eid => 'rim-scout-'+eid;
 function scLoad(eid){ try { return JSON.parse(localStorage.getItem(scKey(eid))) || null; } catch(_) { return null; } }
 function scSave(eid, d){ try { localStorage.setItem(scKey(eid), JSON.stringify(d)); } catch(_) {} }
-function scState(eid){ return S.scout && S.scout.eid===eid ? S.scout : (S.scout = Object.assign({eid, acts:[], half:1, base:0, start:null, sel:''}, scLoad(eid)||{}, {eid})); }
+function scState(eid){ if (S.scout && S.scout.eid===eid) return S.scout; const old = scLoad(eid) || {};
+  return (S.scout = {eid, acts:(old.acts||[]).filter(a=>a.t), half:old.half||1, base:old.base||0, start:old.start||null}); }
 const scSecs = d => d.base + (d.start ? Math.floor((Date.now()-d.start)/1000) : 0);
 const scMin = s => Math.floor(s/60)+1;
 const mmss = s => String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
-function scStats(acts){
-  const st = {}, add = (p,k) => { const o = st[p] ||= {}; o[k] = (o[k]||0)+1; };
-  acts.forEach(a=>add(a.p, a.k)); return st;
-}
+const scCount = (acts, k, t, h) => acts.filter(a=>a.k===k && a.t===t && (!h || a.h===h)).length;
+function scPlayers(eid){ const pres = roster().filter(id=>isPl(id) && ans(id,eid)==='si' && roleAt(id,eid)!=='dirigente'); return pres.length ? pres : squad(); }
 function vScouting(){
   const matches = [...upcoming(), ...past()].filter(e=>e.type==='partita');
   if (!matches.length) return `<h2>Scouting</h2><div class="empty">Nessuna partita in calendario.</div>`;
   const eid = (S.scoutEid && matches.some(m=>m.id===S.scoutEid)) ? S.scoutEid : (upcoming().find(e=>e.type==='partita')||matches[0]).id;
-  const e = matches.find(m=>m.id===eid), d = scState(eid);
-  const pres = roster().filter(id=>isPl(id) && ans(id,eid)==='si' && roleAt(id,eid)!=='dirigente');
-  const players = pres.length ? pres : squad();
-  const secs = scSecs(d), st = scStats(d.acts);
+  const e = matches.find(m=>m.id===eid), d = scState(eid), A = d.acts, secs = scSecs(d);
+  const opp = esc(short(e.opponent||'Loro'));
+  const gUs = scCount(A,'goal','us'), gThem = scCount(A,'goal','them');
+  const btn = (k,l,c,t) => { const n = scCount(A,k,t); return `<button class="sc-a ${c}" data-act="scAdd" data-k="${k}" data-t="${t}">${l}<i>${n||''}</i></button>`; };
   let h = `<div class="row sp"><h2>Scouting</h2><span class="chip">Anteprima</span></div>
   <section class="card"><select data-ch="scev" aria-label="Partita">${matches.map(m=>`<option value="${esc(m.id)}" ${m.id===eid?'selected':''}>${esc(fmtD(m)||'')} – ${esc(evName(m))}</option>`).join('')}</select>
+    <div class="sc-score"><span>Noi</span><b>${gUs} – ${gThem}</b><span>${opp}</span></div>
     <div class="sc-clock"><b>${d.half}T</b><span class="sc-time" id="scTime">${mmss(secs)}</span>
       <button class="${d.start?'sec':'pri'}" data-act="scClock">${d.start?'⏸ Pausa':(secs?'▶ Riprendi':'▶ Avvia')}</button>
-      <button class="sec" data-act="scHalf">${d.half===1?'2° tempo':'1° tempo'}</button></div></section>
-  <section class="card"><span class="lab">1 · TOCCA IL GIOCATORE</span>${pres.length?'':'<span class="mute" style="font-size:13px">Nessuno ha ancora segnato "Presente": mostro tutta la rosa.</span>'}
-    <div class="sc-players">${players.map(id=>`<button class="sc-pl ${d.sel===id?'on':''}" aria-pressed="${d.sel===id}" data-act="scSel" data-id="${esc(id)}"><b>${esc(S.players[id]?.number||'–')}</b><span>${esc(short(nameOf(id)))}</span></button>`).join('')}</div></section>
-  <section class="card"><span class="lab">2 · TOCCA L'AZIONE${d.sel?` · <span style="color:var(--ink)">${esc(nameOf(d.sel))}</span>`:''}</span>
-    ${SC_GROUPS.map(([g,a])=>`<div class="sc-g"><span class="mute" style="font-size:13px;font-weight:600">${g}</span><div class="sc-acts">${a.map(([k,l,c])=>`<button class="sc-a ${c}" data-act="scAdd" data-k="${k}" ${d.sel?'':'disabled'}>${l}<i>${d.sel?(st[d.sel]?.[k]||''):''}</i></button>`).join('')}</div></div>`).join('')}
-    <div class="btns"><button class="sec" data-act="scUndo" ${d.acts.length?'':'disabled'}>↶ Annulla ultima</button></div>
-    ${d.acts.length?`<div class="sc-log">${d.acts.slice(-5).reverse().map(a=>`<div><b>${a.h}T ${scMin(a.s)}'</b> ${esc(short(nameOf(a.p)))} · ${esc(SC_LAB[a.k]||a.k)}</div>`).join('')}</div>`:''}</section>`;
-  // riepilogo
-  const tot = k => d.acts.filter(a=>a.k===k).length, pct = (a,b) => a+b ? Math.round(a/(a+b)*100)+'%' : '–';
-  const row = id => { const o = st[id]||{}, onT=(o.on_in||0)+(o.on_out||0), sh=onT+(o.off_in||0)+(o.off_out||0)+(o.blk||0);
-    return `<tr><td>${esc(short(nameOf(id)))}</td><td>${o.pass_ok||0}/${(o.pass_ok||0)+(o.pass_ko||0)} <span class="mute">${pct(o.pass_ok||0,o.pass_ko||0)}</span></td><td>${onT}/${sh}</td><td>${o.goal||0}</td><td>${o.assist||0}</td><td>${(o.recov||0)+(o.inter||0)+(o.tkl_ok||0)}</td><td>${o.lost||0}</td></tr>`; };
-  const ids = Object.keys(st);
-  h += `<section class="card"><span class="lab">RIEPILOGO</span>
-    <div class="sc-team"><div><b>${pct(tot('pass_ok'),tot('pass_ko'))}</b><span>passaggi riusciti</span></div><div><b>${tot('on_in')+tot('on_out')}/${tot('on_in')+tot('on_out')+tot('off_in')+tot('off_out')+tot('blk')}</b><span>tiri in porta</span></div><div><b>${tot('on_in')+tot('off_in')}·${tot('on_out')+tot('off_out')}</b><span>tiri area · fuori</span></div><div><b>${tot('goal')}</b><span>gol</span></div></div>
-    ${ids.length?`<div style="overflow-x:auto"><table class="sc-tab"><thead><tr><th>Giocatore</th><th>Passaggi</th><th>Tiri porta</th><th>Gol</th><th>Ass.</th><th>Recuperi</th><th>Perse</th></tr></thead><tbody>${ids.map(row).join('')}</tbody></table></div>`:'<span class="mute">Qui compariranno le statistiche dei giocatori.</span>'}
-    ${d.acts.length?`<button class="lnk" data-act="scReset">Azzera i dati di questa partita</button>`:''}</section>`;
+      <button class="sec" data-act="scHalf">${d.half===1?'2° tempo':'1° tempo'}</button></div></section>`;
+  // azioni solo nostre
+  h += `<section class="card"><span class="lab">NOI</span>${SC_US.map(([g,a])=>`<div class="sc-g"><span class="mute" style="font-size:13px;font-weight:600">${g}</span><div class="sc-acts">${a.map(([k,l,c])=>btn(k,l,c,'us')).join('')}</div></div>`).join('')}</section>`;
+  // azioni per noi e per loro, affiancate
+  h += `<section class="card"><div class="sc-vs"><span class="lab">NOI</span><span class="lab" style="text-align:right">${opp.toUpperCase()}</span></div>
+    ${SC_BOTH.map(([g,a])=>`<div class="sc-g"><span class="mute" style="font-size:13px;font-weight:600">${g}</span>${a.map(([k,l])=>`<div class="sc-acts">${btn(k,l,k==='goal'?'goal':'us','us')}${btn(k,l,k==='goal'?'goalthem':'them','them')}</div>`).join('')}</div>`).join('')}
+    <div class="btns"><button class="sec" data-act="scUndo" ${A.length?'':'disabled'}>↶ Annulla ultima</button></div>
+    ${A.length?`<div class="sc-log">${A.slice(-5).reverse().map(a=>`<div><b>${a.h}T ${scMin(a.s)}'</b> ${a.t==='us'?'Noi':opp} · ${esc(SC_LAB[a.k]||a.k)}${a.p?' · '+esc(nameOf(a.p)):''}${a.a?' (assist '+esc(short(nameOf(a.a)))+')':''}</div>`).join('')}</div>`:''}</section>`;
+  // riepilogo per tempo
+  const pct = (a,b) => a+b ? Math.round(a/(a+b)*100)+'%' : '–';
+  const cols = [1,2,0];   // 1T, 2T, totale
+  const val = (f) => cols.map(x=>`<td>${f(x||null)}</td>`).join('');
+  const shots = (t,h) => ['on_in','on_out','off_in','off_out','blk'].reduce((n,k)=>n+scCount(A,k,t,h),0);
+  const onT = (t,h) => scCount(A,'on_in',t,h)+scCount(A,'on_out',t,h);
+  const rows = [
+    ['Passaggi riusciti', h=>`${scCount(A,'pass_ok','us',h)}/${scCount(A,'pass_ok','us',h)+scCount(A,'pass_ko','us',h)} <span class="mute">${pct(scCount(A,'pass_ok','us',h),scCount(A,'pass_ko','us',h))}</span>`],
+    ['Tiri in porta / totali', h=>`${onT('us',h)}/${shots('us',h)} · ${onT('them',h)}/${shots('them',h)}`],
+    ['Tiri da area · fuori', h=>`${scCount(A,'on_in','us',h)+scCount(A,'off_in','us',h)} · ${scCount(A,'on_out','us',h)+scCount(A,'off_out','us',h)}`],
+    ['Palle recuperate · perse', h=>`${scCount(A,'recov','us',h)} · ${scCount(A,'lost','us',h)}`],
+    ['Angoli', h=>`${scCount(A,'corner','us',h)} · ${scCount(A,'corner','them',h)}`],
+    ['Falli', h=>`${scCount(A,'foul','us',h)} · ${scCount(A,'foul','them',h)}`],
+    ['Parate', h=>`${scCount(A,'save','us',h)} · ${scCount(A,'save','them',h)}`]
+  ];
+  const scorers = A.filter(a=>a.k==='goal' && a.t==='us');
+  h += `<section class="card"><span class="lab">RIEPILOGO</span><span class="mute" style="font-size:13px">Dove ci sono due numeri: noi · ${opp}</span>
+    <div style="overflow-x:auto"><table class="sc-tab"><thead><tr><th></th><th>1° tempo</th><th>2° tempo</th><th>Totale</th></tr></thead><tbody>${rows.map(([l,f])=>`<tr><td>${l}</td>${val(f)}</tr>`).join('')}</tbody></table></div>
+    ${scorers.length?`<div><b>Marcatori</b><div class="sc-log">${scorers.map(a=>`<div><b>${a.h}T ${scMin(a.s)}'</b> ${a.p?esc(nameOf(a.p)):'gol'}${a.a?' (assist '+esc(nameOf(a.a))+')':''}</div>`).join('')}</div></div>`:''}
+    ${A.length?`<button class="lnk" data-act="scReset">Azzera i dati di questa partita</button>`:''}</section>`;
   return h;
+}
+// dopo gol/cartellino nostro: chi è stato? (facoltativo)
+function scAsk(i, field){
+  const x = S.scout, a = x.acts[i], ids = scPlayers(x.eid).filter(id=>id!==a.p);
+  const q = field==='a' ? 'Assist di chi?' : a.k==='goal' ? 'Chi ha segnato?' : `${SC_LAB[a.k]} a chi?`;
+  openSheet(`${head(q)}<div class="sc-players">${ids.map(id=>`<button class="sc-pl" data-act="scPick" data-i="${i}" data-f="${field}" data-id="${esc(id)}"><b>${esc(S.players[id]?.number||'–')}</b><span>${esc(short(nameOf(id)))}</span></button>`).join('')}</div>
+    <button class="sec" data-act="scPick" data-i="${i}" data-f="${field}" data-id="">${field==='a'?'Nessun assist':'Salta'}</button>`);
 }
 // il cronometro si aggiorna da solo senza ridisegnare la pagina
 setInterval(()=>{ const el = document.getElementById('scTime'); if (el && S.scout) el.textContent = mmss(scSecs(S.scout)); }, 1000);
@@ -674,8 +697,10 @@ const ACT = {
   mode: () => { mode = asAdmin() ? 'player' : 'admin'; try { localStorage.setItem('rim-mode', mode); } catch(_) {} draw(); toast(asAdmin() ? 'Modalità Amministratore' : 'Modalità Giocatore'); },
   asDir: d => { const on = ans(actId(),d.e)==='si' && roleAt(actId(),d.e)==='dirigente';
     write(()=>setDoc(D('rsvp/'+actId()), on ? {answers:{[d.e]: deleteField()}, roles:{[d.e]: deleteField()}} : {answers:{[d.e]:'si'}, roles:{[d.e]:'dirigente'}}, {merge:true})); },
-  scSel: d => { const x = S.scout; x.sel = x.sel===d.id ? '' : d.id; scSave(x.eid, x); draw(); },
-  scAdd: d => { const x = S.scout; if (!x.sel) return; x.acts.push({p:x.sel, k:d.k, s:scSecs(x), h:x.half}); scSave(x.eid, x); if (navigator.vibrate) navigator.vibrate(30); draw(); toast(`${short(nameOf(x.sel))}: ${SC_LAB[d.k]}`); },
+  scAdd: d => { const x = S.scout; x.acts.push({k:d.k, t:d.t, s:scSecs(x), h:x.half}); scSave(x.eid, x); if (navigator.vibrate) navigator.vibrate(30); draw();
+    if (d.t==='us' && SC_WHO.includes(d.k)) scAsk(x.acts.length-1, 'p'); else toast(`${d.t==='us'?'Noi':'Loro'}: ${SC_LAB[d.k]}`); },
+  scPick: d => { const x = S.scout, a = x.acts[+d.i]; if (!a) return closeSheet(); if (d.id) a[d.f] = d.id; scSave(x.eid, x); closeSheet(); draw();
+    if (d.f==='p' && a.k==='goal' && d.id) scAsk(+d.i, 'a'); },
   scUndo: () => { const x = S.scout; const a = x.acts.pop(); scSave(x.eid, x); draw(); if (a) toast('Annullato: '+SC_LAB[a.k]); },
   scClock: () => { const x = S.scout; if (x.start) { x.base = scSecs(x); x.start = null; } else x.start = Date.now(); scSave(x.eid, x); draw(); },
   scHalf: () => { const x = S.scout; x.half = x.half===1 ? 2 : 1; x.base = 0; x.start = null; scSave(x.eid, x); draw(); },
