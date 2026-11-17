@@ -222,7 +222,8 @@ def main():
         if kind == 'test':
             targets = [u for u in everyone if u in (team.get('coaches') or [])]
         n = sender.send(targets, {'title': o.get('title', 'The Rimineser F.P.'), 'body': o.get('body', ''), 'url': o.get('url', '#home'), 'tag': kind + '-' + oid}, PREF_OF.get(kind))
-        log('Coda: "%s" → %d telefoni' % (o.get('title', ''), n))
+        ca = o.get('createdAt')
+        log('Coda: "%s" → %d telefoni%s' % (o.get('title', ''), n, ' (in coda da %d min)' % ((dt.datetime.now().timestamp() * 1000 - ca) // 60000) if isinstance(ca, (int, float)) and ca > 0 else ''))
         st.patch('outbox/' + oid, {'sent': True, 'sentAt': int(dt.datetime.now().timestamp() * 1000)})
 
     # 2) promemoria
@@ -294,10 +295,14 @@ def main():
     CAT = {'mister': 'Mister', 'capitano': 'Capitano', 'giocatore': 'Giocatore', 'allenatore': 'Allenatore', 'preparatore': 'Preparatore atletico', 'dirigente': 'Dirigente', 'social': 'Social media manager', 'pubblico': 'Pubblico'}
     new_req = [(k, v) for k, v in players.items() if not v.get('approved') and not v.get('rejected') and k not in seen]
     for k, v in new_req:
+        if not admins:
+            log('Nuova richiesta di %s: l\'amministratore non ha telefoni con notifiche attive' % (v.get('name') or k))
         if admins:
             sender.send(admins, {'title': '👤 Nuova richiesta di iscrizione', 'body': '%s (%s) vuole entrare in squadra: approvalo in Rosa.' % (v.get('name') or 'Qualcuno', CAT.get(v.get('cat'), 'Giocatore')),
                                  'url': '#rosa', 'tag': 'req-' + k}, None)
-            log('Nuova richiesta di %s → amministratore' % (v.get('name') or k))
+            ca = v.get('createdAt')
+            wait = ' (iscritto %d min fa)' % ((dt.datetime.now().timestamp() * 1000 - ca) // 60000) if isinstance(ca, (int, float)) and ca > 0 else ''
+            log('Nuova richiesta di %s → amministratore%s' % (v.get('name') or k, wait))
         seen.add(k)
     if new_req:
         changed_state['requests'] = sorted(seen)[-300:]

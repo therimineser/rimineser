@@ -9,7 +9,7 @@ on:
     - cron: '*/5 * * * *'
 
 permissions:
-  contents: read
+  contents: write   # solo per salvare il registro nel ramo "registro"
 
 concurrency:
   group: notifiche
@@ -27,9 +27,27 @@ jobs:
             docs/campionato.json
           sparse-checkout-cone-mode: false
       - name: Invia le notifiche
+        id: invia
         env:
           FIREBASE_SA: ${{ secrets.FIREBASE_SA }}
         run: |
           python3 -m pip install -q --disable-pip-version-check --user --break-system-packages google-auth requests 2>/dev/null \
             || python3 -m pip install -q --disable-pip-version-check --user google-auth requests
-          python3 tools/notify.py
+          set -o pipefail
+          python3 tools/notify.py 2>&1 | tee /tmp/uscita.txt
+      # Registro leggibile anche senza accesso ai log di Actions: ultime ~2000 righe nel ramo "registro" (file registro.txt).
+      - name: Salva il registro
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENTO: ${{ github.event_name }}
+          ESITO: ${{ steps.invia.outcome }}
+        run: |
+          set +e
+          cd /tmp && rm -rf reg && mkdir reg && cd reg && git init -q
+          git fetch -q --depth 1 "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" registro 2>/dev/null && git show FETCH_HEAD:registro.txt > vecchio.txt 2>/dev/null
+          touch vecchio.txt
+          { cat vecchio.txt; echo "=== $(TZ=Europe/Rome date '+%Y-%m-%d %H:%M:%S') · avvio: ${EVENTO} · esito: ${ESITO}"; grep -v '^$' /tmp/uscita.txt 2>/dev/null | sed 's/^/    /'; } | tail -n 2000 > registro.txt
+          rm vecchio.txt && git add registro.txt
+          git -c user.name="Robot notifiche" -c user.email="actions@users.noreply.github.com" commit -qm "Registro robot notifiche"
+          git push -qf "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:registro
