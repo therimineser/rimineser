@@ -4,7 +4,7 @@ on:
   workflow_dispatch: {}
   push:
     branches: [main]
-    paths: ['tools/esempio-notifica.json']
+    paths: ['tools/esempio-notifica.json', '.github/workflows/notifiche.yml']
   schedule:
     - cron: '*/5 * * * *'
 
