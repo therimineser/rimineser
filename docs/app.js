@@ -221,9 +221,9 @@ function dirBtn(eid, on){
   if (!isPl(actId())) return '';
   return `<button class="b bdir ${on?'on':''}" aria-pressed="${on}" data-act="asDir" data-e="${esc(eid)}">${icoBench}${on?'Presente come dirigenza ✓':'Presente come dirigenza'}</button>`;
 }
-function bar(eid){ const c=counts(eid), n=Math.max(1,c.si+c.forse+c.no+c.none);
-  return `<div class="bar" aria-hidden="true"><i style="width:${c.si/n*100}%;background:var(--ok)"></i><i style="width:${c.forse/n*100}%;background:var(--may)"></i><i style="width:${c.no/n*100}%;background:var(--ink)"></i></div>
-  <div class="mute">Giocatori: ${c.si} present${c.si===1?'e':'i'} · ${c.forse} forse · ${c.no} assenti · ${c.none} senza risposta${(()=>{ const o=roster().filter(id=>!plAt(id,eid)&&ans(id,eid)==='si').length; return o?` · +${o} tra staff e pubblico`:''; })()}</div>`; }
+function bar(eid, compact){ const c=counts(eid), n=Math.max(1,c.si+c.forse+c.no+c.none);   // compact: solo la barra (Bacheca)
+  return `<div class="bar" aria-hidden="true"><i style="width:${c.si/n*100}%;background:var(--ok)"></i><i style="width:${c.forse/n*100}%;background:var(--may)"></i><i style="width:${c.no/n*100}%;background:var(--ink)"></i></div>${compact?'':`
+  <div class="mute">Giocatori: ${c.si} present${c.si===1?'e':'i'} · ${c.forse} forse · ${c.no} assenti · ${c.none} senza risposta${(()=>{ const o=roster().filter(id=>!plAt(id,eid)&&ans(id,eid)==='si').length; return o?` · +${o} tra staff e pubblico`:''; })()}</div>`}`; }
 function attendees(e, live){
   const chip = (id,cls) => live && S.coach ? `<button class="chip ${cls}" data-act="cyc" data-id="${esc(id)}" data-e="${esc(e.id)}" aria-label="Cambia risposta di ${esc(nameOf(id))}">${esc(nameOf(id))}</button>` : `<span class="chip ${cls}">${esc(nameOf(id))}</span>`;
   const r = roster(); if (!r.length) return '<p class="mute">Nessuno in rosa.</p>';
@@ -399,7 +399,7 @@ function vHome(){
     <h2>${isM?'The Rimineser F.P. <span style="color:var(--red)">vs</span> '+esc(nx.opponent||'Avversario'):'Allenamento'}</h2>
     <div class="row" style="gap:14px"><span class="res" style="white-space:nowrap">${esc(nx.time||'--:--')}</span><span class="mute" style="text-transform:capitalize">${esc(fmtD(nx,{weekday:'long',day:'numeric',month:'long'}))}</span></div>
     <div class="row mute" style="gap:6px"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s7-6.5 7-12a7 7 0 0 0-14 0c0 5.5 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg>${esc(nx.location||'Campo da definire')}</div>
-    ${rsvpBtns(nx.id)}${bar(nx.id)}
+    ${rsvpBtns(nx.id)}${bar(nx.id, true)}
     <div class="btns"><button class="sec" style="flex:1" data-act="who" data-e="${esc(nx.id)}">Presenti (${pres})</button>${isM?`<button class="pri" style="flex:1" data-act="openLu" data-e="${esc(nx.id)}">${nLu>1?'Formazioni ('+nLu+')':'Formazione'}</button>`:''}</div></section>`; }
   const lp = ourPos(); if (lp) h += `<button class="card" style="flex-direction:row;align-items:center;border:0;text-align:left;width:100%" data-act="go" data-t="campionato"><span class="num" style="width:46px;height:46px;font-size:24px">${lp.pos}°</span><span style="flex:1;min-width:0"><b>Campionato UISP · ${lp.pt} punti</b><br><span class="mute" style="white-space:nowrap;font-size:13.5px">${lp.v} vinte · ${lp.n} pareggiate · ${lp.p} perse</span></span>›</button>`;
   if (!nx) h += `<section class="card dark"><span class="lab" style="color:#FF4D5E">CALENDARIO</span><p class="txt">Nessun evento in programma.${S.coach?' Aggiungilo dal Calendario.':''}</p></section>`;
