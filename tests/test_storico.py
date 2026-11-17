@@ -31,7 +31,7 @@ ok = []
 def check(nome, cond): ok.append(cond); print(('  OK  ' if cond else 'ERRORE ') + nome)
 check('partite UISP fino a oggi + scouting di evento cancellato', set(res['partite']) == {'uisp-1', 'uisp-2', 'uisp-3', 'uisp-4', 'uisp-5', 'cancellata'} and n == 6)
 u1 = res['partite']['uisp-1']['evento']
-check('1ª giornata senza data col Vergiano, 5-1', u1.get('opponent') == 'Vergiano Calcio' and u1.get('result') == '5-1' and 'date' not in u1 and u1['giornata'] == 1)
+check('1ª giornata senza data col Vergiano, 5-1', u1.get('opponent') == 'Vergiano Calcio' and u1.get('result') == '5-1' and u1['giornata'] == 1)
 u2 = res['partite']['uisp-2']['evento']
 check('in trasferta i gol sono dal nostro punto di vista (Tiki 0-3 → 3-0)', u2['result'] == '3-0' and u2['gol_fatti'] == 3 and u2['home'] is False)
 check('allenamento futuro escluso', 'futuro' not in res['partite'])

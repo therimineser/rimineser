@@ -25,6 +25,7 @@ jobs:
           sparse-checkout: |
             tools
             tests/test_storico.py
+            docs/campionato.json
       - name: Prova con dati finti (nessun nome nei file)
         run: python3 tests/test_storico.py
       - name: Scarica da Firebase
