@@ -767,8 +767,8 @@ function draw(){
 document.addEventListener('focusout', ()=>setTimeout(()=>{ if (S.pending) draw(); }, 400));
 
 /* ---------- finestre ---------- */
-function openSheet(html){ $('#panel').innerHTML = html; $('#sheet').hidden = false; const f=$('#panel input,#panel textarea,#panel select'); f&&f.focus(); }
-function closeSheet(){ $('#sheet').hidden = true; $('#panel').innerHTML = ''; }
+function openSheet(html){ $('#panel').innerHTML = html; $('#sheet').hidden = false; document.body.classList.add('sheet-open'); const f=$('#panel input,#panel textarea,#panel select'); f&&f.focus(); }
+function closeSheet(){ $('#sheet').hidden = true; $('#panel').innerHTML = ''; document.body.classList.remove('sheet-open'); }
 $('#sheet').addEventListener('click', e=>{ if (e.target.id==='sheet') closeSheet(); });
 document.addEventListener('keydown', e=>{ if (e.key==='Escape' && !$('#sheet').hidden) closeSheet(); });
 const head = t => `<div class="row sp"><h2 id="shT">${t}</h2><button class="lnk" type="button" data-act="close">Chiudi</button></div>`;
