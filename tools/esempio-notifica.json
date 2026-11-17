@@ -1,6 +1,7 @@
 {
-  "id": "tutte-le-notifiche-2",
-  "nota": "Esempi mandati SOLO all'amministratore, una volta per id: per rimandarli cambiare id.",
+  "id": "tutte-le-notifiche-3",
+  "unaAlMinuto": true,
+  "nota": "Esempi mandati SOLO all'amministratore, una volta per id: per rimandarli cambiare id. unaAlMinuto: una notifica al minuto (insieme Chrome le blocca come spam).",
   "notifiche": [
     {"title": "📣 Nuova comunicazione", "body": "Domani si gioca alle 22 a Riccione: ritrovo al campo alle 21:30, portate maglia rossa e bianca.", "url": "#home"},
     {"title": "📊 Nuovo sondaggio", "body": "Cena di squadra: venerdì o sabato?", "url": "#home"},
