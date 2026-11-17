@@ -578,9 +578,9 @@ function vScouting(){
   const gUs = scCount(A,'goal','us'), gThem = scCount(A,'goal','them');
   const btn = (k,l,c,t) => { const n = scCount(A,k,t); return `<button class="sc-a ${c}" data-act="scAdd" data-k="${k}" data-t="${t}" ${mine?'':'disabled'}>${l}<i>${n||''}</i></button>`; };
   const who = d.lock && d.lock.name ? esc(d.lock.name) : 'qualcuno';
-  const lockBar = mine ? `<div class="sc-lock on"><span>✍️ Stai segnando tu</span><button class="lnk" data-act="scLeave">Lascia</button></div>`
-    : free ? `<div class="sc-lock"><span>Nessuno sta segnando questa partita.</span><button class="pri" data-act="scTake">✋ Segna tu</button></div>`
-    : `<div class="sc-lock busy"><span>🔒 Sta segnando <b>${who}</b>: puoi solo guardare.</span></div>`;
+  const lockBar = mine ? `<div class="sc-lock on"><span>✍️ Stai facendo lo scouting di questa partita</span><button class="lnk" data-act="scLeave">Lascia</button></div>`
+    : free ? `<div class="sc-lock"><span>Nessuno sta facendo lo scouting di questa partita.</span><button class="pri" data-act="scTake">✋ Segna tu</button></div>`
+    : `<div class="sc-lock busy"><span>🔒 <b>${who}</b> sta facendo lo scouting di questa partita: puoi solo guardare.</span></div>`;
   let h = `<div class="row sp"><h2>Scouting</h2></div>
   <section class="card"><select data-ch="scev" aria-label="Partita">${matches.map(m=>`<option value="${esc(m.id)}" ${m.id===eid?'selected':''}>${esc(fmtD(m)||'')} – ${esc(evName(m))}</option>`).join('')}</select>
     <div class="sc-score"><span>${us}</span><b>${gUs} – ${gThem}</b><span>${opp}</span></div>
@@ -724,7 +724,7 @@ const ACT = {
   mode: () => { mode = asAdmin() ? 'player' : 'admin'; try { localStorage.setItem('rim-mode', mode); } catch(_) {} draw(); toast(asAdmin() ? 'Modalità Amministratore' : 'Modalità Giocatore'); },
   asDir: d => { const on = ans(actId(),d.e)==='si' && roleAt(actId(),d.e)==='dirigente';
     write(()=>setDoc(D('rsvp/'+actId()), on ? {answers:{[d.e]: deleteField()}, roles:{[d.e]: deleteField()}} : {answers:{[d.e]:'si'}, roles:{[d.e]:'dirigente'}}, {merge:true})); },
-  scAdd: d => { const x = S.scout; if (!scMine(x)) return toast('Sta segnando un\'altra persona.'); const a = {id:Math.random().toString(36).slice(2,9), k:d.k, t:d.t, s:scSecs(x), h:x.half, ts:Date.now()};
+  scAdd: d => { const x = S.scout; if (!scMine(x)) return toast('Un\'altra persona sta facendo lo scouting di questa partita.'); const a = {id:Math.random().toString(36).slice(2,9), k:d.k, t:d.t, s:scSecs(x), h:x.half, ts:Date.now()};
     x.acts.push(a); write(()=>setDoc(D('scout/'+x.eid), {acts: arrayUnion(a), updatedAt: Date.now()}, {merge:true}));
     if (navigator.vibrate) navigator.vibrate(30); draw();
     if (d.t==='us' && SC_WHO.includes(d.k)) scAsk(x.acts.length-1, 'p'); else toast(`${d.t==='us'?TEAM():'Avversari'}: ${SC_LAB[d.k]}`); },
@@ -737,10 +737,10 @@ const ACT = {
   scClock: () => { const x = S.scout; if (!scMine(x)) return; if (x.start) { x.base = scSecs(x); x.start = null; } else x.start = Date.now(); scWrite(x.eid, {base:x.base, start:x.start, half:x.half}); draw(); },
   scHalf: () => { const x = S.scout; if (!scMine(x)) return; x.half = x.half===1 ? 2 : 1; x.base = 0; x.start = null; scWrite(x.eid, {base:0, start:null, half:x.half}); draw(); },
   scClockReset: (d,b) => { const x = S.scout; if (!scMine(x) || !confirm2(b)) return; x.base = 0; x.start = null; scWrite(x.eid, {base:0, start:null}); draw(); toast('Cronometro azzerato'); },
-  scTake: async () => { const x = S.scout; try { await setDoc(D('scout/'+x.eid), {lock: scLockBody(), updatedAt: Date.now()}, {merge:true}); toast('Ora segni tu'); }
-    catch(_) { toast('Qualcun altro ha appena iniziato a segnare.'); } },
+  scTake: async () => { const x = S.scout; try { await setDoc(D('scout/'+x.eid), {lock: scLockBody(), updatedAt: Date.now()}, {merge:true}); toast('Ora stai facendo tu lo scouting'); }
+    catch(_) { toast('Qualcun altro ha appena iniziato lo scouting.'); } },
   scLeave: async (d,b) => { const x = S.scout; if (!scMine(x)) return; if (!confirm2(b)) return;
-    await write(()=>updateDoc(D('scout/'+x.eid), {lock: deleteField(), updatedAt: Date.now()})); toast('Hai lasciato: ora può segnare qualcun altro'); },
+    await write(()=>updateDoc(D('scout/'+x.eid), {lock: deleteField(), updatedAt: Date.now()})); toast('Hai lasciato lo scouting: ora può farlo qualcun altro'); },
   scReset: (d,b) => { if (!confirm2(b)) return; const x = S.scout; if (!scMine(x)) return; Object.assign(x, {acts:[], half:1, base:0, start:null}); write(()=>setDoc(D('scout/'+x.eid), {acts:[], half:1, base:0, start:null, lock:scLockBody(), updatedAt:Date.now()})); draw(); },
   cyc: d => { const o=['','si','forse','no']; setRsvp(d.id, d.e, o[(o.indexOf(ans(d.id,d.e))+1)%4]); },
   vote: d => { const i=+d.i, same=(S.votes[S.uid]?.answers||{})[d.p]===i; write(()=>setDoc(D('votes/'+S.uid), {answers:{[d.p]: same ? deleteField() : i}}, {merge:true})); },
