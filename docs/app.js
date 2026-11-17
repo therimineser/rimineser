@@ -668,6 +668,7 @@ function vScouting(){
     ${scorers.length?`<div><b>Marcatori</b><div class="sc-log">${scorers.map(a=>`<div><b>${a.h}T ${scMin(a.s)}'</b> ${a.p?esc(nameOf(a.p)):'gol'}${a.k==='goal'&&scGoalNote(a)?' ('+esc(scGoalNote(a))+')':''}</div>`).join('')}</div></div>`:''}
     ${subs.length?`<div><b>Sostituzioni</b><div class="sc-log">${subs.map(a=>`<div><b>${a.h}T ${scMin(a.s)}'</b> esce ${esc(nameOf(a.o))} · entra ${esc(nameOf(a.p))}</div>`).join('')}</div></div>`:''}
     ${A.length&&mine?`<button class="lnk" data-act="scReset">Azzera i dati di questa partita</button>`:''}</section>`;
+  h += scCharts(A, TEAM(), e.opponent || 'Avversari');
   return h;
 }
 // come è nato un nostro gol: g = 'assist' | 'rig' | 'pun' | 'ang' (calcio d'angolo diretto) | 'pers' (nessun assist)
@@ -705,6 +706,58 @@ async function scSaveLu(e, li, L, act){
   if (!(await write(()=>setDoc(D('events/'+e.id), {lineups:lus, lockAt:lockAtFor(e)}, {merge:true})))) return false;
   const a = {id:Math.random().toString(36).slice(2,9), t:'us', s:scSecs(x), h:x.half, ts:Date.now(), ...act};
   x.acts.push(a); write(()=>setDoc(D('scout/'+x.eid), {acts: arrayUnion(a), updatedAt: Date.now()}, {merge:true})); draw(); return true;
+}
+/* ---- grafici dello scouting (SVG semplici, nessuna libreria). Colori: The Rimineser = --sc-us (rosso squadra),
+   avversari = --sc-them (blu); coppia validata (CVD/contrasto) in chiaro e in modalità notte. Tocca una barra o un punto per il valore. */
+const SC_SHOTS = ['on_in','on_out','off_in','off_out','blk','goal'];
+function scRadar(A, us, opp){
+  const axes = [['Gol',['goal']],['Tiri',SC_SHOTS],['In porta',['on_in','on_out','goal']],['Angoli',['corner']],['Parate',['save']],['Falli',['foul']]];
+  const val = (t, ks) => A.filter(a=>a.t===t && ks.includes(a.k)).length;
+  const W = 300, H = 270, cx = 150, cy = 140, R = 92, n = axes.length;
+  const pt = (i, r) => { const ang = -Math.PI/2 + i*2*Math.PI/n; return [cx + r*Math.cos(ang), cy + r*Math.sin(ang)]; };
+  const data = axes.map(([l,ks])=>({l, u:val('us',ks), t:val('them',ks)})).map(d=>({...d, m:Math.max(d.u, d.t, 1)}));
+  const poly = key => data.map((d,i)=>pt(i, R*d[key]/d.m).map(v=>v.toFixed(1)).join(',')).join(' ');
+  const grid = [0.25,0.5,0.75,1].map(f=>`<polygon points="${data.map((_,i)=>pt(i,R*f).map(v=>v.toFixed(1)).join(',')).join(' ')}" class="sc-grid"/>`).join('')
+    + data.map((_,i)=>{ const [x,y]=pt(i,R); return `<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" class="sc-grid"/>`; }).join('');
+  const lab = data.map((d,i)=>{ const [x,y]=pt(i,R+22); const anc = Math.abs(x-cx)<6 ? 'middle' : x>cx ? 'start' : 'end';
+    return `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="${anc}" class="sc-ax"><tspan font-weight="700">${d.l}</tspan><tspan x="${x.toFixed(1)}" dy="13">${d.u} · ${d.t}</tspan></text>`; }).join('');
+  const dots = key => data.map((d,i)=>{ const [x,y]=pt(i, R*d[key]/d.m); return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4" class="sc-dot ${key==='u'?'us':'them'}"/><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="14" fill="transparent" data-act="scTip" data-tip="${esc(d.l)}: ${key==='u'?esc(us)+' '+d.u:esc(opp)+' '+d.t}"/>`; }).join('');
+  return `<figure class="sc-fig"><figcaption><b>Confronto con l'avversario</b><span class="mute">Ogni raggio: il più alto dei due arriva al bordo. Sotto ogni voce: ${esc(us)} · ${esc(opp)}.</span></figcaption>
+    <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Radar: ${data.map(d=>`${d.l} ${d.u} a ${d.t}`).join(', ')}">${grid}
+      <polygon points="${poly('t')}" class="sc-area them"/><polygon points="${poly('u')}" class="sc-area us"/>${dots('t')}${dots('u')}${lab}</svg>
+    <div class="sc-legend"><span><i class="us"></i>${esc(us)}</span><span><i class="them"></i>${esc(opp)}</span></div></figure>`;
+}
+// istogramma ogni 5 minuti, 1° e 2° tempo affiancati; series = [[classe, nome, fn(azioni del gruppo) -> numero]]
+function scHist(A, title, sub, series, fmt){
+  const bin = a => Math.floor(a.s/300);   // 0 = 0'-5'
+  const nb = h => Math.max(5, ...A.filter(a=>a.h===h).map(a=>bin(a)+1));
+  const groups = [1,2].flatMap(h=>Array.from({length:nb(h)}, (_,b)=>({h, b, acts:A.filter(a=>a.h===h && bin(a)===b)})));
+  const vals = groups.map(g=>series.map(([, , f])=>f(g.acts)));
+  const max = Math.max(1, ...vals.flat().filter(v=>v!=null));
+  const W = 320, H = 170, L = 24, B = 22, T = 8, plotH = H-B-T, gw = (W-L-8)/groups.length, bw = Math.min(14, (gw-4)/series.length - 2);
+  const ticks = fmt==='%' ? [0,50,100] : [0, Math.ceil(max/2), max].filter((v,i,a)=>a.indexOf(v)===i);
+  const top = fmt==='%' ? 100 : max, y = v => T + plotH - plotH*v/top;
+  let g = ticks.map(t=>`<line x1="${L}" x2="${W-4}" y1="${y(t).toFixed(1)}" y2="${y(t).toFixed(1)}" class="sc-grid"/><text x="${L-4}" y="${(y(t)+4).toFixed(1)}" text-anchor="end" class="sc-ax">${t}${fmt==='%'?'%':''}</text>`).join('');
+  groups.forEach((gr, i)=>{ const x0 = L + i*gw + (gw - series.length*(bw+2))/2;
+    if (i && groups[i-1].h !== gr.h) g += `<line x1="${(L+i*gw).toFixed(1)}" x2="${(L+i*gw).toFixed(1)}" y1="${T}" y2="${H-B}" class="sc-sep"/>`;
+    series.forEach(([cls, name], j)=>{ const v = vals[i][j]; if (v==null) return; const x = x0 + j*(bw+2), h = Math.max(v ? 2 : 0, plotH*v/top);
+      const tip = `${gr.h}° T ${gr.b*5+1}'-${gr.b*5+5}' · ${name}: ${v}${fmt==='%'?'%':''}`;
+      g += h ? `<path d="M${x.toFixed(1)},${(T+plotH).toFixed(1)} V${(T+plotH-h+Math.min(4,h)).toFixed(1)} q0,-4 4,-4 H${(x+bw-4).toFixed(1)} q4,0 4,4 V${(T+plotH).toFixed(1)} Z" class="sc-bar ${cls}"/>` : '';
+      g += `<rect x="${(x-2).toFixed(1)}" y="${T}" width="${(bw+4).toFixed(1)}" height="${plotH}" fill="transparent" data-act="scTip" data-tip="${esc(tip)}"/>`; });
+    if (gr.b % (groups.length>12?2:1) === 0) g += `<text x="${(L + i*gw + gw/2).toFixed(1)}" y="${H-8}" text-anchor="middle" class="sc-ax">${gr.b*5+5}'</text>`; });
+  const t1 = groups.filter(x=>x.h===1).length;
+  g += `<text x="${(L + t1*gw/2).toFixed(1)}" y="${H-B+0}" dy="-${plotH+2}" text-anchor="middle" class="sc-ax" font-weight="700">1° tempo</text><text x="${(L + t1*gw + (groups.length-t1)*gw/2).toFixed(1)}" y="${H-B}" dy="-${plotH+2}" text-anchor="middle" class="sc-ax" font-weight="700">2° tempo</text>`;
+  return `<figure class="sc-fig"><figcaption><b>${title}</b><span class="mute">${sub}</span></figcaption><svg viewBox="0 0 ${W} ${H+4}" role="img" aria-label="${esc(title)}">${g}</svg>
+    ${series.length>1?`<div class="sc-legend">${series.map(([c,nm])=>`<span><i class="${c}"></i>${esc(nm)}</span>`).join('')}</div>`:''}</figure>`;
+}
+function scCharts(A, us, opp){
+  if (!A.some(a=>a.k!=='sub' && a.k!=='mod')) return '';
+  const shots = t => xs => xs.filter(a=>a.t===t && SC_SHOTS.includes(a.k)).length;
+  const passPct = xs => { const ok = xs.filter(a=>a.k==='pass_ok').length, ko = xs.filter(a=>a.k==='pass_ko').length; return ok+ko ? Math.round(ok/(ok+ko)*100) : null; };
+  return `<section class="card"><span class="lab">GRAFICI</span>${scRadar(A, us, opp)}
+    ${scHist(A, 'Tiri ogni 5 minuti', 'Gol compresi. Tocca una barra per il numero.', [['us', us, shots('us')], ['them', opp, shots('them')]])}
+    ${scHist(A, `Passaggi riusciti ogni 5 minuti (${esc(us)})`, 'Percentuale sui passaggi segnati in quei 5 minuti; vuoto = nessun passaggio segnato.', [['us', 'Passaggi riusciti', passPct]], '%')}
+    <p class="sc-tip mute" id="scTip" aria-live="polite">Tocca un punto o una barra per vedere il valore.</p></section>`;
 }
 // il cronometro si aggiorna da solo senza ridisegnare la pagina
 setInterval(()=>{ const el = document.getElementById('scTime'); if (el && S.scout) el.textContent = mmss(scSecs(S.scout)); }, 250);
@@ -816,6 +869,7 @@ const ACT = {
     if (d.id) { const b = {...a, [d.f]: d.id}; x.acts[+d.i] = b; draw();
       await write(()=>updateDoc(D('scout/'+x.eid), {acts: arrayRemove(a)})); await write(()=>updateDoc(D('scout/'+x.eid), {acts: arrayUnion(b)})); id = b.id; }
     if (d.f==='p' && a.k==='goal') scAskHow(x.acts.findIndex(z=>z.id===id)); },
+  scTip: d => { const el = document.getElementById('scTip'); if (el) el.textContent = d.tip; },
   scEditLu: d => { if (!scMine(S.scout)) return; S.fe = d.e; S.draft = null; S.tab = 'formazione'; history.replaceState(null,'','#formazione'); draw(); scrollTo(0,0); },
   scSubStart: () => { if (scMine(S.scout)) scSubSheet('out'); },
   scSubPick: async d => { const x = S.scout; if (!scMine(x)) return closeSheet();
