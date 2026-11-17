@@ -654,7 +654,7 @@ function vScouting(){
   const shots = (t,h) => ['on_in','on_out','off_in','off_out','blk'].reduce((n,k)=>n+scCount(A,k,t,h),0);
   const onT = (t,h) => scCount(A,'on_in',t,h)+scCount(A,'on_out',t,h);
   const rows = [
-    ['Passaggi riusciti', h=>`${scCount(A,'pass_ok','us',h)}/${scCount(A,'pass_ok','us',h)+scCount(A,'pass_ko','us',h)} <span class="mute">${pct(scCount(A,'pass_ok','us',h),scCount(A,'pass_ko','us',h))}</span>`],
+    ['Passaggi riusciti', h=>`${scCount(A,'pass_ok','us',h)}/${scCount(A,'pass_ok','us',h)+scCount(A,'pass_ko','us',h)}<br><span class="mute">${pct(scCount(A,'pass_ok','us',h),scCount(A,'pass_ko','us',h))}</span>`],
     ['Tiri in porta / totali', h=>`${onT('us',h)}/${shots('us',h)} · ${onT('them',h)}/${shots('them',h)}`],
     ['Tiri da area · fuori', h=>`${scCount(A,'on_in','us',h)+scCount(A,'off_in','us',h)} · ${scCount(A,'on_out','us',h)+scCount(A,'off_out','us',h)}`],
     ['Palle recuperate · perse', h=>`${scCount(A,'recov','us',h)} · ${scCount(A,'lost','us',h)}`],
@@ -664,7 +664,7 @@ function vScouting(){
   ];
   const scorers = A.filter(a=>a.k==='goal' && a.t==='us'), subs = A.filter(a=>a.k==='sub');
   h += `<section class="card"><span class="lab">RIEPILOGO</span><span class="mute" style="font-size:13px">Dove ci sono due numeri: ${esc(TEAM())} · ${opp}</span>
-    <div style="overflow-x:auto"><table class="sc-tab"><thead><tr><th></th><th>1° tempo</th><th>2° tempo</th><th>Totale</th></tr></thead><tbody>${rows.map(([l,f])=>`<tr><td>${l}</td>${val(f)}</tr>`).join('')}</tbody></table></div>
+    <div style="overflow-x:auto"><table class="sc-tab"><thead><tr><th></th><th>1° T</th><th>2° T</th><th>Tot.</th></tr></thead><tbody>${rows.map(([l,f])=>`<tr><td>${l}</td>${val(f)}</tr>`).join('')}</tbody></table></div>
     ${scorers.length?`<div><b>Marcatori</b><div class="sc-log">${scorers.map(a=>`<div><b>${a.h}T ${scMin(a.s)}'</b> ${a.p?esc(nameOf(a.p)):'gol'}${a.k==='goal'&&scGoalNote(a)?' ('+esc(scGoalNote(a))+')':''}</div>`).join('')}</div></div>`:''}
     ${subs.length?`<div><b>Sostituzioni</b><div class="sc-log">${subs.map(a=>`<div><b>${a.h}T ${scMin(a.s)}'</b> esce ${esc(nameOf(a.o))} · entra ${esc(nameOf(a.p))}</div>`).join('')}</div></div>`:''}
     ${A.length&&mine?`<button class="lnk" data-act="scReset">Azzera i dati di questa partita</button>`:''}</section>`;
