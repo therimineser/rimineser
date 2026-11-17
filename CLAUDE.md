@@ -19,7 +19,7 @@ App web installabile (PWA) per la squadra di calcio a 7 **The Rimineser F.P.** (
 - **Archivio**: partite giocate con risultato, formazioni e tattica; bilancio V/N/P.
 - **Rosa**: iscritti per categoria, profilo personale, approvazioni (solo admin), impostazioni (Instagram per tutti; gettone GitHub solo admin). Richieste rifiutate: `players/{uid}.rejected=true` (la persona vede "Richiesta non accettata").
 - **Accesso**: email/password e "Accedi con Google" (popup; su iPhone da icona può non funzionare → email).
-- **Notifiche push** (FCM): comunicazioni/sondaggi, formazione pubblicata, promemoria il giorno prima (dalle 12, solo a chi non ha risposto), nuovo comunicato UISP. Preferenze per utente.
+- **Notifiche push** (FCM): comunicazioni/sondaggi, formazione pubblicata, promemoria il giorno prima (dalle 12, solo a chi non ha risposto), nuovo comunicato UISP, nuova richiesta di iscrizione (solo all'amministratore). Preferenze per utente.
 
 ## Struttura
 - `docs/` = l'app pubblicata da GitHub Pages (Source: GitHub Actions)

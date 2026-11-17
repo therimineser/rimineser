@@ -235,7 +235,21 @@ def main():
             # tengo solo gli ultimi 60 promemoria
             changed_state['reminded'] = dict(list(reminded.items())[-60:])
 
-    # 3) nuovo comunicato UISP
+    # 3) nuove richieste di iscrizione: avviso solo all'amministratore
+    admins = [u for u in (team.get('coaches') or []) if u in tokens]
+    seen = set(state.get('requests') or [])
+    CAT = {'giocatore': 'Giocatore', 'allenatore': 'Allenatore', 'dirigente': 'Dirigente', 'pubblico': 'Pubblico'}
+    new_req = [(k, v) for k, v in players.items() if not v.get('approved') and not v.get('rejected') and k not in seen]
+    for k, v in new_req:
+        if admins:
+            sender.send(admins, {'title': '👤 Nuova richiesta di iscrizione', 'body': '%s (%s) vuole entrare in squadra: approvalo in Rosa.' % (v.get('name') or 'Qualcuno', CAT.get(v.get('cat'), 'Giocatore')),
+                                 'url': '#rosa', 'tag': 'req-' + k}, None)
+            log('Nuova richiesta di %s → amministratore' % (v.get('name') or k))
+        seen.add(k)
+    if new_req:
+        changed_state['requests'] = sorted(seen)[-300:]
+
+    # 4) nuovo comunicato UISP
     L = league()
     if L and L.get('updated') and L['updated'] != state.get('uisp'):
         if state.get('uisp'):  # al primissimo avvio non avviso
