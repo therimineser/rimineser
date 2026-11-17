@@ -1,9 +1,9 @@
 name: Notifiche
 
 on:
-  workflow_dispatch: {}        # l'app del Mister lo sveglia appena pubblica qualcosa
+  workflow_dispatch: {}
   schedule:
-    - cron: '*/15 * * * *'     # controllo di sicurezza e promemoria presenze
+    - cron: '*/5 * * * *'
 
 permissions:
   contents: read

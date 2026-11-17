@@ -1,9 +1,9 @@
 rules_version = '2';
-// Regole di sicurezza del database della squadra The Rimineser F.P
+// Regole di sicurezza del database della squadra The Rimineser F.P.
 // - Il primo che preme "Sono l'amministratore" diventa amministratore (solo se la squadra non è ancora configurata).
 // - Chi si registra non vede nulla finché l'amministratore non lo approva.
-// - Tutti gli iscritti approvati hanno gli stessi diritti: comunicazioni, sondaggi, eventi, formazioni, presenze, impostazioni.
-// - Solo l'amministratore approva, modifica o toglie gli iscritti.
+// - Tutti gli iscritti approvati hanno gli stessi diritti: comunicazioni, sondaggi, eventi, formazioni, presenze.
+// - Solo l'amministratore approva/rifiuta/modifica gli iscritti e gestisce il gettone delle notifiche.
 service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() { return request.auth != null; }
@@ -11,24 +11,28 @@ service cloud.firestore {
     function isAdmin() { return signedIn() && exists(teamPath()) && request.auth.uid in get(teamPath()).data.coaches; }
     function myPlayer() { return /databases/$(database)/documents/players/$(request.auth.uid); }
     function isMember() { return isAdmin() || (signedIn() && exists(myPlayer()) && get(myPlayer()).data.approved == true); }
+    function changes() { return request.resource.data.diff(resource.data).affectedKeys(); }
 
     match /config/team {
       allow read: if signedIn();
       allow create: if signedIn() && request.resource.data.coaches == [request.auth.uid];
-      // gli iscritti possono cambiare le impostazioni, ma non l'elenco degli amministratori
-      allow update: if isAdmin() || (isMember() && request.resource.data.coaches == resource.data.coaches);
+      // gli iscritti possono cambiare solo il profilo Instagram
+      allow update: if isAdmin() || (isMember() && changes().hasOnly(['instagram']));
       allow delete: if false;
     }
     match /posts/{id} {
-      allow read, write: if isMember();
+      allow read, delete: if isMember();
+      allow create, update: if isMember() && request.resource.data.text is string && request.resource.data.text.size() < 5000;
     }
     match /events/{id} {
       allow read, write: if isMember();
     }
     match /players/{uid} {
       allow read: if isMember() || (signedIn() && request.auth.uid == uid);
-      allow create: if isAdmin() || (signedIn() && request.auth.uid == uid && request.resource.data.approved == false);
-      allow update: if isAdmin() || (signedIn() && request.auth.uid == uid && request.resource.data.approved == resource.data.approved);
+      allow create: if isAdmin() || (signedIn() && request.auth.uid == uid && request.resource.data.approved == false
+                                     && !('rejected' in request.resource.data));
+      // ognuno modifica solo i propri dati personali (non può approvarsi da solo né togliersi un rifiuto)
+      allow update: if isAdmin() || (signedIn() && request.auth.uid == uid && changes().hasOnly(['name', 'number', 'role', 'cat', 'nick']));
       allow delete: if isAdmin();
     }
     match /rsvp/{uid} {
@@ -42,10 +46,13 @@ service cloud.firestore {
       allow read, write: if signedIn() && request.auth.uid == uid;
     }
     match /outbox/{id} {
-      allow read, write: if isMember();
+      // gli iscritti possono solo mettere in coda nuove notifiche; le invia e le segna il robot
+      allow create: if isMember() && request.resource.data.sent == false;
+      allow read, update, delete: if false;
     }
     match /private/{id} {
-      allow read, write: if isMember();
+      allow read: if isMember();
+      allow write: if isAdmin();
     }
     match /league/{id} {
       allow read: if isMember();

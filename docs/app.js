@@ -1,7 +1,7 @@
 // The Rimineser F.P. – app della squadra (PWA + Firebase)
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, signOut, updateProfile, GoogleAuthProvider, signInWithPopup } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, collection, onSnapshot, setDoc, updateDoc, deleteDoc, addDoc, getDoc, query, orderBy, limit } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, collection, onSnapshot, setDoc, updateDoc, deleteDoc, deleteField, addDoc, getDoc, query, orderBy, limit } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 import * as CFG from './firebase-config.js';
 const firebaseConfig = CFG.firebaseConfig;
 const DEMO = firebaseConfig.apiKey === 'demo';
@@ -53,7 +53,7 @@ const nameOf = id => isAdminId(id) ? (S.players[id+'_g']?.name || 'Amministrator
 const short = n => n.split(' ')[0];
 const roster = () => Object.keys(S.players).filter(id=>S.players[id].approved && !isAdminId(id)).sort((a,b)=>((+S.players[a].number)||999)-((+S.players[b].number)||999)||nameOf(a).localeCompare(nameOf(b)));
 const squad = () => roster().filter(id=>catOf(id)==='giocatore');
-const pendingP = () => Object.keys(S.players).filter(id=>!S.players[id].approved && !isAdminId(id));
+const pendingP = () => Object.keys(S.players).filter(id=>!S.players[id].approved && !S.players[id].rejected && !isAdminId(id));
 const ans = (id,eid) => S.rsvp[id]?.answers?.[eid] || '';
 // L'amministratore ha due profili: "Amministratore" (account) e il suo profilo giocatore (id = uid + "_g").
 const gid = () => S.uid + '_g';
@@ -99,8 +99,8 @@ function mergeEvents(){
 const toMap = s => Object.fromEntries(s.docs.map(d=>[d.id, d.data()]));
 function startMember(){
   if (memberOn) return; memberOn = true;
-  watch(memberSubs, 'mytok', D('tokens/'+S.uid), s=>{ S.myTok = s.exists() ? s.data() : null; });
-  refreshPush();
+  let tokChecked = false;
+  watch(memberSubs, 'mytok', D('tokens/'+S.uid), s=>{ S.myTok = s.exists() ? s.data() : null; if (!tokChecked) { tokChecked = true; refreshPush(); } });
   watch(memberSubs, 'posts', query(C('posts'), orderBy('createdAt','desc'), limit(60)), s=>{ S.posts = s.docs.map(d=>({id:d.id, ...d.data()})); });
   watch(memberSubs, 'events', C('events'), s=>{ S.fsEvents = s.docs.map(d=>({id:d.id, ...d.data()})); mergeEvents(); });
   watch(memberSubs, 'players', C('players'), s=>{ S.players = toMap(s); ensureAdminPlayer(); });
@@ -125,6 +125,7 @@ function watchMe(){
       await write(()=>setDoc(D('players/'+S.uid), { name:S.authName, number:'', role:'', cat:regCat||'giocatore', approved:false, createdAt:Date.now() }));
       return; }
     S.me = s.data();
+    if (S.me.rejected && !S.me.approved) { S.coach = false; S.phase = 'rejected'; stopMember(); return; }
     if (S.me.approved) { S.coach = true; S.phase = 'app'; startMember(); } else { S.coach = false; S.phase = 'pending'; stopMember(); }
   });
 }
@@ -441,6 +442,7 @@ function draw(){
   if (S.phase==='login') { $('#root').innerHTML = vLogin(); return; }
   if (S.phase==='loading') { $('#root').innerHTML = `<div class="login"><img src="icons/logo-256.png" alt="Logo The Rimineser F.P." width="220" height="220"><p>Caricamento…</p></div>`; return; }
   if (S.phase==='setup') { $('#root').innerHTML = `<div class="login"><img src="icons/logo-256.png" alt="Logo The Rimineser F.P." width="220" height="220"><h1>Squadra da configurare</h1><p style="max-width:380px;text-align:center">L'app non ha ancora un amministratore. Se sei tu a gestire l'app, premi il pulsante: potrai approvare gli iscritti.</p><button class="pri" data-act="beCoach">Sono l'amministratore</button><button class="lnk" data-act="logout">Esci</button></div>`; return; }
+  if (S.phase==='rejected') { $('#root').innerHTML = `<div class="login"><img src="icons/logo-256.png" alt="Logo The Rimineser F.P." width="220" height="220"><h1>Richiesta non accettata</h1><p style="max-width:380px;text-align:center">L'amministratore non ha accettato la tua iscrizione. Se pensi sia un errore, contatta la squadra.</p><button class="lnk" data-act="logout">Esci</button></div>`; return; }
   if (S.phase==='pending') { $('#root').innerHTML = `<div class="login"><img src="icons/logo-256.png" alt="Logo The Rimineser F.P." width="220" height="220"><h1>Richiesta inviata</h1><p style="max-width:380px;text-align:center">Ciao ${esc(S.authName)}! L'amministratore deve approvare il tuo ingresso in squadra. Appena lo fa, questa schermata si aggiorna da sola.</p><label style="width:100%;max-width:380px">Entro in squadra come<select data-ch="mycat">${CATS.map(([k,,l])=>`<option value="${k}" ${((S.me||{}).cat||'giocatore')===k?'selected':''}>${l}</option>`).join('')}</select></label><button class="lnk" data-act="logout">Esci</button></div>`; return; }
   shell();
   const a = document.activeElement;
@@ -480,8 +482,7 @@ function evForm(e){
 
 /* ---------- azioni ---------- */
 async function setRsvp(id, eid, v){
-  const cur = {...(S.rsvp[id]?.answers||{})}; if (v) cur[eid]=v; else delete cur[eid];
-  await write(()=>setDoc(D('rsvp/'+id), {answers:cur}));
+  await write(()=>setDoc(D('rsvp/'+id), {answers:{[eid]: v ? v : deleteField()}}, {merge:true}));
 }
 function confirm2(b){ if (b.dataset.c) return true; b.dataset.c='1'; const t=b.textContent; b.textContent='Conferma?'; setTimeout(()=>{ if (b.isConnected){ delete b.dataset.c; b.textContent=t; } },3000); return false; }
 const ACT = {
@@ -498,7 +499,7 @@ const ACT = {
   rsvp: d => setRsvp(actId(), d.e, ans(actId(),d.e)===d.v ? '' : d.v),
   mode: () => { mode = asAdmin() ? 'player' : 'admin'; try { localStorage.setItem('rim-mode', mode); } catch(_) {} draw(); toast(asAdmin() ? 'Modalità Amministratore' : 'Modalità Giocatore'); },
   cyc: d => { const o=['','si','forse','no']; setRsvp(d.id, d.e, o[(o.indexOf(ans(d.id,d.e))+1)%4]); },
-  vote: d => { const cur={...(S.votes[S.uid]?.answers||{})}, i=+d.i; if (cur[d.p]===i) delete cur[d.p]; else cur[d.p]=i; write(()=>setDoc(D('votes/'+S.uid), {answers:cur})); },
+  vote: d => { const i=+d.i, same=(S.votes[S.uid]?.answers||{})[d.p]===i; write(()=>setDoc(D('votes/'+S.uid), {answers:{[d.p]: same ? deleteField() : i}}, {merge:true})); },
   remind: d => { const e=S.events.find(x=>x.id===d.e); if (!e) return; const miss=squad().filter(id=>!ans(id,e.id)).map(nameOf);
     const t = `⚽ The Rimineser F.P. – ${evName(e)}, ${fmtD(e)} ore ${e.time||''}.\nRispondete al sondaggio presenze sull'app: ${location.origin+location.pathname}${miss.length?'\nMancano: '+miss.join(', '):''}`;
     (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(()=>toast('Promemoria copiato: incollalo nel gruppo.'), ()=>openSheet(head('Promemoria')+`<textarea readonly>${esc(t)}</textarea>`)); },
@@ -534,13 +535,13 @@ const ACT = {
       draw(); } else L.published = was; },
   me: () => { const p=S.players[actId()]||{}; openSheet(`${head('Il mio profilo')}<form data-form="me"><label>Nome in squadra<input name="nome" required value="${esc(p.name||S.authName)}"></label><label>Numero di maglia<input type="number" min="1" max="99" name="numero" value="${esc(p.number||'')}"></label><label>Ruolo${roleSel(p.role)}</label><label>Categoria${catSel(p.cat||'giocatore')}</label><button class="pri" type="submit">Salva</button></form>`); },
   addP: () => openSheet(`${head('Aggiungi giocatore')}<p class="mute" style="margin:0">Per chi non usa l'app: potrai segnare tu le sue presenze.</p><form data-form="addp"><label>Nome e cognome<input name="nome" required></label><label>Categoria${catSel('giocatore')}</label><label>Numero di maglia<input type="number" min="1" max="99" name="numero"></label><label>Ruolo${roleSel('')}</label><button class="pri" type="submit">Aggiungi</button></form>`),
-  okP: d => write(()=>updateDoc(D('players/'+d.id), {approved:true}), 'Giocatore approvato'),
-  rejP: (d,b) => { if (confirm2(b)) write(()=>deleteDoc(D('players/'+d.id)), 'Richiesta rifiutata'); },
+  okP: d => write(()=>updateDoc(D('players/'+d.id), {approved:true, rejected:false}), 'Giocatore approvato'),
+  rejP: (d,b) => { if (confirm2(b)) write(()=>updateDoc(D('players/'+d.id), {rejected:true}), 'Richiesta rifiutata'); },
   delP: async (d,b) => { if (confirm2(b) && await write(()=>deleteDoc(D('players/'+d.id)), 'Rimosso dalla rosa')) closeSheet(); },
   team: async () => { if (!S.robot) { try { const d = await getDoc(D('private/robot')); S.robot = d.exists() ? d.data() : {}; } catch(_) { S.robot = {}; } }
     openSheet(`${head('Impostazioni squadra')}<form data-form="team"><label>Profilo Instagram<input name="ig" value="${esc(S.config.instagram||'')}" placeholder="@nomeprofilo"></label>
-    <label>Gettone GitHub per notifiche immediate<input name="ghtok" type="password" autocomplete="off" value="${esc(S.robot.token||'')}" placeholder="github_pat_…"></label>
-    <p class="mute" style="margin:0">Lo vedi solo tu. Serve a far partire le notifiche in pochi secondi (vedi la guida). Senza, partono entro 15 minuti.</p>
+    ${S.admin?`<label>Gettone GitHub per notifiche immediate<input name="ghtok" type="password" autocomplete="off" value="${esc(S.robot.token||'')}" placeholder="github_pat_…"></label>
+    <p class="mute" style="margin:0">Visibile solo all'amministratore. Serve a far partire le notifiche in pochi secondi; senza, partono entro 5 minuti.</p>`:''}
     <button class="pri" type="submit">Salva</button><button class="sec" type="button" data-act="pushTest">Invia notifica di prova</button></form>`); }
 };
 const AUTH_ERR = { 'auth/invalid-credential':'Email o password non corretti.', 'auth/wrong-password':'Email o password non corretti.', 'auth/user-not-found':'Email o password non corretti.',
@@ -572,7 +573,7 @@ const FORMS = {
   addp: async f => { const data={name:val(f,'nome'), number:val(f,'numero'), role:val(f,'ruolo'), cat:val(f,'cat')||'giocatore', approved:true, manual:true};
     if (data.name && await write(()=>setDoc(D('players/m_'+Date.now().toString(36)), data), 'Giocatore aggiunto')) closeSheet(); },
   team: async f => { const tok = val(f,'ghtok');
-    if (tok !== (S.robot||{}).token) { if (await write(()=>setDoc(D('private/robot'), {token:tok}, {merge:true}))) S.robot = {...(S.robot||{}), token:tok}; }
+    if (S.admin && f.elements.ghtok && tok !== (S.robot||{}).token) { if (await write(()=>setDoc(D('private/robot'), {token:tok}, {merge:true}))) S.robot = {...(S.robot||{}), token:tok}; }
     if (await write(()=>updateDoc(D('config/team'), {instagram:val(f,'ig').replace(/^@/,'')}), 'Salvato')) closeSheet(); }
 };
 document.addEventListener('click', e=>{ const b=e.target.closest('[data-act]'); if (b && ACT[b.dataset.act]) { e.preventDefault(); ACT[b.dataset.act](b.dataset, b); } });

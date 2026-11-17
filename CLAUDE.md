@@ -7,7 +7,7 @@ App web installabile (PWA) per la squadra di calcio a 7 **The Rimineser F.P.** (
 - Online: https://therimineser.github.io/rimineser/
 - Amministratore: Giacomo (account GitHub `therimineser`). Unico ruolo speciale: approva/modifica/toglie gli iscritti.
 - L'amministratore ha due profili: "Amministratore" (non compare mai tra i giocatori) e il suo profilo giocatore `players/<uid>_g`; pulsante nell'intestazione per passare dall'uno all'altro (modalità salvata in localStorage `rim-mode`). Presenze del giocatore in `rsvp/<uid>_g`.
-- Tutti gli iscritti approvati hanno gli stessi diritti (comunicazioni, sondaggi, eventi, formazioni, presenze, impostazioni).
+- Tutti gli iscritti approvati hanno gli stessi diritti (comunicazioni, sondaggi, eventi, formazioni, presenze, Instagram).
 - Lingua dell'app e delle risposte: italiano. Colori: rosso #E30613, bianco, nero; tema sempre chiaro.
 
 ## Funzioni
@@ -17,7 +17,7 @@ App web installabile (PWA) per la squadra di calcio a 7 **The Rimineser F.P.** (
 - **Calendario**: eventi manuali + partite UISP create in automatico (id `uisp-<giornata>`; data/ora/campo/risultato arrivano dai comunicati).
 - **Campionato**: classifica, statistiche con grafici (gol per giornata, gol fatti/subiti, ammonizioni, punti disciplina), risultati, calendario (tutte le giornate pubblicate da UISP), marcatori, cartellini (da `docs/campionato.json`; cartellini cumulati in `cards`).
 - **Archivio**: partite giocate con risultato, formazioni e tattica; bilancio V/N/P.
-- **Rosa**: iscritti per categoria, profilo personale, approvazioni (solo admin), impostazioni (Instagram, gettone GitHub).
+- **Rosa**: iscritti per categoria, profilo personale, approvazioni (solo admin), impostazioni (Instagram per tutti; gettone GitHub solo admin). Richieste rifiutate: `players/{uid}.rejected=true` (la persona vede "Richiesta non accettata").
 - **Accesso**: email/password e "Accedi con Google" (popup; su iPhone da icona può non funzionare → email).
 - **Notifiche push** (FCM): comunicazioni/sondaggi, formazione pubblicata, promemoria il giorno prima (dalle 12, solo a chi non ha risposto), nuovo comunicato UISP. Preferenze per utente.
 
@@ -27,7 +27,7 @@ App web installabile (PWA) per la squadra di calcio a 7 **The Rimineser F.P.** (
 - `tools/uisp_update.py` = robot UISP: cerca i PDF "Calcio a 7 … del dd-mm-yy" su uisp.it/rimini, estrae testo (pypdf/pdftotext), legge risultati/classifica/prossimo turno/marcatori/provvedimenti, valida e unisce in `docs/campionato.json`. Test: `python tools/uisp_update.py --text tests/gg4.txt --name "Calcio a 7 _ giornata 4 _ N. 5 del 13-11-26 - gg 4.pdf"`.
 - `tools/notify.py` = robot notifiche: Firestore REST + FCM v1 con il segreto `FIREBASE_SA`; invia la coda `outbox`, i promemoria, l'avviso UISP; stato in `robot/state`.
 - `.github/workflows/uisp.yml` = ogni 5 min (controllo rapido, legge solo se c'è un PDF nuovo) + su push: aggiorna campionato, committa, pubblica Pages, sveglia notifiche.
-- `.github/workflows/notifiche.yml` = ogni 15 min + workflow_dispatch (l'app lo sveglia con il gettone salvato in Firestore `private/robot`).
+- `.github/workflows/notifiche.yml` = ogni 5 min + workflow_dispatch (l'app lo sveglia con il gettone salvato in Firestore `private/robot`).
 - `firestore.rules` = regole (copiate a mano nella console Firebase: se cambiano, vanno ri-incollate lì).
 
 ## Dati Firestore (progetto Firebase `rimineser`, europe-west8)
