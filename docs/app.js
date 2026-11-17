@@ -208,11 +208,17 @@ async function notifyTeam(kind, title, body, url, extra){
     if (!(await pingRobot())) wakeRobot();
 }
 async function pingRobot(){
-  if (!CFG.notifyUrl || !auth.currentUser) return false;
-  try {
+  let why = '';
+  if (!CFG.notifyUrl) why = 'indirizzo mancante (app non aggiornata)';
+  else if (!auth.currentUser) why = 'accesso non pronto';
+  else try {
     const r = await fetch(CFG.notifyUrl, { method:'POST', headers:{ 'Authorization':'Bearer '+await auth.currentUser.getIdToken() } });
-    return r.ok;
-  } catch(_) { return false; }
+    if (r.ok) return true;
+    why = 'risposta ' + r.status + ' ' + (await r.text().catch(()=>'')).slice(0,80);
+  } catch(e) { why = 'rete: ' + (e && e.message || e); }
+  console.warn('Robot Cloudflare non raggiunto:', why);
+  if (S.admin) toast('Robot veloce non raggiunto: ' + why);
+  return false;
 }
 async function wakeRobot(){
   if (!S.admin) return;   // il gettone lo legge solo l'amministratore: per gli altri parte il giro automatico del robot

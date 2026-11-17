@@ -1,6 +1,6 @@
 // Service worker: rende l'app installabile e apribile anche con rete debole.
 // I dati della squadra li gestisce Firebase (con la sua cache offline).
-const CACHE = 'rimineser-v13';
+const CACHE = 'rimineser-v14';
 const SHELL = ['./', './index.html', './app.js', './firebase-config.js', './campionato.json', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/logo-256.png', './icons/favicon.png'];
 
@@ -16,7 +16,7 @@ self.addEventListener('fetch', e => {
   // Prima la rete (così gli aggiornamenti arrivano subito), poi la copia salvata.
   const key = url.pathname.endsWith('campionato.json') ? new Request('./campionato.json') : e.request;
   e.respondWith(
-    fetch(e.request).then(r => { const copy = r.clone(); caches.open(CACHE).then(c => c.put(key, copy)); return r; })
+    fetch(e.request, { cache: 'no-cache' }).then(r => { const copy = r.clone(); caches.open(CACHE).then(c => c.put(key, copy)); return r; })
       .catch(() => caches.match(key).then(r => r || caches.match('./index.html')))
   );
 });

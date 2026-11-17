@@ -26,6 +26,17 @@ async function reportError(env, e) {
   } catch (_) {}
 }
 
+// Accesso rifiutato: se il gettone sembra davvero dell'app (aud = progetto) annota il motivo per il registro.
+async function reportAuthError(env, req, e) {
+  try {
+    const sa = JSON.parse(env.FIREBASE_SA);
+    const tok = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
+    const pay = JSON.parse(atob(tok.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+    if (pay.aud !== sa.project_id) return;
+    await reportError(env, new Error('accesso dall\'app rifiutato: ' + e.message));
+  } catch (_) {}
+}
+
 export default {
   async fetch(req, env) {
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
@@ -36,7 +47,8 @@ export default {
       const sa = JSON.parse(env.FIREBASE_SA);
       await verifyIdToken((req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, ''), sa.project_id, f);
     } catch (e) {
-      return reply(401, { error: 'accesso non valido' });
+      await reportAuthError(env, req, e);
+      return reply(401, { error: 'accesso non valido: ' + e.message });
     }
     try {
       const r = await run(env, { mode: 'ping', fetch: f });
