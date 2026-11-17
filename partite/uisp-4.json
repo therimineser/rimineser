@@ -1,0 +1,20 @@
+{
+ "evento": {
+  "date": "2026-11-12",
+  "giornata": 4,
+  "gol_fatti": 5,
+  "gol_subiti": 3,
+  "home": false,
+  "location": "Campo Riccione",
+  "opponent": "Anfiteatro FC",
+  "result": "5-3",
+  "time": "21:00",
+  "type": "partita"
+ },
+ "id": "uisp-4",
+ "scouting": {
+  "aggiornato": 1794948315638,
+  "azioni": [],
+  "tempo": 2
+ }
+}

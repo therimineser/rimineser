@@ -1,0 +1,15 @@
+{
+ "evento": {
+  "date": "2026-10-28",
+  "giornata": 2,
+  "gol_fatti": 3,
+  "gol_subiti": 0,
+  "home": false,
+  "location": "Campo Riccione",
+  "opponent": "Tiki FC",
+  "result": "3-0",
+  "time": "21:00",
+  "type": "partita"
+ },
+ "id": "uisp-2"
+}
