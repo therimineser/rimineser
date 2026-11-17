@@ -1,7 +1,7 @@
 // The Rimineser F.P. – app della squadra (PWA + Firebase)
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, signOut, updateProfile, GoogleAuthProvider, signInWithPopup } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, collection, onSnapshot, setDoc, updateDoc, deleteDoc, deleteField, addDoc, getDoc, query, orderBy, limit, serverTimestamp, increment } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, collection, onSnapshot, setDoc, updateDoc, deleteDoc, deleteField, addDoc, getDoc, query, orderBy, limit, serverTimestamp, increment, arrayUnion, arrayRemove } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 import * as CFG from './firebase-config.js';
 const firebaseConfig = CFG.firebaseConfig;
 const DEMO = firebaseConfig.apiKey === 'demo';
@@ -400,7 +400,8 @@ function vHome(){
     <div class="row" style="gap:14px"><span class="res" style="white-space:nowrap">${esc(nx.time||'--:--')}</span><span class="mute" style="text-transform:capitalize">${esc(fmtD(nx,{weekday:'long',day:'numeric',month:'long'}))}</span></div>
     <div class="row mute" style="gap:6px"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s7-6.5 7-12a7 7 0 0 0-14 0c0 5.5 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg>${esc(nx.location||'Campo da definire')}</div>
     ${rsvpBtns(nx.id)}${bar(nx.id, true)}
-    <div class="btns"><button class="sec" style="flex:1" data-act="who" data-e="${esc(nx.id)}">Presenti (${pres})</button>${isM?`<button class="pri" style="flex:1" data-act="openLu" data-e="${esc(nx.id)}">${nLu>1?'Formazioni ('+nLu+')':'Formazione'}</button>`:''}</div></section>`; }
+    <div class="btns"><button class="sec" style="flex:1" data-act="who" data-e="${esc(nx.id)}">Presenti (${pres})</button>${isM?`<button class="pri" style="flex:1" data-act="openLu" data-e="${esc(nx.id)}">${nLu>1?'Formazioni ('+nLu+')':'Formazione'}</button>`:''}</div>
+    <button class="lnk" style="align-self:flex-end;min-height:32px" data-act="go" data-t="presenze">Tutte le presenze ›</button></section>`; }
   const lp = ourPos(); if (lp) h += `<button class="card" style="flex-direction:row;align-items:center;border:0;text-align:left;width:100%" data-act="go" data-t="campionato"><span class="num" style="width:46px;height:46px;font-size:24px">${lp.pos}°</span><span style="flex:1;min-width:0"><b>Campionato UISP · ${lp.pt} punti</b><br><span class="mute" style="white-space:nowrap;font-size:13.5px">${lp.v} vinte · ${lp.n} pareggiate · ${lp.p} perse</span></span>›</button>`;
   if (!nx) h += `<section class="card dark"><span class="lab" style="color:#FF4D5E">CALENDARIO</span><p class="txt">Nessun evento in programma.${S.coach?' Aggiungilo dal Calendario.':''}</p></section>`;
   h += `<div class="row sp"><h2>Comunicazioni</h2></div>`;
@@ -530,7 +531,7 @@ function vImpostazioni(){
    Un tocco = un'azione, senza scegliere il giocatore. Tiri, gol, angoli, falli e cartellini anche per gli avversari ("Loro").
    Solo per gol, assist e cartellini nostri si chiede (facoltativo) il giocatore.
    Ogni tocco = {k: azione, t: 'us'|'them', s: secondi, h: tempo, p?: giocatore, a?: assist}.
-   ANTEPRIMA: i dati restano sul telefono di chi li segna (localStorage "rim-scout-<evento>"), anche senza rete al campo. */
+   Salvati online in scout/{evento}; solo amministratore e Dirigenti. */
 const SC_US = [   // solo per noi
   ['Passaggi', [['pass_ok','✓ Passaggio','ok'],['pass_ko','✗ Passaggio','ko'],['key','Passaggio chiave',''],['cross_ok','✓ Cross','ok'],['cross_ko','✗ Cross','ko']]],
   ['Possesso', [['recov','Palla recuperata','ok'],['lost','Palla persa','ko'],['offside','Fuorigioco','ko']]]
@@ -541,11 +542,19 @@ const SC_BOTH = [ // noi | loro
 ];
 const SC_LAB = Object.fromEntries([...SC_US, ...SC_BOTH].flatMap(([,a])=>a.map(([k,l])=>[k,l])));
 const SC_WHO = ['goal','yellow','red'];   // per questi (nostri) si chiede il giocatore
-const scKey = eid => 'rim-scout-'+eid;
-function scLoad(eid){ try { return JSON.parse(localStorage.getItem(scKey(eid))) || null; } catch(_) { return null; } }
-function scSave(eid, d){ try { localStorage.setItem(scKey(eid), JSON.stringify(d)); } catch(_) {} }
-function scState(eid){ if (S.scout && S.scout.eid===eid) return S.scout; const old = scLoad(eid) || {};
-  return (S.scout = {eid, acts:(old.acts||[]).filter(a=>a.t), half:old.half||1, base:old.base||0, start:old.start||null}); }
+// Dati online: scout/{evento} = {acts:[{id,k,t,s,h,ts,p?,a?}], half, base, start}. Leggono e scrivono solo admin e Dirigenti (regole).
+// Firestore tiene una copia sul telefono: al campo funziona anche senza rete e si sincronizza appena torna.
+const canScout = () => S.admin || (S.me && S.me.approved && S.me.cat==='dirigente');
+let scSub = null, scSubEid = '';
+function scWatch(eid){
+  if (eid === scSubEid) return; if (scSub) { scSub(); scSub = null; }
+  scSubEid = eid; if (!eid) return;
+  scSub = onSnapshot(D('scout/'+eid), s=>{ const d = s.exists() ? s.data() : {};
+    S.scout = {eid, acts:[...(d.acts||[])].sort((a,b)=>(a.ts||0)-(b.ts||0)), half:d.half||1, base:d.base||0, start:d.start||null};
+    if (S.tab==='scouting') draw(); }, e=>console.error('scout', e));
+}
+function scState(eid){ scWatch(eid); return S.scout && S.scout.eid===eid ? S.scout : (S.scout = {eid, acts:[], half:1, base:0, start:null}); }
+const scWrite = (eid, data) => write(()=>setDoc(D('scout/'+eid), {...data, updatedAt: Date.now()}, {merge:true}));
 const scSecs = d => d.base + (d.start ? Math.floor((Date.now()-d.start)/1000) : 0);
 const scMin = s => Math.floor(s/60)+1;
 const mmss = s => String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
@@ -559,7 +568,7 @@ function vScouting(){
   const opp = esc(short(e.opponent||'Loro'));
   const gUs = scCount(A,'goal','us'), gThem = scCount(A,'goal','them');
   const btn = (k,l,c,t) => { const n = scCount(A,k,t); return `<button class="sc-a ${c}" data-act="scAdd" data-k="${k}" data-t="${t}">${l}<i>${n||''}</i></button>`; };
-  let h = `<div class="row sp"><h2>Scouting</h2><span class="chip">Anteprima</span></div>
+  let h = `<div class="row sp"><h2>Scouting</h2></div>
   <section class="card"><select data-ch="scev" aria-label="Partita">${matches.map(m=>`<option value="${esc(m.id)}" ${m.id===eid?'selected':''}>${esc(fmtD(m)||'')} – ${esc(evName(m))}</option>`).join('')}</select>
     <div class="sc-score"><span>Noi</span><b>${gUs} – ${gThem}</b><span>${opp}</span></div>
     <div class="sc-clock"><b>${d.half}T</b><span class="sc-time" id="scTime">${mmss(secs)}</span>
@@ -648,6 +657,9 @@ function draw(){
   const mb = $('#modeBtn'); if (mb) { mb.hidden = !S.admin; mb.textContent = asAdmin() ? '⇄ Passa a Giocatore' : '⇄ Passa ad Amministratore'; }
   document.querySelectorAll('#tabs button, .top .ib').forEach(b=>b.classList.toggle('on', b.dataset.t===S.tab));
   watchPresence(S.tab==='rosa');
+  const scBtn = document.querySelector('#tabs [data-t=scouting]'); if (scBtn) scBtn.hidden = !canScout();
+  if (S.tab==='scouting' && !canScout()) S.tab = 'home';
+  if (S.tab!=='scouting' && scSub) { scSub(); scSub = null; scSubEid = ''; S.scout = null; }
   let h = '';
   if (!['posts','events','players','rsvp','votes'].every(k=>S.loaded.has(k)) && !S.slow) h = `<div class="empty">Caricamento…</div>`;
   else {
@@ -697,14 +709,19 @@ const ACT = {
   mode: () => { mode = asAdmin() ? 'player' : 'admin'; try { localStorage.setItem('rim-mode', mode); } catch(_) {} draw(); toast(asAdmin() ? 'Modalità Amministratore' : 'Modalità Giocatore'); },
   asDir: d => { const on = ans(actId(),d.e)==='si' && roleAt(actId(),d.e)==='dirigente';
     write(()=>setDoc(D('rsvp/'+actId()), on ? {answers:{[d.e]: deleteField()}, roles:{[d.e]: deleteField()}} : {answers:{[d.e]:'si'}, roles:{[d.e]:'dirigente'}}, {merge:true})); },
-  scAdd: d => { const x = S.scout; x.acts.push({k:d.k, t:d.t, s:scSecs(x), h:x.half}); scSave(x.eid, x); if (navigator.vibrate) navigator.vibrate(30); draw();
+  scAdd: d => { const x = S.scout; const a = {id:Math.random().toString(36).slice(2,9), k:d.k, t:d.t, s:scSecs(x), h:x.half, ts:Date.now()};
+    x.acts.push(a); write(()=>setDoc(D('scout/'+x.eid), {acts: arrayUnion(a), updatedAt: Date.now()}, {merge:true}));
+    if (navigator.vibrate) navigator.vibrate(30); draw();
     if (d.t==='us' && SC_WHO.includes(d.k)) scAsk(x.acts.length-1, 'p'); else toast(`${d.t==='us'?'Noi':'Loro'}: ${SC_LAB[d.k]}`); },
-  scPick: d => { const x = S.scout, a = x.acts[+d.i]; if (!a) return closeSheet(); if (d.id) a[d.f] = d.id; scSave(x.eid, x); closeSheet(); draw();
-    if (d.f==='p' && a.k==='goal' && d.id) scAsk(+d.i, 'a'); },
-  scUndo: () => { const x = S.scout; const a = x.acts.pop(); scSave(x.eid, x); draw(); if (a) toast('Annullato: '+SC_LAB[a.k]); },
-  scClock: () => { const x = S.scout; if (x.start) { x.base = scSecs(x); x.start = null; } else x.start = Date.now(); scSave(x.eid, x); draw(); },
-  scHalf: () => { const x = S.scout; x.half = x.half===1 ? 2 : 1; x.base = 0; x.start = null; scSave(x.eid, x); draw(); },
-  scReset: (d,b) => { if (!confirm2(b)) return; const x = S.scout; Object.assign(x, {acts:[], half:1, base:0, start:null}); scSave(x.eid, x); draw(); },
+  scPick: async d => { const x = S.scout, a = x.acts[+d.i]; closeSheet(); if (!a) return;
+    if (d.id) { const b = {...a, [d.f]: d.id}; x.acts[+d.i] = b; draw();
+      await write(()=>updateDoc(D('scout/'+x.eid), {acts: arrayRemove(a)})); await write(()=>updateDoc(D('scout/'+x.eid), {acts: arrayUnion(b)}));
+      if (d.f==='p' && a.k==='goal') scAsk(x.acts.findIndex(z=>z.id===b.id), 'a'); } },
+  scUndo: () => { const x = S.scout; const a = x.acts.pop(); draw(); if (!a) return;
+    write(()=>updateDoc(D('scout/'+x.eid), {acts: arrayRemove(a)})); toast('Annullato: '+SC_LAB[a.k]); },
+  scClock: () => { const x = S.scout; if (x.start) { x.base = scSecs(x); x.start = null; } else x.start = Date.now(); scWrite(x.eid, {base:x.base, start:x.start, half:x.half}); draw(); },
+  scHalf: () => { const x = S.scout; x.half = x.half===1 ? 2 : 1; x.base = 0; x.start = null; scWrite(x.eid, {base:0, start:null, half:x.half}); draw(); },
+  scReset: (d,b) => { if (!confirm2(b)) return; const x = S.scout; Object.assign(x, {acts:[], half:1, base:0, start:null}); write(()=>setDoc(D('scout/'+x.eid), {acts:[], half:1, base:0, start:null, updatedAt:Date.now()})); draw(); },
   cyc: d => { const o=['','si','forse','no']; setRsvp(d.id, d.e, o[(o.indexOf(ans(d.id,d.e))+1)%4]); },
   vote: d => { const i=+d.i, same=(S.votes[S.uid]?.answers||{})[d.p]===i; write(()=>setDoc(D('votes/'+S.uid), {answers:{[d.p]: same ? deleteField() : i}}, {merge:true})); },
   remind: d => { const e=S.events.find(x=>x.id===d.e); if (!e) return; const miss=squad().filter(id=>!ans(id,e.id)).map(nameOf);
@@ -784,7 +801,7 @@ document.addEventListener('change', e=>{ const t=e.target, c=t.dataset.ch; if (!
   if (c==='fe') { S.fe=t.value; S.draft=null; t.blur(); draw(); }
   if (c==='steam') { S.steam = t.value; t.blur(); draw(); return; }
   if (c==='mycat') { write(()=>updateDoc(D('players/'+S.uid), {cat:t.value}), 'Salvato'); return; }
-  if (c==='scev') { S.scoutEid = t.value; S.scout = null; t.blur(); draw(); return; }
+  if (c==='scev') { S.scoutEid = t.value; S.scout = null; t.blur(); draw(); return; }   // scWatch cambia abbonamento
   if (c==='dark') { setDark(t.checked); return; }
   if (c==='pref') { const prefs={...allPrefs((S.myTok||{}).prefs), [t.value]: t.checked}; write(()=>setDoc(D('tokens/'+S.uid), {prefs}, {merge:true})); return; }
   const L = S.draft && S.draft.items[S.draft.idx];

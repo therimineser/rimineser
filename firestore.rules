@@ -95,6 +95,14 @@ service cloud.firestore {
       allow update: if isMember() && viewsDoc(id) && viewUpdateOk();
       allow delete: if false;
     }
+    // Scouting: statistiche della partita, solo amministratore e Dirigenti (non il Mister né i giocatori)
+    function canScout() { return isAdmin() || (isMember() && myCat() == 'dirigente'); }
+    match /scout/{eid} {
+      allow read: if canScout();
+      allow create, update: if canScout() && request.resource.data.keys().hasOnly(['acts', 'half', 'base', 'start', 'updatedAt'])
+                               && request.resource.data.get('acts', []) is list && request.resource.data.get('acts', []).size() <= 3000;
+      allow delete: if isAdmin();
+    }
     match /private/{id} {
       // gettone GitHub: solo l'amministratore
       allow read: if isAdmin();
