@@ -427,10 +427,8 @@ function vArchivio(){
     ${e.notes?`<p class="txt mute">${esc(e.notes)}</p>`:''}</details>`; }).join('');
 }
 function vRosa(){
-  const r = roster(), pe = pendingP();
+  const r = roster();
   let h = `<div class="row sp"><h2>Rosa</h2></div>`;
-  if (asAdmin() && pe.length) h += `<section class="card install"><b>Da approvare</b>${pe.map(id=>`<div class="row sp"><span>${esc(nameOf(id))} <span class="mute">· ${esc(CATS.find(c=>c[0]===catOf(id))[2])}</span></span><span class="row" style="gap:4px"><button class="lnk" data-act="rejP" data-id="${esc(id)}">Rifiuta</button><button class="pri" data-act="okP" data-id="${esc(id)}">Approva</button></span></div>`).join('')}</section>`;
-  h += `<div class="btns"><button class="pri" data-act="me">Il mio profilo</button><button class="sec" data-act="logout">Esci</button></div>`;
   h += r.length ? CATS.map(([k,pl])=>{ const ids=r.filter(id=>catOf(id)===k); if (!ids.length) return '';
     return `<section class="card"><span class="lab">${pl.toUpperCase()} · ${ids.length}</span>${ids.map(id=>{ const p=S.players[id]||{}; return `<div class="row" style="padding:6px 0"><span class="num">${esc(isPl(id)?(p.number||'–'):pl[0])}</span><div style="flex:1"><b>${esc(nameOf(id))}</b>${mine(id)?' <span class="chip">Tu</span>':''}<div class="mute" style="font-size:13px">${esc(CATS.find(c=>c[0]===k)[2])}${p.manual?' · aggiunto dall\'amministratore':''}</div></div>${asAdmin()&&!mine(id)?`<button class="lnk" data-act="editP" data-id="${esc(id)}">Modifica</button>`:''}</div>`; }).join('')}</section>`; }).join('') : '<section class="card"><div class="empty">Nessuno ancora in rosa.</div></section>';
   return h;
@@ -438,7 +436,11 @@ function vRosa(){
 
 function vImpostazioni(){
   if (S.admin && !S.robot) getDoc(D('private/robot')).then(d=>{ S.robot = d.exists() ? d.data() : {}; draw(); }).catch(()=>{ S.robot = {}; });
+  const me = S.players[actId()] || {}, pe = pendingP();
   let h = `<div class="row sp"><h2>Impostazioni</h2></div>`;
+  h += `<section class="card"><span class="lab">IL MIO PROFILO</span><div class="row" style="padding:2px 0"><span class="num">${esc(me.number||'–')}</span><div style="flex:1"><b>${esc(me.name||S.authName)}</b><div class="mute" style="font-size:13px">${esc((CATS.find(c=>c[0]===(me.cat||'giocatore'))||[])[2]||'')}</div></div></div>
+    <div class="btns"><button class="pri" data-act="me">Il mio profilo</button><button class="sec" data-act="logout">Esci</button></div></section>`;
+  if (asAdmin() && pe.length) h += `<section class="card install"><b>Da approvare</b>${pe.map(id=>`<div class="row sp"><span>${esc(nameOf(id))} <span class="mute">· ${esc(CATS.find(c=>c[0]===catOf(id))[2])}</span></span><span class="row" style="gap:4px"><button class="lnk" data-act="rejP" data-id="${esc(id)}">Rifiuta</button><button class="pri" data-act="okP" data-id="${esc(id)}">Approva</button></span></div>`).join('')}</section>`;
   h += vPushCard(true) || `<section class="card"><span class="lab">NOTIFICHE</span><span class="mute">Su questo dispositivo le notifiche non sono disponibili.</span></section>`;
   if (asAdmin()) h += `<section class="card"><span class="lab">AMMINISTRATORE</span><span class="mute">Aggiungi in rosa chi non usa l'app: potrai segnare tu le sue presenze.</span><button class="pri" data-act="addP">+ Aggiungi nuovo iscritto</button></section>`;
   h += `<section class="card"><span class="lab">SQUADRA</span><form data-form="team"><label>Profilo Instagram<input name="ig" value="${esc(S.config.instagram||'')}" placeholder="@nomeprofilo"></label>
@@ -572,7 +574,7 @@ const ACT = {
       if (pub && !was) notifyTeam('lineup', '⚽ Formazione pubblicata', `${L.name} per ${evName(e)} (${fmtD(e)}): modulo ${L.module}`, '#formazione');
       if (pub && !was) await write(()=>addDoc(C('posts'), {text:`Pubblicata la formazione "${L.name}" per ${evName(e)} di ${fmtD(e,{weekday:'long',day:'numeric',month:'long'})}: modulo ${L.module}. La trovate nella sezione Formazione.`, createdAt:Date.now(), author:asAdmin()?S.uid:actId()}));
       draw(); } else L.published = was; },
-  me: () => { const p=S.players[actId()]||{}; openSheet(`${head('Il mio profilo')}<form data-form="me"><label>Nome in squadra<input name="nome" required value="${esc(p.name||S.authName)}"></label><label>Numero di maglia<input type="number" min="1" max="99" name="numero" value="${esc(p.number||'')}"></label><label>Categoria${catSel(p.cat||'giocatore')}</label><button class="pri" type="submit">Salva</button></form>`); },
+  me: () => { const p=S.players[actId()]||{}; openSheet(`${head('Il mio profilo')}<form data-form="me"><label>Nome e cognome<input name="nome" required value="${esc(p.name||S.authName)}"></label><label>Numero di maglia<input type="number" min="1" max="99" name="numero" value="${esc(p.number||'')}"></label><label>Categoria${catSel(p.cat||'giocatore')}</label><button class="pri" type="submit">Salva</button></form>`); },
   addP: () => openSheet(`${head('Aggiungi giocatore')}<p class="mute" style="margin:0">Per chi non usa l'app: potrai segnare tu le sue presenze.</p><form data-form="addp"><label>Nome e cognome<input name="nome" required></label><label>Categoria${catSel('giocatore')}</label><label>Numero di maglia<input type="number" min="1" max="99" name="numero"></label><button class="pri" type="submit">Aggiungi</button></form>`),
   okP: d => write(()=>updateDoc(D('players/'+d.id), {approved:true, rejected:false}), 'Giocatore approvato'),
   rejP: (d,b) => { if (confirm2(b)) write(()=>updateDoc(D('players/'+d.id), {rejected:true}), 'Richiesta rifiutata'); },

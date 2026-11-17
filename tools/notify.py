@@ -327,8 +327,8 @@ def main():
         if not admins:
             log('Nuova richiesta di %s: l\'amministratore non ha telefoni con notifiche attive' % (v.get('name') or k))
         if admins:
-            sender.send(admins, {'title': '👤 Nuova richiesta di iscrizione', 'body': '%s (%s) vuole entrare in squadra: approvalo in Rosa.' % (v.get('name') or 'Qualcuno', CAT.get(v.get('cat'), 'Giocatore')),
-                                 'url': '#rosa', 'tag': 'req-' + k}, None)
+            sender.send(admins, {'title': '👤 Nuova richiesta di iscrizione', 'body': '%s (%s) vuole entrare in squadra: approvalo in Impostazioni.' % (v.get('name') or 'Qualcuno', CAT.get(v.get('cat'), 'Giocatore')),
+                                 'url': '#impostazioni', 'tag': 'req-' + k}, None)
             ca = v.get('createdAt')
             wait = ' (iscritto %d min fa)' % ((dt.datetime.now().timestamp() * 1000 - ca) // 60000) if isinstance(ca, (int, float)) and ca > 0 else ''
             log('Nuova richiesta di %s → amministratore%s' % (v.get('name') or k, wait))

@@ -137,7 +137,7 @@ export async function run(env, opt) {
     const admins = cs.filter(u => u in t);
     const name = v.name || 'Qualcuno';
     if (!admins.length) { log(`Nuova richiesta di ${name}: l'amministratore non ha telefoni con notifiche attive`); continue; }
-    await send(admins, { title: '👤 Nuova richiesta di iscrizione', body: `${name} (${CAT[v.cat] || 'Giocatore'}) vuole entrare in squadra: approvalo in Rosa.`, url: '#rosa', tag: 'req-' + k }, null);
+    await send(admins, { title: '👤 Nuova richiesta di iscrizione', body: `${name} (${CAT[v.cat] || 'Giocatore'}) vuole entrare in squadra: approvalo in Impostazioni.`, url: '#impostazioni', tag: 'req-' + k }, null);
     const wait = typeof v.createdAt === 'number' && v.createdAt > 0 ? ` (iscritto ${Math.max(0, Math.round((nowMs - v.createdAt) / 1000))} s fa)` : '';
     log(`Nuova richiesta di ${name} → amministratore${wait}`);
   }
