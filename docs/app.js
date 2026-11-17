@@ -207,6 +207,7 @@ async function notifyTeam(kind, title, body, url, extra){
   wakeRobot();
 }
 async function wakeRobot(){
+  if (!canPost()) return;   // il gettone lo leggono solo admin, Mister, Capitano, Preparatore e Social: per gli altri parte il giro automatico
   try {
     if (!S.robot) { const d = await getDoc(D('private/robot')); S.robot = d.exists() ? d.data() : {}; }
     const tok = S.robot.token; if (!tok) return;

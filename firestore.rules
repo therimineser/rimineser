@@ -65,7 +65,8 @@ service cloud.firestore {
       allow read, update, delete: if false;
     }
     match /private/{id} {
-      allow read: if isMember();
+      // gettone GitHub: lo leggono solo amministratore e chi può pubblicare (serve a far partire subito le notifiche)
+      allow read: if canPost();
       allow write: if isAdmin();
     }
     match /league/{id} {

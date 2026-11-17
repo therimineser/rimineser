@@ -68,7 +68,7 @@ for (const u of Object.keys(PEOPLE)) {
   await t(`${u}: salva profilo con stessa categoria`, true, () => updateDoc(doc(db(u), 'players/' + u), { name: 'X', number: '', cat: PEOPLE[u] }));
   await t(`${u}: si dà un'etichetta/campo extra`, false, () => updateDoc(doc(db(u), 'players/' + u), { tag: 'capitano' }));
   await t(`${u}: modifica categoria di un altro`, false, () => updateDoc(doc(db(u), 'players/p2'), { cat: 'mister' }));
-  await t(`${u}: legge il gettone del robot`, true, () => getDoc(doc(db(u), 'private/robot')));
+  await t(`${u}: legge il gettone del robot`, priv, () => getDoc(doc(db(u), 'private/robot')));
   await t(`${u}: scrive il gettone del robot`, false, () => setDoc(doc(db(u), 'private/robot'), { token: 'x' }));
   await t(`${u}: si fa amministratore`, false, () => updateDoc(doc(db(u), 'config/team'), { coaches: ['admin', u] }));
   await t(`${u}: cambia Instagram`, true, () => updateDoc(doc(db(u), 'config/team'), { instagram: 'pagina' }));
@@ -81,6 +81,7 @@ await t('admin: approva richiesta', true, () => updateDoc(doc(db('admin'), 'play
 await t('admin: rifiuta richiesta', true, () => updateDoc(doc(db('admin'), 'players/pend'), { rejected: true }));
 await t('admin: salva profilo Giacomo come Capitano', true, () => setDoc(doc(db('admin'), 'players/admin_g'), { cat: 'capitano', approved: true }, { merge: true }));
 await t('admin: presenza per Giacomo', true, () => setDoc(doc(db('admin'), 'rsvp/admin_g'), { answers: { ev: 'si' } }, { merge: true }));
+await t('admin: legge il gettone del robot', true, () => getDoc(doc(db('admin'), 'private/robot')));
 await t('admin: scrive il gettone del robot', true, () => setDoc(doc(db('admin'), 'private/robot'), { token: 'x' }, { merge: true }));
 // iscrizione, attesa, rifiuto, estranei
 await t('nuovo utente: si iscrive come giocatore', true, () => setDoc(doc(db('nuovo'), 'players/nuovo'), { name: 'N', number: '', cat: 'giocatore', approved: false, createdAt: 1 }));
