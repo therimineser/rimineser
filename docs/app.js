@@ -531,7 +531,7 @@ function vImpostazioni(){
    Un tocco = un'azione, senza scegliere il giocatore. Tiri, gol, angoli, falli e cartellini anche per gli avversari ("Loro").
    Solo per gol, assist e cartellini nostri si chiede (facoltativo) il giocatore.
    Ogni tocco = {k: azione, t: 'us'|'them', s: secondi, h: tempo, p?: giocatore, a?: assist}.
-   Salvati online in scout/{evento}; solo amministratore e Dirigenti. */
+   Salvati online in scout/{evento}; può usarlo qualunque iscritto approvato. */
 const SC_US = [   // solo per noi
   ['Passaggi', [['pass_ok','✓ Passaggio','ok'],['pass_ko','✗ Passaggio','ko'],['key','Passaggio chiave',''],['cross_ok','✓ Cross','ok'],['cross_ko','✗ Cross','ko']]],
   ['Possesso', [['recov','Palla recuperata','ok'],['lost','Palla persa','ko'],['offside','Fuorigioco','ko']]]
@@ -542,9 +542,9 @@ const SC_BOTH = [ // noi | loro
 ];
 const SC_LAB = Object.fromEntries([...SC_US, ...SC_BOTH].flatMap(([,a])=>a.map(([k,l])=>[k,l])));
 const SC_WHO = ['goal','yellow','red'];   // per questi (nostri) si chiede il giocatore
-// Dati online: scout/{evento} = {acts:[{id,k,t,s,h,ts,p?,a?}], half, base, start}. Leggono e scrivono solo admin e Dirigenti (regole).
+// Dati online: scout/{evento} = {acts:[{id,k,t,s,h,ts,p?,a?}], half, base, start}. Leggono e scrivono tutti gli iscritti approvati (regole).
 // Firestore tiene una copia sul telefono: al campo funziona anche senza rete e si sincronizza appena torna.
-const canScout = () => S.admin || (S.me && S.me.approved && S.me.cat==='dirigente');
+const canScout = () => S.admin || !!(S.me && S.me.approved);   // tutti gli iscritti approvati (es. chi è in panchina)
 let scSub = null, scSubEid = '';
 function scWatch(eid){
   if (eid === scSubEid) return; if (scSub) { scSub(); scSub = null; }
