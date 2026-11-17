@@ -2,7 +2,7 @@ rules_version = '2';
 // Regole di sicurezza del database della squadra The Rimineser F.P.
 // - Il primo che preme "Sono l'amministratore" diventa amministratore (solo se la squadra non è ancora configurata).
 // - Chi si registra non vede nulla finché l'amministratore non lo approva.
-// - Iscritti approvati: presenze, eventi, sondaggi (voto). Comunicazioni: Mister, Capitano, Preparatore atletico, Social media manager, amministratore. Formazioni: Capitano, amministratore.
+// - Iscritti approvati: presenze, eventi, sondaggi (voto). Comunicazioni: Mister, Capitano, Preparatore atletico, Social media manager, amministratore. Formazioni: Mister, Capitano, amministratore.
 // - Solo l'amministratore approva/rifiuta/modifica gli iscritti e gestisce il gettone delle notifiche.
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -15,7 +15,7 @@ service cloud.firestore {
     function myCat() { return exists(myPlayer()) ? get(myPlayer()).data.get('cat', '') : ''; }
     function canPost() { return isAdmin() || (isMember() && myCat() in ['mister', 'capitano', 'preparatore', 'social']); }   // comunicazioni
     function outKind() { return request.resource.data.get('kind', 'post'); }
-    function canLineup() { return isAdmin() || (isMember() && myCat() == 'capitano'); }            // formazioni
+    function canLineup() { return isAdmin() || (isMember() && myCat() in ['capitano', 'mister']); }   // formazioni: Mister, Capitano, admin
 
     match /config/team {
       // Leggibile da iscritti e amministratore, e da chi non ha ancora un profilo (primo avvio / registrazione).

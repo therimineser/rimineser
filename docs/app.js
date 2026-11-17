@@ -81,7 +81,7 @@ const actId = () => S.admin ? gid() : S.uid;   // chi risponde alle presenze / p
 const mine = id => id === S.uid || (S.admin && id === gid());
 // Etichette: "mister" e "capitano" (assegnate dall'amministratore). Comunicazioni: mister, capitano, admin. Formazioni: capitano, admin.
 const canPost = () => S.admin || STAFFCATS.includes(S.players[S.uid]?.cat);      // comunicazioni: Mister, Capitano, Preparatore, Social, admin
-const canLineup = () => S.admin || S.players[S.uid]?.cat === 'capitano';          // formazioni: Capitano, admin
+const canLineup = () => S.admin || ['capitano','mister'].includes(S.players[S.uid]?.cat);   // formazioni: Mister, Capitano, admin
 const tagLabel = id => STAFFCATS.includes(catOf(id)) ? ` <span class="chip tag">${CATS.find(c=>c[0]===catOf(id))[2]}</span>` : '';
 const standalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent);
