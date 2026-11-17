@@ -213,17 +213,12 @@ function vViews(){
 const icoPlus = '<svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
 function counts(eid){ const r={si:0,forse:0,no:0,none:0}; squad().filter(id=>plAt(id,eid)).forEach(id=>{ r[ans(id,eid)||'none']++; }); return r; }
 function rsvpBtns(eid){ if (asAdmin()) return `<div style="display:flex;flex-direction:column;gap:8px"><span class="mute">Sei in modalità Amministratore: per segnarti alle presenze passa al tuo profilo giocatore.</span><button class="sec" data-act="mode">⇄ Passa a Giocatore</button></div>`; const my=ans(actId(),eid);
-  const dir = roleAt(actId(),eid)==='dirigente' && my==='si', sel = v => my===v && !(v==='si' && dir);
-  return `<div class="btns">${['si','forse','no'].map(v=>`<button class="b ${sel(v)?v:''}" aria-pressed="${sel(v)}" data-act="rsvp" data-e="${esc(eid)}" data-v="${v}">${LAB[v]}</button>`).join('')}</div>${dirBtn(eid, dir)}`; }
-// Tasto più piccolo sotto Presente/Forse/Assente, solo per giocatori/capitano: un tocco = presente come dirigenza (in panchina senza giocare)
-const icoBench = '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11h16M6 11V7h12v4M5 11v7M19 11v7M8 15h8"/></svg>';
-function dirBtn(eid, on){
-  if (!isPl(actId())) return '';
-  return `<button class="b bdir ${on?'on':''}" aria-pressed="${on}" data-act="asDir" data-e="${esc(eid)}">${icoBench}${on?'Presente come dirigenza ✓':'Vengo come dirigenza'}</button>`;
-}
+  const dir = roleAt(actId(),eid)==='dirigente' && my==='si', pl = isPl(actId());
+  const opts = pl ? [['si','Presente',my==='si'&&!dir],['dir','Dirigenza',dir],['no','Assente',my==='no']] : [['si','Presente',my==='si'],['no','Assente',my==='no']];
+  return `<div class="btns">${opts.map(([v,l,on])=>`<button class="b ${on?(v==='dir'?'dir':v):''}" aria-pressed="${on}" data-act="${v==='dir'?'asDir':'rsvp'}" data-e="${esc(eid)}" data-v="${v}">${l}</button>`).join('')}</div>`; }
 function bar(eid){ const c=counts(eid), n=Math.max(1,c.si+c.forse+c.no+c.none);
   return `<div class="bar" aria-hidden="true"><i style="width:${c.si/n*100}%;background:var(--ok)"></i><i style="width:${c.forse/n*100}%;background:var(--may)"></i><i style="width:${c.no/n*100}%;background:var(--ink)"></i></div>
-  <div class="mute">Giocatori: ${c.si} present${c.si===1?'e':'i'} · ${c.forse} forse · ${c.no} assenti · ${c.none} senza risposta${(()=>{ const o=roster().filter(id=>!plAt(id,eid)&&ans(id,eid)==='si').length; return o?` · +${o} tra staff e pubblico`:''; })()}</div>`; }
+  <div class="mute">Giocatori: ${c.si} present${c.si===1?'e':'i'}${c.forse?' · '+c.forse+' forse':''} · ${c.no} assent${c.no===1?'e':'i'} · ${c.none} senza risposta${(()=>{ const o=roster().filter(id=>!plAt(id,eid)&&ans(id,eid)==='si').length; return o?` · +${o} tra staff e pubblico`:''; })()}</div>`; }
 function attendees(e, live){
   const chip = (id,cls) => live && S.coach ? `<button class="chip ${cls}" data-act="cyc" data-id="${esc(id)}" data-e="${esc(e.id)}" aria-label="Cambia risposta di ${esc(nameOf(id))}">${esc(nameOf(id))}</button>` : `<span class="chip ${cls}">${esc(nameOf(id))}</span>`;
   const r = roster(); if (!r.length) return '<p class="mute">Nessuno in rosa.</p>';
@@ -611,7 +606,7 @@ const ACT = {
   mode: () => { mode = asAdmin() ? 'player' : 'admin'; try { localStorage.setItem('rim-mode', mode); } catch(_) {} draw(); toast(asAdmin() ? 'Modalità Amministratore' : 'Modalità Giocatore'); },
   asDir: d => { const on = ans(actId(),d.e)==='si' && roleAt(actId(),d.e)==='dirigente';
     write(()=>setDoc(D('rsvp/'+actId()), on ? {answers:{[d.e]: deleteField()}, roles:{[d.e]: deleteField()}} : {answers:{[d.e]:'si'}, roles:{[d.e]:'dirigente'}}, {merge:true})); },
-  cyc: d => { const o=['','si','forse','no']; setRsvp(d.id, d.e, o[(o.indexOf(ans(d.id,d.e))+1)%4]); },
+  cyc: d => { const o=['','si','no']; setRsvp(d.id, d.e, o[(Math.max(0,o.indexOf(ans(d.id,d.e)))+1)%o.length]); },
   vote: d => { const i=+d.i, same=(S.votes[S.uid]?.answers||{})[d.p]===i; write(()=>setDoc(D('votes/'+S.uid), {answers:{[d.p]: same ? deleteField() : i}}, {merge:true})); },
   remind: d => { const e=S.events.find(x=>x.id===d.e); if (!e) return; const miss=squad().filter(id=>!ans(id,e.id)).map(nameOf);
     const t = `⚽ The Rimineser F.P. – ${evName(e)}, ${fmtD(e)} ore ${e.time||''}.\nRispondete al sondaggio presenze sull'app: ${location.origin+location.pathname}${miss.length?'\nMancano: '+miss.join(', '):''}`;
