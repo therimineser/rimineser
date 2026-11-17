@@ -2,7 +2,7 @@ rules_version = '2';
 // Regole di sicurezza del database della squadra The Rimineser F.P.
 // - Il primo che preme "Sono l'amministratore" diventa amministratore (solo se la squadra non è ancora configurata).
 // - Chi si registra non vede nulla finché l'amministratore non lo approva.
-// - Iscritti approvati: presenze, eventi, sondaggi (voto). Comunicazioni: Mister, Capitano, amministratore. Formazioni: Capitano, amministratore.
+// - Iscritti approvati: presenze, eventi, sondaggi (voto). Comunicazioni: Mister, Capitano, Preparatore atletico, Social media manager, amministratore. Formazioni: Capitano, amministratore.
 // - Solo l'amministratore approva/rifiuta/modifica gli iscritti e gestisce il gettone delle notifiche.
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -13,7 +13,7 @@ service cloud.firestore {
     function isMember() { return isAdmin() || (signedIn() && exists(myPlayer()) && get(myPlayer()).data.approved == true); }
     function changes() { return request.resource.data.diff(resource.data).affectedKeys(); }
     function myCat() { return exists(myPlayer()) ? get(myPlayer()).data.get('cat', '') : ''; }
-    function canPost() { return isAdmin() || (isMember() && myCat() in ['mister', 'capitano']); }   // comunicazioni
+    function canPost() { return isAdmin() || (isMember() && myCat() in ['mister', 'capitano', 'preparatore', 'social']); }   // comunicazioni
     function canLineup() { return isAdmin() || (isMember() && myCat() == 'capitano'); }            // formazioni
 
     match /config/team {
@@ -37,11 +37,11 @@ service cloud.firestore {
       allow read: if isMember() || (signedIn() && request.auth.uid == uid);
       allow create: if isAdmin() || (signedIn() && request.auth.uid == uid && request.resource.data.approved == false
                                      && !('rejected' in request.resource.data)
-                                     && !(request.resource.data.get('cat', '') in ['mister', 'capitano']));
+                                     && !(request.resource.data.get('cat', '') in ['mister', 'capitano', 'preparatore', 'social']));
       // ognuno modifica solo i propri dati personali (non può approvarsi da solo né togliersi un rifiuto)
-      // Mister e Capitano li assegna/toglie solo l'amministratore
+      // le categorie con permessi speciali le assegna/toglie solo l'amministratore
       allow update: if isAdmin() || (signedIn() && request.auth.uid == uid && changes().hasOnly(['name', 'number', 'role', 'cat', 'nick'])
-                                     && (!('cat' in changes()) || !(request.resource.data.cat in ['mister', 'capitano'] || resource.data.get('cat', '') in ['mister', 'capitano'])));
+                                     && (!('cat' in changes()) || !(request.resource.data.cat in ['mister', 'capitano', 'preparatore', 'social'] || resource.data.get('cat', '') in ['mister', 'capitano', 'preparatore', 'social'])));
       allow delete: if isAdmin();
     }
     match /rsvp/{uid} {

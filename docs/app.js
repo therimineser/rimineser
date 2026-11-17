@@ -39,7 +39,7 @@ const MODS = {
 const ROLES = ['Portiere','Difensore','Centrocampista','Attaccante','Jolly'];
 const CATS = [['mister','Mister','Mister'],['capitano','Capitano','Capitano'],['giocatore','Giocatori','Giocatore'],['allenatore','Allenatori','Allenatore'],['preparatore','Preparatori atletici','Preparatore atletico'],['dirigente','Dirigenza','Dirigente'],['social','Social media manager','Social media manager'],['pubblico','Pubblico','Pubblico / tifoso']];
 const catOf = id => S.players[id]?.cat || 'giocatore';
-const STAFFCATS = ['mister','capitano'];   // le assegna solo l'amministratore
+const STAFFCATS = ['mister','capitano','preparatore','social'];   // le assegna solo l'amministratore
 const isPl = id => ['giocatore','capitano'].includes(catOf(id));
 const catSel = (v, all = S.admin) => `<select name="cat">${CATS.filter(([k])=>all||!STAFFCATS.includes(k)||k===v).map(([k,,l])=>`<option value="${k}" ${(v||'giocatore')===k?'selected':''}>${l}</option>`).join('')}</select>`;
 const getLus = e => Array.isArray(e?.lineups) ? e.lineups : (e?.lineup ? [{name:'Formazione 1', ...e.lineup}] : []);
@@ -65,7 +65,7 @@ const asAdmin = () => S.admin && mode !== 'player';
 const actId = () => S.admin ? gid() : S.uid;   // chi risponde alle presenze / profilo giocatore
 const mine = id => id === S.uid || (S.admin && id === gid());
 // Etichette: "mister" e "capitano" (assegnate dall'amministratore). Comunicazioni: mister, capitano, admin. Formazioni: capitano, admin.
-const canPost = () => S.admin || STAFFCATS.includes(S.players[S.uid]?.cat);      // comunicazioni: Mister, Capitano, admin
+const canPost = () => S.admin || STAFFCATS.includes(S.players[S.uid]?.cat);      // comunicazioni: Mister, Capitano, Preparatore, Social, admin
 const canLineup = () => S.admin || S.players[S.uid]?.cat === 'capitano';          // formazioni: Capitano, admin
 const tagLabel = id => STAFFCATS.includes(catOf(id)) ? ` <span class="chip tag">${CATS.find(c=>c[0]===catOf(id))[2]}</span>` : '';
 const standalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
@@ -531,7 +531,7 @@ const ACT = {
     await write(()=>setDoc(D('events/'+Dr.eid), {lineups:Dr.items}, {merge:true}), 'Formazione eliminata'); draw(); },
   who: d => { const e=S.events.find(x=>x.id===d.e); if (!e) return; openSheet(`${head('Presenti')}<p class="mute" style="margin:0">${esc(evName(e))} · ${esc(fmtD(e))} · ${esc(e.time||'')}</p>${attendees(e,false)}`); },
   openLu: d => { S.fe = d.e; S.draft = null; ACT.go({t:'formazione'}); },
-  editP: d => { const p=S.players[d.id]||{}; openSheet(`${head('Modifica')}<form data-form="editp" data-id="${esc(d.id)}"><label>Nome<input name="nome" required value="${esc(p.name||'')}"></label><label>Categoria${catSel(p.cat)}</label><p class="mute" style="margin:0">Mister: può pubblicare comunicazioni. Capitano: comunicazioni e formazioni.</p><label>Numero di maglia<input type="number" min="1" max="99" name="numero" value="${esc(p.number||'')}"></label><label>Ruolo${roleSel(p.role)}</label><button class="pri" type="submit">Salva</button><button class="sec" type="button" data-act="delP" data-id="${esc(d.id)}">Rimuovi dalla rosa</button></form>`); },
+  editP: d => { const p=S.players[d.id]||{}; openSheet(`${head('Modifica')}<form data-form="editp" data-id="${esc(d.id)}"><label>Nome<input name="nome" required value="${esc(p.name||'')}"></label><label>Categoria${catSel(p.cat)}</label><p class="mute" style="margin:0">Mister, Preparatore atletico, Social media manager: possono pubblicare comunicazioni. Capitano: comunicazioni e formazioni.</p><label>Numero di maglia<input type="number" min="1" max="99" name="numero" value="${esc(p.number||'')}"></label><label>Ruolo${roleSel(p.role)}</label><button class="pri" type="submit">Salva</button><button class="sec" type="button" data-act="delP" data-id="${esc(d.id)}">Rimuovi dalla rosa</button></form>`); },
   copyLu: () => { const src = past().concat(upcoming()).find(e=>e.type==='partita' && e.id!==S.draft.eid && getLus(e).length); if (!src) return toast('Nessuna formazione precedente da copiare.');
     const l = getLus(src).find(x=>x.published) || getLus(src)[0], cur = S.draft.items[S.draft.idx];
     Object.assign(cur, {module:l.module, slots:[...(l.slots||[])].concat(Array(7).fill('')).slice(0,7), bench:[...(l.bench||[])], tactic:l.tactic||''}); draw(); toast('Copiata da '+evName(src)+' ('+fmtD(src)+')'); },
