@@ -57,6 +57,10 @@ const roster = () => Object.keys(S.players).filter(id=>S.players[id].approved &&
 const squad = () => roster().filter(isPl);
 const pendingP = () => Object.keys(S.players).filter(id=>!S.players[id].approved && !S.players[id].rejected && !isAdminId(id));
 const ans = (id,eid) => S.rsvp[id]?.answers?.[eid] || '';
+// Un giocatore può venire a un evento "come dirigenza" (in panchina senza giocare): rsvp/{id}.roles[eid] = 'dirigente'.
+const roleAt = (id,eid) => S.rsvp[id]?.roles?.[eid] || '';
+const catAt = (id,eid) => isPl(id) && roleAt(id,eid)==='dirigente' ? 'dirigente' : catOf(id);
+const plAt = (id,eid) => ['giocatore','capitano'].includes(catAt(id,eid));
 // L'amministratore ha due profili: "Amministratore" (account) e il suo profilo giocatore (id = uid + "_g").
 const gid = () => S.uid + '_g';
 const isAdminId = id => (S.config.coaches||[]).includes(id);
@@ -207,18 +211,20 @@ function vViews(){
 
 /* ---------- pezzi di interfaccia ---------- */
 const icoPlus = '<svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
-function counts(eid){ const r={si:0,forse:0,no:0,none:0}; squad().forEach(id=>{ r[ans(id,eid)||'none']++; }); return r; }
+function counts(eid){ const r={si:0,forse:0,no:0,none:0}; squad().filter(id=>plAt(id,eid)).forEach(id=>{ r[ans(id,eid)||'none']++; }); return r; }
 function rsvpBtns(eid){ if (asAdmin()) return `<div style="display:flex;flex-direction:column;gap:8px"><span class="mute">Sei in modalità Amministratore: per segnarti alle presenze passa al tuo profilo giocatore.</span><button class="sec" data-act="mode">⇄ Passa a Giocatore</button></div>`; const my=ans(actId(),eid);
-  return `<div class="btns">${['si','forse','no'].map(v=>`<button class="b ${my===v?v:''}" aria-pressed="${my===v}" data-act="rsvp" data-e="${esc(eid)}" data-v="${v}">${LAB[v]}</button>`).join('')}</div>`; }
+  const role = roleAt(actId(),eid), asRole = isPl(actId()) && (my==='si' || my==='forse')
+    ? `<div class="row" style="gap:8px;align-items:center"><span class="mute" style="font-size:14px">Ci sono come:</span><div class="mods" role="group" aria-label="Ci sono come" style="flex:1">${[['','Giocatore'],['dirigente','Dirigenza']].map(([v,l])=>`<button class="${role===v?'on':''}" aria-pressed="${role===v}" data-act="role" data-e="${esc(eid)}" data-v="${v}">${l}</button>`).join('')}</div></div>` : '';
+  return `<div class="btns">${['si','forse','no'].map(v=>`<button class="b ${my===v?v:''}" aria-pressed="${my===v}" data-act="rsvp" data-e="${esc(eid)}" data-v="${v}">${LAB[v]}</button>`).join('')}</div>${asRole}`; }
 function bar(eid){ const c=counts(eid), n=Math.max(1,c.si+c.forse+c.no+c.none);
   return `<div class="bar" aria-hidden="true"><i style="width:${c.si/n*100}%;background:var(--ok)"></i><i style="width:${c.forse/n*100}%;background:var(--may)"></i><i style="width:${c.no/n*100}%;background:var(--ink)"></i></div>
-  <div class="mute">Giocatori: ${c.si} presenti · ${c.forse} forse · ${c.no} assenti · ${c.none} senza risposta${(()=>{ const o=roster().filter(id=>!isPl(id)&&ans(id,eid)==='si').length; return o?` · +${o} tra staff e pubblico`:''; })()}</div>`; }
+  <div class="mute">Giocatori: ${c.si} present${c.si===1?'e':'i'} · ${c.forse} forse · ${c.no} assenti · ${c.none} senza risposta${(()=>{ const o=roster().filter(id=>!plAt(id,eid)&&ans(id,eid)==='si').length; return o?` · +${o} tra staff e pubblico`:''; })()}</div>`; }
 function attendees(e, live){
   const chip = (id,cls) => live && S.coach ? `<button class="chip ${cls}" data-act="cyc" data-id="${esc(id)}" data-e="${esc(e.id)}" aria-label="Cambia risposta di ${esc(nameOf(id))}">${esc(nameOf(id))}</button>` : `<span class="chip ${cls}">${esc(nameOf(id))}</span>`;
   const r = roster(); if (!r.length) return '<p class="mute">Nessuno in rosa.</p>';
   const no = [], none = [];
   // prima i presenti (e forse) di tutte le categorie; "Preparatori atletici" sempre visibile, anche se vuota
-  const top = CATS.map(([k,pl])=>{ const ids=r.filter(id=>catOf(id)===k); if (!ids.length && k!=='preparatore') return '';
+  const top = CATS.map(([k,pl])=>{ const ids=r.filter(id=>catAt(id,e.id)===k); if (!ids.length && k!=='preparatore') return '';
     const si=[], fo=[]; ids.forEach(id=>{ const a=ans(id,e.id); (a==='si'?si:a==='forse'?fo:a==='no'?no:none).push(id); });
     return `<div><div class="row sp"><b>${pl}</b><span class="mute">${ids.length?`${si.length} present${si.length===1?'e':'i'}${fo.length?' · '+fo.length+' forse':''}`:''}</span></div>
       <div class="names">${si.map(id=>chip(id,'si')).join('')}${fo.map(id=>chip(id,'forse')).join('')}${si.length||fo.length?'':`<span class="mute">${ids.length?'Nessuno ancora':'Nessuno in questa categoria'}</span>`}</div></div>`; }).join('');
@@ -441,7 +447,7 @@ function vFormazione(){
     S.draft = {eid:e.id, idx:0, items: items.length ? items : [blankLu(1)]}; }
   const Dr = S.draft; if (Dr.idx >= Dr.items.length) Dr.idx = 0;
   const L = Dr.items[Dr.idx], r = squad(), pos = MODS[L.module];
-  const mark = id => ({si:' ✓',forse:' ?',no:' ✗'})[ans(id,e.id)] || '';
+  const mark = id => (({si:' ✓',forse:' ?',no:' ✗'})[ans(id,e.id)] || '') + (roleAt(id,e.id)==='dirigente' ? ' (dirigenza)' : '');
   h += `<div class="mods" role="tablist" aria-label="Formazioni">${Dr.items.map((l,i)=>`<button role="tab" class="${i===Dr.idx?'on':''}" aria-selected="${i===Dr.idx}" data-act="luSel" data-i="${i}">${esc(l.name||'Formazione '+(i+1))}${l.published?' ✓':''}</button>`).join('')}<button data-act="luAdd" aria-label="Aggiungi una formazione">+ Nuova</button></div>
   <section class="card"><div class="row sp"><span class="chip ${L.published?'si':''}">${L.published?'Pubblicata':'Bozza: i giocatori non la vedono'}</span><button class="lnk" data-act="copyLu">Copia dall'ultima partita</button></div>
     <label>Nome formazione<input data-in="luname" value="${esc(L.name)}" maxlength="30"></label>
@@ -597,6 +603,7 @@ const ACT = {
   beCoach: () => write(()=>setDoc(D('config/team'), {coaches:[S.uid], instagram:'', createdAt:Date.now()}), 'Sei l\'amministratore della squadra!'),
   rsvp: d => setRsvp(actId(), d.e, ans(actId(),d.e)===d.v ? '' : d.v),
   mode: () => { mode = asAdmin() ? 'player' : 'admin'; try { localStorage.setItem('rim-mode', mode); } catch(_) {} draw(); toast(asAdmin() ? 'Modalità Amministratore' : 'Modalità Giocatore'); },
+  role: d => write(()=>setDoc(D('rsvp/'+actId()), {roles:{[d.e]: d.v ? d.v : deleteField()}}, {merge:true})),
   cyc: d => { const o=['','si','forse','no']; setRsvp(d.id, d.e, o[(o.indexOf(ans(d.id,d.e))+1)%4]); },
   vote: d => { const i=+d.i, same=(S.votes[S.uid]?.answers||{})[d.p]===i; write(()=>setDoc(D('votes/'+S.uid), {answers:{[d.p]: same ? deleteField() : i}}, {merge:true})); },
   remind: d => { const e=S.events.find(x=>x.id===d.e); if (!e) return; const miss=squad().filter(id=>!ans(id,e.id)).map(nameOf);
