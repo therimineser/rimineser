@@ -80,10 +80,10 @@ async function write(fn, ok){
 
 /* ---------- dati ---------- */
 function stop(list){ list.forEach(u=>{ try{u()}catch(_){} }); list.length = 0; }
-function watch(list, key, ref, cb){
+function watch(list, key, ref, cb, onErr){
   const t = setTimeout(()=>{ S.slow = true; draw(); }, 10000);
   list.push(onSnapshot(ref, s=>{ clearTimeout(t); S.slow=false; cb(s); S.loaded.add(key); draw(); },
-    e=>{ clearTimeout(t); console.error(key, e); S.loaded.add(key); if (e.code!=='permission-denied') S.slow = true; draw(); }));
+    e=>{ clearTimeout(t); console.error(key, e); S.loaded.add(key); if (onErr && onErr(e)) { draw(); return; } if (e.code!=='permission-denied') S.slow = true; draw(); }));
 }
 // Dati del campionato: li aggiorna da solo il robot sul server; l'app li ricontrolla spesso.
 let lastLeague = '';
@@ -149,7 +149,7 @@ onAuthStateChanged(auth, u=>{
     // Tutti gli iscritti approvati hanno gli stessi diritti (S.coach = può modificare); l'amministratore in più approva gli iscritti.
     S.config = s.data(); S.admin = (S.config.coaches||[]).includes(S.uid); S.coach = S.admin;
     if (S.admin) { S.phase = 'app'; startMember(); } else watchMe();
-  });
+  }, e=>{ if (e.code==='permission-denied') { watchMe(); return true; } });   // in attesa/rifiutato: config/team è off-limits, decide il profilo
 });
 
 /* ---------- chi è online ---------- */

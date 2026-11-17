@@ -18,7 +18,9 @@ service cloud.firestore {
     function canLineup() { return isAdmin() || (isMember() && myCat() == 'capitano'); }            // formazioni
 
     match /config/team {
-      allow read: if signedIn();
+      // Leggibile da iscritti e amministratore, e da chi non ha ancora un profilo (primo avvio / registrazione).
+      // Chi è in attesa o rifiutato NON la legge: la sua schermata si regge sul proprio profilo giocatore.
+      allow read: if isMember() || (signedIn() && !exists(myPlayer()));
       allow create: if signedIn() && request.resource.data.coaches == [request.auth.uid];
       // gli iscritti possono cambiare solo il profilo Instagram
       allow update: if isAdmin() || (isMember() && changes().hasOnly(['instagram']));

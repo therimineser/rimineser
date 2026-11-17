@@ -101,6 +101,14 @@ await t('rifiutato: si toglie il rifiuto', false, () => updateDoc(doc(db('rej'),
 await t('rifiutato: legge le comunicazioni', false, () => getDoc(doc(db('rej'), 'posts/x')));
 await t('non registrato: legge le comunicazioni', false, () => getDoc(doc(db(null), 'posts/x')));
 await t('non registrato: legge la rosa', false, () => getDoc(doc(db(null), 'players/m1')));
+// config/team: leggibile da iscritti e da chi non ha ancora un profilo; NON da chi è in attesa/rifiutato
+await t('membro: legge config/team', true, () => getDoc(doc(db('p2'), 'config/team')));
+await t('admin: legge config/team', true, () => getDoc(doc(db('admin'), 'config/team')));
+await t('nuovo senza profilo: legge config/team (serve al primo avvio/registrazione)', true, () => getDoc(doc(db('nuovo'), 'config/team')));
+await t('in attesa: NON legge config/team (uid admin nascosti)', false, () => getDoc(doc(db('pend'), 'config/team')));
+await t('rifiutato: NON legge config/team', false, () => getDoc(doc(db('rej'), 'config/team')));
+await t('in attesa: legge comunque il proprio profilo (schermata attesa)', true, () => getDoc(doc(db('pend'), 'players/pend')));
+await t('rifiutato: legge comunque il proprio profilo (schermata rifiuto)', true, () => getDoc(doc(db('rej'), 'players/rej')));
 await t('qualsiasi: crea squadra già esistente', false, () => setDoc(doc(db('nuovo'), 'config/team'), { coaches: ['nuovo'] }));
 // "chi è online"
 await t('membro: scrive il proprio battito online', true, () => setDoc(doc(db('p2'), 'presence/p2'), { at: serverTimestamp() }));
