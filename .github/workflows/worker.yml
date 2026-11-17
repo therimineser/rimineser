@@ -34,31 +34,46 @@ jobs:
         run: |
           if [ -n "$T" ] && [ -n "$A" ] && [ -n "$S" ]; then echo "ok=true" >> "$GITHUB_OUTPUT"
           else echo "::warning::Mancano CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID / FIREBASE_SA: Worker non pubblicato"; echo "ok=false" >> "$GITHUB_OUTPUT"; fi
+      - name: Controlla il gettone Cloudflare
+        if: steps.segreti.outputs.ok == 'true'
+        env:
+          T: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          A: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          # gettone personale o dell'account: uno dei due controlli deve dire "active"
+          u=$(curl -s -H "Authorization: Bearer $T" https://api.cloudflare.com/client/v4/user/tokens/verify)
+          a=$(curl -s -H "Authorization: Bearer $T" "https://api.cloudflare.com/client/v4/accounts/$A/tokens/verify")
+          echo "Gettone personale: $(echo "$u" | jq -c '{success, status: .result.status, errors: [.errors[]?.message]}')"
+          echo "Gettone dell'account: $(echo "$a" | jq -c '{success, status: .result.status, errors: [.errors[]?.message]}')"
+          w=$(curl -s -H "Authorization: Bearer $T" "https://api.cloudflare.com/client/v4/accounts/$A/workers/scripts")
+          echo "Lettura Worker dell'account: $(echo "$w" | jq -c '{success, errors: [.errors[]? | "\(.code) \(.message)"]}')"
+          s=$(curl -s -H "Authorization: Bearer $T" "https://api.cloudflare.com/client/v4/accounts/$A/workers/subdomain")
+          echo "Sottodominio workers.dev: $(echo "$s" | jq -c '{success, subdomain: .result.subdomain, errors: [.errors[]? | "\(.code) \(.message)"]}')"
       - name: Pubblica su Cloudflare
         id: deploy
         if: steps.segreti.outputs.ok == 'true'
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          workingDirectory: worker
-          secrets: |
-            FIREBASE_SA
+        working-directory: worker
         env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           FIREBASE_SA: ${{ secrets.FIREBASE_SA }}
+          WRANGLER_SEND_METRICS: 'false'
+        run: |
+          set -o pipefail
+          npx -y wrangler@4.45.0 deploy 2>&1 | tee /tmp/deploy.txt
+          printf '%s' "$FIREBASE_SA" | npx -y wrangler@4.45.0 secret put FIREBASE_SA
+          echo "url=$(grep -o 'https://[a-z0-9.-]*\.workers\.dev' /tmp/deploy.txt | head -1)" >> "$GITHUB_OUTPUT"
       - name: Collega l'app al Worker
         if: steps.segreti.outputs.ok == 'true'
         env:
-          URL: ${{ steps.deploy.outputs.deployment-url }}
-          OUT: ${{ steps.deploy.outputs.command-output }}
+          URL: ${{ steps.deploy.outputs.url }}
           GH_TOKEN: ${{ github.token }}
         run: |
           u="$URL"
-          [ -z "$u" ] && u=$(printf '%s' "$OUT" | grep -o 'https://[a-z0-9.-]*\.workers\.dev' | head -1)
           echo "Indirizzo del Worker: ${u:-sconosciuto}"
           [ -z "$u" ] && exit 0
-          code=$(curl -s -o /dev/null -w '%{http_code}' "$u")
-          echo "Risposta del Worker: $code"
+          sleep 5
+          echo "Risposta del Worker: $(curl -s "$u")"
           if grep -q "notifyUrl = \"$u\"" docs/firebase-config.js; then echo "App già collegata"; exit 0; fi
           sed -i "s|^export const notifyUrl = .*|export const notifyUrl = \"$u\";|" docs/firebase-config.js
           git config user.name "Robot Rimineser"
