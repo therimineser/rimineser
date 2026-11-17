@@ -213,12 +213,13 @@ function vViews(){
 const icoPlus = '<svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
 function counts(eid){ const r={si:0,forse:0,no:0,none:0}; squad().filter(id=>plAt(id,eid)).forEach(id=>{ r[ans(id,eid)||'none']++; }); return r; }
 function rsvpBtns(eid){ if (asAdmin()) return `<div style="display:flex;flex-direction:column;gap:8px"><span class="mute">Sei in modalità Amministratore: per segnarti alle presenze passa al tuo profilo giocatore.</span><button class="sec" data-act="mode">⇄ Passa a Giocatore</button></div>`; const my=ans(actId(),eid);
-  return `<div class="btns">${['si','forse','no'].map(v=>`<button class="b ${my===v?v:''}" aria-pressed="${my===v}" data-act="rsvp" data-e="${esc(eid)}" data-v="${v}">${LAB[v]}</button>`).join('')}</div>`; }
-// Piccolo tasto FUORI dal riquadro: un tocco = presente come dirigenza (solo per giocatori/capitano)
-function dirBtn(eid){
-  if (asAdmin() || !isPl(actId())) return '';
-  const on = ans(actId(),eid)==='si' && roleAt(actId(),eid)==='dirigente';
-  return `<div class="dirbtn"><button class="lnk" data-act="asDir" data-e="${esc(eid)}" aria-pressed="${on}">${on?'✓ Ci sei come dirigenza · annulla':'Vengo come dirigenza'}</button></div>`;
+  const dir = roleAt(actId(),eid)==='dirigente' && my==='si', sel = v => my===v && !(v==='si' && dir);
+  return `<div class="btns">${['si','forse','no'].map(v=>`<button class="b ${sel(v)?v:''}" aria-pressed="${sel(v)}" data-act="rsvp" data-e="${esc(eid)}" data-v="${v}">${LAB[v]}</button>`).join('')}</div>${dirBtn(eid, dir)}`; }
+// Tasto più piccolo sotto Presente/Forse/Assente, solo per giocatori/capitano: un tocco = presente come dirigenza (in panchina senza giocare)
+const icoBench = '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11h16M6 11V7h12v4M5 11v7M19 11v7M8 15h8"/></svg>';
+function dirBtn(eid, on){
+  if (!isPl(actId())) return '';
+  return `<button class="b bdir ${on?'on':''}" aria-pressed="${on}" data-act="asDir" data-e="${esc(eid)}">${icoBench}${on?'Presente come dirigenza ✓':'Vengo come dirigenza'}</button>`;
 }
 function bar(eid){ const c=counts(eid), n=Math.max(1,c.si+c.forse+c.no+c.none);
   return `<div class="bar" aria-hidden="true"><i style="width:${c.si/n*100}%;background:var(--ok)"></i><i style="width:${c.forse/n*100}%;background:var(--may)"></i><i style="width:${c.no/n*100}%;background:var(--ink)"></i></div>
@@ -399,7 +400,7 @@ function vHome(){
     <div class="row" style="gap:14px"><span class="res" style="white-space:nowrap">${esc(nx.time||'--:--')}</span><span class="mute" style="text-transform:capitalize">${esc(fmtD(nx,{weekday:'long',day:'numeric',month:'long'}))}</span></div>
     <div class="row mute" style="gap:6px"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s7-6.5 7-12a7 7 0 0 0-14 0c0 5.5 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg>${esc(nx.location||'Campo da definire')}</div>
     ${rsvpBtns(nx.id)}${bar(nx.id)}
-    <div class="btns"><button class="sec" style="flex:1" data-act="who" data-e="${esc(nx.id)}">Presenti (${pres})</button>${isM?`<button class="pri" style="flex:1" data-act="openLu" data-e="${esc(nx.id)}">${nLu>1?'Formazioni ('+nLu+')':'Formazione'}</button>`:''}</div></section>${dirBtn(nx.id)}`; }
+    <div class="btns"><button class="sec" style="flex:1" data-act="who" data-e="${esc(nx.id)}">Presenti (${pres})</button>${isM?`<button class="pri" style="flex:1" data-act="openLu" data-e="${esc(nx.id)}">${nLu>1?'Formazioni ('+nLu+')':'Formazione'}</button>`:''}</div></section>`; }
   const lp = ourPos(); if (lp) h += `<button class="card" style="flex-direction:row;align-items:center;border:0;text-align:left;width:100%" data-act="go" data-t="campionato"><span class="num" style="width:46px;height:46px;font-size:24px">${lp.pos}°</span><span style="flex:1;min-width:0"><b>Campionato UISP · ${lp.pt} punti</b><br><span class="mute" style="white-space:nowrap;font-size:13.5px">${lp.v} vinte · ${lp.n} pareggiate · ${lp.p} perse</span></span>›</button>`;
   if (!nx) h += `<section class="card dark"><span class="lab" style="color:#FF4D5E">CALENDARIO</span><p class="txt">Nessun evento in programma.${S.coach?' Aggiungilo dal Calendario.':''}</p></section>`;
   h += `<div class="row sp"><h2>Comunicazioni</h2></div>`;
@@ -429,7 +430,7 @@ function vPresenze(){
     <details><summary>Presenti</summary>
       ${attendees(e,true)}
       ${S.coach?`<p class="mute" style="margin:0">Tocca un nome per cambiare la sua risposta.</p>${S.admin?`<button class="pri" data-act="pushRemind" data-e="${esc(e.id)}">🔔 Notifica a chi non ha risposto</button>`:''}<button class="sec" data-act="remind" data-e="${esc(e.id)}">Copia promemoria per WhatsApp</button>`:''}
-    </details></section>${dirBtn(e.id)}`;
+    </details></section>`;
   }).join('');
 }
 function luCard(l, sm){
