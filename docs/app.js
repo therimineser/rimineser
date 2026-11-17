@@ -37,9 +37,11 @@ const MODS = {
   '2-1-2-1':[[50,89,'POR'],[30,71,'DIF'],[70,71,'DIF'],[50,56,'CEN'],[20,40,'CEN'],[80,40,'CEN'],[50,19,'ATT']]
 };
 const ROLES = ['Portiere','Difensore','Centrocampista','Attaccante','Jolly'];
-const CATS = [['giocatore','Giocatori','Giocatore'],['allenatore','Allenatori','Allenatore'],['dirigente','Dirigenza','Dirigente'],['pubblico','Pubblico','Pubblico / tifoso']];
+const CATS = [['mister','Mister','Mister'],['capitano','Capitano','Capitano'],['giocatore','Giocatori','Giocatore'],['allenatore','Allenatori','Allenatore'],['dirigente','Dirigenza','Dirigente'],['pubblico','Pubblico','Pubblico / tifoso']];
 const catOf = id => S.players[id]?.cat || 'giocatore';
-const catSel = v => `<select name="cat">${CATS.map(([k,,l])=>`<option value="${k}" ${(v||'giocatore')===k?'selected':''}>${l}</option>`).join('')}</select>`;
+const STAFFCATS = ['mister','capitano'];   // le assegna solo l'amministratore
+const isPl = id => ['giocatore','capitano'].includes(catOf(id));
+const catSel = (v, all = S.admin) => `<select name="cat">${CATS.filter(([k])=>all||!STAFFCATS.includes(k)||k===v).map(([k,,l])=>`<option value="${k}" ${(v||'giocatore')===k?'selected':''}>${l}</option>`).join('')}</select>`;
 const getLus = e => Array.isArray(e?.lineups) ? e.lineups : (e?.lineup ? [{name:'Formazione 1', ...e.lineup}] : []);
 const blankLu = n => ({name:'Formazione '+n, module:'2-3-1', slots:Array(7).fill(''), bench:[], tactic:'', published:false});
 const LAB = { si:'Presente', forse:'Forse', no:'Assente' };
@@ -52,7 +54,7 @@ const evName = e => e.type==='partita' ? 'vs '+(e.opponent||'Avversario') : 'All
 const nameOf = id => isAdminId(id) ? (S.players[id+'_g']?.name || 'Amministratore') : (S.players[id]?.name || 'Giocatore');
 const short = n => n.split(' ')[0];
 const roster = () => Object.keys(S.players).filter(id=>S.players[id].approved && !isAdminId(id)).sort((a,b)=>((+S.players[a].number)||999)-((+S.players[b].number)||999)||nameOf(a).localeCompare(nameOf(b)));
-const squad = () => roster().filter(id=>catOf(id)==='giocatore');
+const squad = () => roster().filter(isPl);
 const pendingP = () => Object.keys(S.players).filter(id=>!S.players[id].approved && !S.players[id].rejected && !isAdminId(id));
 const ans = (id,eid) => S.rsvp[id]?.answers?.[eid] || '';
 // L'amministratore ha due profili: "Amministratore" (account) e il suo profilo giocatore (id = uid + "_g").
@@ -63,12 +65,9 @@ const asAdmin = () => S.admin && mode !== 'player';
 const actId = () => S.admin ? gid() : S.uid;   // chi risponde alle presenze / profilo giocatore
 const mine = id => id === S.uid || (S.admin && id === gid());
 // Etichette: "mister" e "capitano" (assegnate dall'amministratore). Comunicazioni: mister, capitano, admin. Formazioni: capitano, admin.
-const TAGS = {mister:'Mister', capitano:'Capitano'};
-const tagOf = id => S.players[id]?.tag || '';
-const canPost = () => S.admin || ['mister','capitano'].includes(tagOf(S.uid));
-const canLineup = () => S.admin || tagOf(S.uid) === 'capitano';
-const tagSel = v => `<select name="tag"><option value="">Nessuna</option>${Object.entries(TAGS).map(([k,l])=>`<option value="${k}" ${v===k?'selected':''}>${l}</option>`).join('')}</select>`;
-const tagLabel = id => TAGS[tagOf(id)] ? ` <span class="chip tag">${TAGS[tagOf(id)]}</span>` : '';
+const canPost = () => S.admin || STAFFCATS.includes(S.players[S.uid]?.cat);      // comunicazioni: Mister, Capitano, admin
+const canLineup = () => S.admin || S.players[S.uid]?.cat === 'capitano';          // formazioni: Capitano, admin
+const tagLabel = id => STAFFCATS.includes(catOf(id)) ? ` <span class="chip tag">${CATS.find(c=>c[0]===catOf(id))[2]}</span>` : '';
 const standalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent);
 
@@ -158,7 +157,7 @@ function rsvpBtns(eid){ if (asAdmin()) return `<div style="display:flex;flex-dir
   return `<div class="btns">${['si','forse','no'].map(v=>`<button class="b ${my===v?v:''}" aria-pressed="${my===v}" data-act="rsvp" data-e="${esc(eid)}" data-v="${v}">${LAB[v]}</button>`).join('')}</div>`; }
 function bar(eid){ const c=counts(eid), n=Math.max(1,c.si+c.forse+c.no+c.none);
   return `<div class="bar" aria-hidden="true"><i style="width:${c.si/n*100}%;background:var(--ok)"></i><i style="width:${c.forse/n*100}%;background:var(--may)"></i><i style="width:${c.no/n*100}%;background:var(--ink)"></i></div>
-  <div class="mute">Giocatori: ${c.si} presenti · ${c.forse} forse · ${c.no} assenti · ${c.none} senza risposta${(()=>{ const o=roster().filter(id=>catOf(id)!=='giocatore'&&ans(id,eid)==='si').length; return o?` · +${o} tra staff e pubblico`:''; })()}</div>`; }
+  <div class="mute">Giocatori: ${c.si} presenti · ${c.forse} forse · ${c.no} assenti · ${c.none} senza risposta${(()=>{ const o=roster().filter(id=>!isPl(id)&&ans(id,eid)==='si').length; return o?` · +${o} tra staff e pubblico`:''; })()}</div>`; }
 function attendees(e, live){
   const chip = (id,cls) => live && S.coach ? `<button class="chip ${cls}" data-act="cyc" data-id="${esc(id)}" data-e="${esc(e.id)}" aria-label="Cambia risposta di ${esc(nameOf(id))}">${esc(nameOf(id))}</button>` : `<span class="chip ${cls}">${esc(nameOf(id))}</span>`;
   const h = CATS.map(([k,pl])=>{ const ids=roster().filter(id=>catOf(id)===k); if (!ids.length) return '';
@@ -414,7 +413,7 @@ function vRosa(){
   if (asAdmin() && pe.length) h += `<section class="card install"><b>Da approvare</b>${pe.map(id=>`<div class="row sp"><span>${esc(nameOf(id))} <span class="mute">· ${esc(CATS.find(c=>c[0]===catOf(id))[2])}</span></span><span class="row" style="gap:4px"><button class="lnk" data-act="rejP" data-id="${esc(id)}">Rifiuta</button><button class="pri" data-act="okP" data-id="${esc(id)}">Approva</button></span></div>`).join('')}</section>`;
   h += `<div class="btns"><button class="pri" data-act="me">Il mio profilo</button><button class="sec" data-act="logout">Esci</button></div>` + vPushCard(true);
   h += r.length ? CATS.map(([k,pl])=>{ const ids=r.filter(id=>catOf(id)===k); if (!ids.length) return '';
-    return `<section class="card"><span class="lab">${pl.toUpperCase()} · ${ids.length}</span>${ids.map(id=>{ const p=S.players[id]||{}; return `<div class="row" style="padding:6px 0"><span class="num">${esc(k==='giocatore'?(p.number||'–'):pl[0])}</span><div style="flex:1"><b>${esc(nameOf(id))}</b>${tagLabel(id)}${mine(id)?' <span class="chip">Tu</span>':''}<div class="mute" style="font-size:13px">${k==='giocatore'?esc(p.role||'Ruolo non indicato'):esc(CATS.find(c=>c[0]===k)[2])}${p.manual?' · aggiunto dall\'amministratore':''}</div></div>${asAdmin()&&!mine(id)?`<button class="lnk" data-act="editP" data-id="${esc(id)}">Modifica</button>`:''}</div>`; }).join('')}</section>`; }).join('') : '<section class="card"><div class="empty">Nessuno ancora in rosa.</div></section>';
+    return `<section class="card"><span class="lab">${pl.toUpperCase()} · ${ids.length}</span>${ids.map(id=>{ const p=S.players[id]||{}; return `<div class="row" style="padding:6px 0"><span class="num">${esc(isPl(id)?(p.number||'–'):pl[0])}</span><div style="flex:1"><b>${esc(nameOf(id))}</b>${mine(id)?' <span class="chip">Tu</span>':''}<div class="mute" style="font-size:13px">${isPl(id)?esc(p.role||'Ruolo non indicato'):esc(CATS.find(c=>c[0]===k)[2])}${p.manual?' · aggiunto dall\'amministratore':''}</div></div>${asAdmin()&&!mine(id)?`<button class="lnk" data-act="editP" data-id="${esc(id)}">Modifica</button>`:''}</div>`; }).join('')}</section>`; }).join('') : '<section class="card"><div class="empty">Nessuno ancora in rosa.</div></section>';
   return h;
 }
 
@@ -438,7 +437,7 @@ function vLogin(){
   const m = S.login;
   return `<div class="login"><img src="icons/logo-256.png" alt="Logo The Rimineser F.P." width="220" height="220"><h1>${m==='up'?'Entra in squadra':m==='reset'?'Recupera password':'Bentornato'}</h1>
   <form data-form="auth" novalidate>
-    ${m==='up'?`<label>Nome e cognome<input name="nome" autocomplete="name" required></label><label>Entro in squadra come${catSel('giocatore')}</label>`:''}
+    ${m==='up'?`<label>Nome e cognome<input name="nome" autocomplete="name" required></label><label>Entro in squadra come${catSel('giocatore', false)}</label>`:''}
     <label>Email<input type="email" name="email" autocomplete="email" required></label>
     ${m!=='reset'?`<label>Password<input type="password" name="pwd" autocomplete="${m==='up'?'new-password':'current-password'}" minlength="6" required></label>`:''}
     <p class="err" id="authErr" role="alert"></p>
@@ -452,7 +451,7 @@ function draw(){
   if (S.phase==='loading') { $('#root').innerHTML = `<div class="login"><img src="icons/logo-256.png" alt="Logo The Rimineser F.P." width="220" height="220"><p>Caricamento…</p></div>`; return; }
   if (S.phase==='setup') { $('#root').innerHTML = `<div class="login"><img src="icons/logo-256.png" alt="Logo The Rimineser F.P." width="220" height="220"><h1>Squadra da configurare</h1><p style="max-width:380px;text-align:center">L'app non ha ancora un amministratore. Se sei tu a gestire l'app, premi il pulsante: potrai approvare gli iscritti.</p><button class="pri" data-act="beCoach">Sono l'amministratore</button><button class="lnk" data-act="logout">Esci</button></div>`; return; }
   if (S.phase==='rejected') { $('#root').innerHTML = `<div class="login"><img src="icons/logo-256.png" alt="Logo The Rimineser F.P." width="220" height="220"><h1>Richiesta non accettata</h1><p style="max-width:380px;text-align:center">L'amministratore non ha accettato la tua iscrizione. Se pensi sia un errore, contatta la squadra.</p><button class="lnk" data-act="logout">Esci</button></div>`; return; }
-  if (S.phase==='pending') { $('#root').innerHTML = `<div class="login"><img src="icons/logo-256.png" alt="Logo The Rimineser F.P." width="220" height="220"><h1>Richiesta inviata</h1><p style="max-width:380px;text-align:center">Ciao ${esc(S.authName)}! L'amministratore deve approvare il tuo ingresso in squadra. Appena lo fa, questa schermata si aggiorna da sola.</p><label style="width:100%;max-width:380px">Entro in squadra come<select data-ch="mycat">${CATS.map(([k,,l])=>`<option value="${k}" ${((S.me||{}).cat||'giocatore')===k?'selected':''}>${l}</option>`).join('')}</select></label><button class="lnk" data-act="logout">Esci</button></div>`; return; }
+  if (S.phase==='pending') { $('#root').innerHTML = `<div class="login"><img src="icons/logo-256.png" alt="Logo The Rimineser F.P." width="220" height="220"><h1>Richiesta inviata</h1><p style="max-width:380px;text-align:center">Ciao ${esc(S.authName)}! L'amministratore deve approvare il tuo ingresso in squadra. Appena lo fa, questa schermata si aggiorna da sola.</p><label style="width:100%;max-width:380px">Entro in squadra come<select data-ch="mycat">${CATS.filter(([k])=>!STAFFCATS.includes(k)).map(([k,,l])=>`<option value="${k}" ${((S.me||{}).cat||'giocatore')===k?'selected':''}>${l}</option>`).join('')}</select></label><button class="lnk" data-act="logout">Esci</button></div>`; return; }
   shell();
   const a = document.activeElement;
   if (a && $('#app').contains(a) && /INPUT|TEXTAREA|SELECT/.test(a.tagName) && a.type!=='checkbox') { S.pending = true; return; }
@@ -532,7 +531,7 @@ const ACT = {
     await write(()=>setDoc(D('events/'+Dr.eid), {lineups:Dr.items}, {merge:true}), 'Formazione eliminata'); draw(); },
   who: d => { const e=S.events.find(x=>x.id===d.e); if (!e) return; openSheet(`${head('Presenti')}<p class="mute" style="margin:0">${esc(evName(e))} · ${esc(fmtD(e))} · ${esc(e.time||'')}</p>${attendees(e,false)}`); },
   openLu: d => { S.fe = d.e; S.draft = null; ACT.go({t:'formazione'}); },
-  editP: d => { const p=S.players[d.id]||{}; openSheet(`${head('Modifica')}<form data-form="editp" data-id="${esc(d.id)}"><label>Nome<input name="nome" required value="${esc(p.name||'')}"></label><label>Categoria${catSel(p.cat)}</label><label>Etichetta${tagSel(p.tag)}</label><p class="mute" style="margin:0">Mister: può pubblicare comunicazioni. Capitano: comunicazioni e formazioni.</p><label>Numero di maglia<input type="number" min="1" max="99" name="numero" value="${esc(p.number||'')}"></label><label>Ruolo${roleSel(p.role)}</label><button class="pri" type="submit">Salva</button><button class="sec" type="button" data-act="delP" data-id="${esc(d.id)}">Rimuovi dalla rosa</button></form>`); },
+  editP: d => { const p=S.players[d.id]||{}; openSheet(`${head('Modifica')}<form data-form="editp" data-id="${esc(d.id)}"><label>Nome<input name="nome" required value="${esc(p.name||'')}"></label><label>Categoria${catSel(p.cat)}</label><p class="mute" style="margin:0">Mister: può pubblicare comunicazioni. Capitano: comunicazioni e formazioni.</p><label>Numero di maglia<input type="number" min="1" max="99" name="numero" value="${esc(p.number||'')}"></label><label>Ruolo${roleSel(p.role)}</label><button class="pri" type="submit">Salva</button><button class="sec" type="button" data-act="delP" data-id="${esc(d.id)}">Rimuovi dalla rosa</button></form>`); },
   copyLu: () => { const src = past().concat(upcoming()).find(e=>e.type==='partita' && e.id!==S.draft.eid && getLus(e).length); if (!src) return toast('Nessuna formazione precedente da copiare.');
     const l = getLus(src).find(x=>x.published) || getLus(src)[0], cur = S.draft.items[S.draft.idx];
     Object.assign(cur, {module:l.module, slots:[...(l.slots||[])].concat(Array(7).fill('')).slice(0,7), bench:[...(l.bench||[])], tactic:l.tactic||''}); draw(); toast('Copiata da '+evName(src)+' ('+fmtD(src)+')'); },
@@ -542,7 +541,7 @@ const ACT = {
       if (pub && !was) notifyTeam('lineup', '⚽ Formazione pubblicata', `${L.name} per ${evName(e)} (${fmtD(e)}): modulo ${L.module}`, '#formazione');
       if (pub && !was) await write(()=>addDoc(C('posts'), {text:`Pubblicata la formazione "${L.name}" per ${evName(e)} di ${fmtD(e,{weekday:'long',day:'numeric',month:'long'})}: modulo ${L.module}. La trovate nella sezione Formazione.`, createdAt:Date.now(), author:asAdmin()?S.uid:actId()}));
       draw(); } else L.published = was; },
-  me: () => { const p=S.players[actId()]||{}; openSheet(`${head('Il mio profilo')}<form data-form="me"><label>Nome in squadra<input name="nome" required value="${esc(p.name||S.authName)}"></label><label>Numero di maglia<input type="number" min="1" max="99" name="numero" value="${esc(p.number||'')}"></label><label>Ruolo${roleSel(p.role)}</label><label>Categoria${catSel(p.cat||'giocatore')}</label>${S.admin?`<label>Etichetta${tagSel(p.tag)}</label>`:''}<button class="pri" type="submit">Salva</button></form>`); },
+  me: () => { const p=S.players[actId()]||{}; openSheet(`${head('Il mio profilo')}<form data-form="me"><label>Nome in squadra<input name="nome" required value="${esc(p.name||S.authName)}"></label><label>Numero di maglia<input type="number" min="1" max="99" name="numero" value="${esc(p.number||'')}"></label><label>Ruolo${roleSel(p.role)}</label><label>Categoria${catSel(p.cat||'giocatore')}</label><button class="pri" type="submit">Salva</button></form>`); },
   addP: () => openSheet(`${head('Aggiungi giocatore')}<p class="mute" style="margin:0">Per chi non usa l'app: potrai segnare tu le sue presenze.</p><form data-form="addp"><label>Nome e cognome<input name="nome" required></label><label>Categoria${catSel('giocatore')}</label><label>Numero di maglia<input type="number" min="1" max="99" name="numero"></label><label>Ruolo${roleSel('')}</label><button class="pri" type="submit">Aggiungi</button></form>`),
   okP: d => write(()=>updateDoc(D('players/'+d.id), {approved:true, rejected:false}), 'Giocatore approvato'),
   rejP: (d,b) => { if (confirm2(b)) write(()=>updateDoc(D('players/'+d.id), {rejected:true}), 'Richiesta rifiutata'); },
@@ -576,10 +575,10 @@ const FORMS = {
     if (await write(()=>setDoc(ref, data, {merge:true}), 'Evento salvato')) closeSheet(); },
   me: async f => { if (S.admin && /amministratore/i.test(val(f,'nome'))) return toast('Come giocatore usa il tuo nome, non "Amministratore".');
     const data={name:val(f,'nome'), number:val(f,'numero'), role:val(f,'ruolo'), cat:val(f,'cat')||'giocatore'}; if (!data.name) return;
-    const ok = S.admin ? await write(()=>setDoc(D('players/'+gid()), {...data, tag:val(f,'tag'), approved:true, owner:S.uid}, {merge:true}), 'Profilo giocatore salvato')
+    const ok = S.admin ? await write(()=>setDoc(D('players/'+gid()), {...data, approved:true, owner:S.uid}, {merge:true}), 'Profilo giocatore salvato')
                        : await write(()=>updateDoc(D('players/'+S.uid), data), 'Profilo salvato');
     if (ok) { closeSheet(); if (auth.currentUser) updateProfile(auth.currentUser, {displayName:data.name}).catch(()=>{}); } },
-  editp: async f => { const data={name:val(f,'nome'), cat:val(f,'cat'), tag:val(f,'tag'), number:val(f,'numero'), role:val(f,'ruolo')}; if (data.name && await write(()=>updateDoc(D('players/'+f.dataset.id), data), 'Salvato')) closeSheet(); },
+  editp: async f => { const data={name:val(f,'nome'), cat:val(f,'cat'), number:val(f,'numero'), role:val(f,'ruolo')}; if (data.name && await write(()=>updateDoc(D('players/'+f.dataset.id), data), 'Salvato')) closeSheet(); },
   addp: async f => { const data={name:val(f,'nome'), number:val(f,'numero'), role:val(f,'ruolo'), cat:val(f,'cat')||'giocatore', approved:true, manual:true};
     if (data.name && await write(()=>setDoc(D('players/m_'+Date.now().toString(36)), data), 'Giocatore aggiunto')) closeSheet(); },
   team: async f => { const tok = val(f,'ghtok');

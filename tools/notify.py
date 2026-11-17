@@ -291,7 +291,7 @@ def main():
     # 3) nuove richieste di iscrizione: avviso solo all'amministratore
     admins = [u for u in (team.get('coaches') or []) if u in tokens]
     seen = set(state.get('requests') or [])
-    CAT = {'giocatore': 'Giocatore', 'allenatore': 'Allenatore', 'dirigente': 'Dirigente', 'pubblico': 'Pubblico'}
+    CAT = {'mister': 'Mister', 'capitano': 'Capitano', 'giocatore': 'Giocatore', 'allenatore': 'Allenatore', 'dirigente': 'Dirigente', 'pubblico': 'Pubblico'}
     new_req = [(k, v) for k, v in players.items() if not v.get('approved') and not v.get('rejected') and k not in seen]
     for k, v in new_req:
         if admins:

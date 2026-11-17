@@ -12,9 +12,9 @@ service cloud.firestore {
     function myPlayer() { return /databases/$(database)/documents/players/$(request.auth.uid); }
     function isMember() { return isAdmin() || (signedIn() && exists(myPlayer()) && get(myPlayer()).data.approved == true); }
     function changes() { return request.resource.data.diff(resource.data).affectedKeys(); }
-    function myTag() { return exists(myPlayer()) ? get(myPlayer()).data.get('tag', '') : ''; }
-    function canPost() { return isAdmin() || (isMember() && myTag() in ['mister', 'capitano']); }   // comunicazioni
-    function canLineup() { return isAdmin() || (isMember() && myTag() == 'capitano'); }            // formazioni
+    function myCat() { return exists(myPlayer()) ? get(myPlayer()).data.get('cat', '') : ''; }
+    function canPost() { return isAdmin() || (isMember() && myCat() in ['mister', 'capitano']); }   // comunicazioni
+    function canLineup() { return isAdmin() || (isMember() && myCat() == 'capitano'); }            // formazioni
 
     match /config/team {
       allow read: if signedIn();
@@ -36,9 +36,12 @@ service cloud.firestore {
     match /players/{uid} {
       allow read: if isMember() || (signedIn() && request.auth.uid == uid);
       allow create: if isAdmin() || (signedIn() && request.auth.uid == uid && request.resource.data.approved == false
-                                     && !('rejected' in request.resource.data));
+                                     && !('rejected' in request.resource.data)
+                                     && !(request.resource.data.get('cat', '') in ['mister', 'capitano']));
       // ognuno modifica solo i propri dati personali (non può approvarsi da solo né togliersi un rifiuto)
-      allow update: if isAdmin() || (signedIn() && request.auth.uid == uid && changes().hasOnly(['name', 'number', 'role', 'cat', 'nick']));
+      // Mister e Capitano li assegna/toglie solo l'amministratore
+      allow update: if isAdmin() || (signedIn() && request.auth.uid == uid && changes().hasOnly(['name', 'number', 'role', 'cat', 'nick'])
+                                     && (!('cat' in changes()) || !(request.resource.data.cat in ['mister', 'capitano'] || resource.data.get('cat', '') in ['mister', 'capitano'])));
       allow delete: if isAdmin();
     }
     match /rsvp/{uid} {
