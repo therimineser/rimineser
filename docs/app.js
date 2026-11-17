@@ -119,7 +119,7 @@ function ensureAdminPlayer(){
   if (!S.admin || adminFixed || !S.loaded.has('players') || !S.loaded.has('rsvp')) return;
   adminFixed = true;
   const g = gid(), old = S.players[S.uid];
-  if (!S.players[g]) write(()=>setDoc(D('players/'+g), {name:(old&&old.name)||S.authName, number:(old&&old.number)||'', role:(old&&old.role)||'', cat:'giocatore', approved:true, owner:S.uid, createdAt:Date.now()}));
+  if (!S.players[g]) write(()=>setDoc(D('players/'+g), {name:(old&&old.name)||S.authName, number:(old&&old.number)||'', cat:'giocatore', approved:true, owner:S.uid, createdAt:Date.now()}));
   if (old) write(()=>deleteDoc(D('players/'+S.uid)));
   // il profilo giocatore dell'amministratore non deve chiamarsi "Amministratore"
   const pg = S.players[g]; if (pg && /amministratore/i.test(pg.name||'')) write(()=>updateDoc(D('players/'+g), {name:'Giacomo Lucidi'}));
@@ -130,7 +130,7 @@ function watchMe(){
   if (meOn) return; meOn = true;
   watch(baseSubs, 'me', D('players/'+S.uid), async s=>{
     if (!s.exists()) { S.me = null; S.phase = 'pending';
-      await write(()=>setDoc(D('players/'+S.uid), { name:S.authName, number:'', role:'', cat:regCat||'giocatore', approved:false, createdAt:Date.now() }));
+      await write(()=>setDoc(D('players/'+S.uid), { name:S.authName, number:'', cat:regCat||'giocatore', approved:false, createdAt:Date.now() }));
       return; }
     S.me = s.data();
     if (S.me.rejected && !S.me.approved) { S.coach = false; S.phase = 'rejected'; stopMember(); return; }
@@ -549,7 +549,7 @@ const ACT = {
     openSheet(`${head('Impostazioni squadra')}<form data-form="team"><label>Profilo Instagram<input name="ig" value="${esc(S.config.instagram||'')}" placeholder="@nomeprofilo"></label>
     ${S.admin?`<label>Gettone GitHub per notifiche immediate<input name="ghtok" type="password" autocomplete="off" value="${esc(S.robot.token||'')}" placeholder="github_pat_…"></label>
     <p class="mute" style="margin:0">Visibile solo all'amministratore. Serve a far partire le notifiche in pochi secondi; senza, partono entro 5 minuti.</p>`:''}
-    <button class="pri" type="submit">Salva</button><button class="sec" type="button" data-act="pushTest">Invia notifica di prova</button></form>`); }
+    <button class="pri" type="submit">Salva</button>${S.admin?'<button class="sec" type="button" data-act="pushTest">Invia notifica di prova</button>':''}</form>`); }
 };
 const AUTH_ERR = { 'auth/invalid-credential':'Email o password non corretti.', 'auth/wrong-password':'Email o password non corretti.', 'auth/user-not-found':'Email o password non corretti.',
   'auth/email-already-in-use':'Questa email è già registrata: accedi.', 'auth/weak-password':'La password deve avere almeno 6 caratteri.', 'auth/invalid-email':'Email non valida.',

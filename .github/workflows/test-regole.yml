@@ -1,0 +1,45 @@
+name: Test regole
+
+# Prova le regole del database (firestore.rules) sull'emulatore ufficiale di Firebase
+# e salva l'esito in tests/rules/risultato.txt.
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths: ['firestore.rules', 'tests/rules/**', '.github/workflows/test-regole.yml', '!tests/rules/risultato.txt']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: test-regole
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '21' }
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Installa strumenti di test
+        run: npm i --no-save --no-audit --no-fund firebase-tools@13 @firebase/rules-unit-testing@5 firebase@12
+      - name: Esegui i test
+        id: run
+        continue-on-error: true
+        run: npx firebase emulators:exec --only firestore --project rimineser-test "node tests/rules/rules.test.mjs"
+      - name: Salva l'esito
+        if: always()
+        run: |
+          [ -f tests/rules/risultato.txt ] || echo "Test regole: emulatore non avviato (vedi log)" > tests/rules/risultato.txt
+          sed -i "1a Eseguito: $(TZ=Europe/Rome date '+%d/%m/%Y %H:%M') · commit ${GITHUB_SHA::7}" tests/rules/risultato.txt
+          git config user.name "Robot test" && git config user.email "actions@users.noreply.github.com"
+          git add tests/rules/risultato.txt
+          git commit -m "Esito test regole" || exit 0
+          for i in 1 2 3; do git pull --rebase -q origin main && git push -q origin HEAD:main && break; sleep 5; done
+      - name: Esito
+        if: steps.run.outcome != 'success'
+        run: cat tests/rules/risultato.txt && exit 1

@@ -220,7 +220,7 @@ def main():
         if kind == 'remind' and o.get('eventId'):
             targets = [u for u in everyone if not answered(u, o['eventId'])]
         if kind == 'test':
-            targets = [u for u in everyone if u in (team.get('coaches') or [])] or everyone
+            targets = [u for u in everyone if u in (team.get('coaches') or [])]
         n = sender.send(targets, {'title': o.get('title', 'The Rimineser F.P.'), 'body': o.get('body', ''), 'url': o.get('url', '#home'), 'tag': kind + '-' + oid}, PREF_OF.get(kind))
         log('Coda: "%s" → %d telefoni' % (o.get('title', ''), n))
         st.patch('outbox/' + oid, {'sent': True, 'sentAt': int(dt.datetime.now().timestamp() * 1000)})
