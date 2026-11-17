@@ -46,6 +46,15 @@ const getLus = e => Array.isArray(e?.lineups) ? e.lineups : (e?.lineup ? [{name:
 const blankLu = n => ({name:'Formazione '+n, module:'2-3-1', slots:Array(7).fill(''), bench:[], tactic:'', published:false});
 const LAB = { si:'Presente', forse:'Forse', no:'Assente' };
 const evT = e => new Date((e.date||'1970-01-01')+'T'+(e.time||'00:00')).getTime();
+// Ritrovo: per le partite sempre 45 minuti prima dell'inizio; per gli altri eventi quello inserito (events.meet)
+const MEET_MATCH_MIN = 45;
+const hmMinus = (t, min) => { const m = /^(\d{1,2})[:.](\d{2})$/.exec(t||''); if (!m) return ''; const x = ((+m[1])*60 + (+m[2]) - min + 1440) % 1440; return String(Math.floor(x/60)).padStart(2,'0')+':'+String(x%60).padStart(2,'0'); };
+const meetOf = e => e.type==='partita' ? hmMinus(e.time, MEET_MATCH_MIN) : (e.meet||'');
+const timesTxt = e => [meetOf(e) && 'Ritrovo '+meetOf(e), e.time && 'inizio '+e.time].filter(Boolean).join(' · ');
+// Formazioni bloccate per sempre dall'inizio della partita (anche per l'amministratore): events.lockAt = inizio in ms (lo impongono le regole)
+const kickMs = e => e.date ? new Date(e.date+'T'+(e.time||'23:59')).getTime() : NaN;
+const luLocked = e => !!e && e.type==='partita' && Date.now() >= Math.min(isNaN(kickMs(e)) ? Infinity : kickMs(e), e.lockAt||Infinity);
+const lockAtFor = e => { const k = kickMs(e); return isNaN(k) ? Date.now() + 400*86400000 : k; };
 const isUp = e => evT(e) > Date.now() - 3*36e5;
 const upcoming = () => S.events.filter(isUp).sort((a,b)=>evT(a)-evT(b));
 const past = () => S.events.filter(e=>!isUp(e)).sort((a,b)=>evT(b)-evT(a));
@@ -398,6 +407,7 @@ function vHome(){
     h += `<section class="card"><div class="row sp"><span class="lab">PROSSIMO APPUNTAMENTO</span><span class="row" style="gap:6px"><span class="chip ${isM?'partita':''}">${isM?'Partita':'Allenamento'}</span></span></div>
     <h2>${isM?'The Rimineser F.P. <span style="color:var(--red)">vs</span> '+esc(nx.opponent||'Avversario'):'Allenamento'}</h2>
     <div class="row" style="gap:14px"><span class="res" style="white-space:nowrap">${esc(nx.time||'--:--')}</span><span class="mute" style="text-transform:capitalize">${esc(fmtD(nx,{weekday:'long',day:'numeric',month:'long'}))}</span></div>
+    ${meetOf(nx)?`<div class="row" style="gap:6px;font-weight:600"><span class="chip">🕘 Ritrovo ${esc(meetOf(nx))}</span>${isM?'<span class="mute" style="font-size:13px">45 minuti prima</span>':''}</div>`:''}
     <div class="row mute" style="gap:6px"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s7-6.5 7-12a7 7 0 0 0-14 0c0 5.5 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg>${esc(nx.location||'Campo da definire')}</div>
     ${rsvpBtns(nx.id)}${bar(nx.id, true)}
     <div class="btns"><button class="sec" style="flex:1" data-act="who" data-e="${esc(nx.id)}">Presenti (${pres})</button>${isM?`<button class="pri" style="flex:1" data-act="openLu" data-e="${esc(nx.id)}">${nLu>1?'Formazioni ('+nLu+')':'Formazione'}</button>`:''}</div>
@@ -426,7 +436,7 @@ function vPresenze(){
   const ev = upcoming().slice(0,8);
   if (!ev.length) return `<h2>Presenze</h2><div class="empty">Nessun evento in arrivo.</div>`;
   return `<h2>Presenze</h2>` + ev.map(e=>{
-    return `<section class="card"><div class="row sp"><span class="chip ${e.type==='partita'?'partita':''}">${e.type==='partita'?'Partita':'Allenamento'}</span><span class="mute">${esc(fmtD(e))} · ${esc(e.time||'')}</span></div>
+    return `<section class="card"><div class="row sp"><span class="chip ${e.type==='partita'?'partita':''}">${e.type==='partita'?'Partita':'Allenamento'}</span><span class="mute">${esc(fmtD(e))} · ${esc(timesTxt(e))}</span></div>
     <h3>${esc(evName(e))}</h3>${rsvpBtns(e.id)}${bar(e.id)}
     <details><summary>Presenti</summary>
       ${attendees(e,true)}
@@ -443,6 +453,12 @@ function vFormazione(){
   if (!ms.find(e=>e.id===S.fe)) S.fe = ms[0].id;
   const e = ms.find(x=>x.id===S.fe);
   let h = `<h2>Formazione</h2><label>Partita<select data-ch="fe">${ms.map(x=>`<option value="${esc(x.id)}" ${x.id===S.fe?'selected':''}>${esc(fmtD(x))} – ${esc(evName(x))}</option>`).join('')}</select></label>`;
+  if (luLocked(e)){
+    const lus = getLus(e).filter(l=>l.published || canLineup());
+    h += `<section class="card install"><b>🔒 Formazioni bloccate</b><span class="mute">La partita è iniziata: le formazioni sono salvate così per sempre e nessuno può più modificarle.</span></section>`;
+    if (!lus.length) return h + `<div class="card"><p class="txt mute">Per questa partita non era stata inserita nessuna formazione.</p></div>`;
+    return h + lus.map(l=>`<section class="card"><div class="row sp"><h3>${esc(l.name||'Formazione')}</h3><span class="row" style="gap:6px">${l.published?'':'<span class="chip">Bozza</span>'}<span class="chip">${esc(l.module)}</span></span></div>${pitch(l)}${luCard(l)}</section>`).join('');
+  }
   if (!canLineup()){
     const pub = getLus(e).filter(l=>l.published);
     if (!pub.length) return h + `<div class="card"><p class="txt mute">Nessuna formazione ancora pubblicata per questa partita.</p></div>`;
@@ -472,7 +488,7 @@ function evRow(e){
   return `<div class="ev"><div class="ed"><b>${esc(fmtD(e,{day:'numeric'})||'–')}</b><small>${esc(fmtD(e,{weekday:'short'}))}</small></div>
   <div class="eb"><div class="row" style="gap:6px"><span class="chip ${e.type==='partita'?'partita':''}">${e.type==='partita'?'Partita':'Allenamento'}</span>${e.uisp?`<span class="chip">UISP ${e.uisp}ª</span>`:''}${my?`<span class="chip ${my}">${LAB[my]}</span>`:''}</div>
   <h3>${esc(evName(e))}${res?` <span class="res">${esc(e.result.us)}–${esc(e.result.them)}</span>`:''}</h3>
-  <span class="mute">${esc(e.time||'')}${e.location?' · '+esc(e.location):''}</span>${e.notes?`<span class="mute">${esc(e.notes)}</span>`:''}</div>
+  <span class="mute">${esc(timesTxt(e))}${e.location?' · '+esc(e.location):''}</span>${e.notes?`<span class="mute">${esc(e.notes)}</span>`:''}</div>
   ${S.coach?`<button class="lnk" data-act="editEv" data-id="${esc(e.id)}">Modifica</button>`:''}</div>`;
 }
 function byMonth(list){
@@ -715,11 +731,13 @@ function evForm(e){
   openSheet(`${head(e.id?'Modifica evento':'Nuovo evento')}<form data-form="ev" data-id="${esc(e.id||'')}">
   <label>Tipo<select name="tipo"><option value="partita" ${e.type==='partita'?'selected':''}>Partita</option><option value="allenamento" ${e.type==='allenamento'?'selected':''}>Allenamento</option></select></label>
   <div class="slots"><label>Data<input type="date" name="data" required value="${esc(e.date||'')}"></label><label>Ora<input type="time" name="ora" required value="${esc(e.time||'')}"></label></div>
+  <label>Ora di ritrovo (allenamenti e altri eventi)<input type="time" name="ritrovo" value="${esc(e.meet||'')}"></label>
+  <p class="mute" style="margin:0;font-size:13px">Per le partite il ritrovo è sempre 45 minuti prima dell'inizio: si calcola da solo.</p>
   <label>Avversario (solo partite)<input name="avversario" value="${esc(e.opponent||'')}"></label>
   <label>Campo / luogo<input name="luogo" value="${esc(e.location||'')}"></label>
-  <label>Note<textarea name="note" placeholder="Ritrovo, maglie, quota arbitro…">${esc(e.notes||'')}</textarea></label>
+  <label>Note<textarea name="note" placeholder="Maglie, quota arbitro…">${esc(e.notes||'')}</textarea></label>
   <div class="slots"><label>Gol nostri<input type="number" min="0" name="noi" value="${esc(e.result?.us??'')}"></label><label>Gol avversari<input type="number" min="0" name="loro" value="${esc(e.result?.them??'')}"></label></div>
-  <button class="pri" type="submit">Salva</button>${e.uisp?'<p class="mute" style="margin:0">Partita del campionato UISP: data, ora, campo e risultato si aggiornano da soli dai comunicati ufficiali.</p>':e.id?`<button class="sec" type="button" data-act="delEv" data-id="${esc(e.id)}">Elimina evento</button>`:''}</form>`);
+  <button class="pri" type="submit">Salva</button>${e.uisp?'<p class="mute" style="margin:0">Partita del campionato UISP: data, ora, campo e risultato si aggiornano da soli dai comunicati ufficiali.</p>':e.id&&!(luLocked(e)&&getLus(e).length)?`<button class="sec" type="button" data-act="delEv" data-id="${esc(e.id)}">Elimina evento</button>`:''}</form>`);
 }
 
 /* ---------- azioni ---------- */
@@ -769,7 +787,7 @@ const ACT = {
   cyc: d => { const o=['','si','forse','no']; setRsvp(d.id, d.e, o[(o.indexOf(ans(d.id,d.e))+1)%4]); },
   vote: d => { const i=+d.i, same=(S.votes[S.uid]?.answers||{})[d.p]===i; write(()=>setDoc(D('votes/'+S.uid), {answers:{[d.p]: same ? deleteField() : i}}, {merge:true})); },
   remind: d => { const e=S.events.find(x=>x.id===d.e); if (!e) return; const miss=squad().filter(id=>!ans(id,e.id)).map(nameOf);
-    const t = `⚽ The Rimineser F.P. – ${evName(e)}, ${fmtD(e)} ore ${e.time||''}.\nRispondete al sondaggio presenze sull'app: ${location.origin+location.pathname}${miss.length?'\nMancano: '+miss.join(', '):''}`;
+    const t = `⚽ The Rimineser F.P. – ${evName(e)}, ${fmtD(e)}${meetOf(e)?', ritrovo ore '+meetOf(e):''}, inizio ore ${e.time||''}.\nRispondete al sondaggio presenze sull'app: ${location.origin+location.pathname}${miss.length?'\nMancano: '+miss.join(', '):''}`;
     (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(()=>toast('Promemoria copiato: incollalo nel gruppo.'), ()=>openSheet(head('Promemoria')+`<textarea readonly>${esc(t)}</textarea>`)); },
   newPost: () => openSheet(`${head('Nuova comunicazione')}<form data-form="post"><label>Messaggio<textarea name="testo" required placeholder="Scrivi alla squadra…"></textarea></label>
     <label class="ck"><input type="checkbox" name="imp">Segna come importante</label>
@@ -782,22 +800,25 @@ const ACT = {
   mod: d => { S.draft.items[S.draft.idx].module = d.m; draw(); },
   pushOn: () => enablePush(),
   pushTest: () => { notifyTeam('test', '🔔 Prova notifiche', 'Se leggi questo messaggio, le notifiche funzionano!', '#home'); toast('Notifica di prova inviata'); },
-  pushRemind: d => { const e=S.events.find(x=>x.id===d.e); if (!e) return; notifyTeam('remind', `⏰ ${evName(e)} · ${fmtD(e)} ${e.time||''}`, 'Non hai ancora risposto alle presenze: ci sei?', '#presenze', {eventId:e.id}); toast('Promemoria inviato a chi non ha risposto'); },
+  pushRemind: d => { const e=S.events.find(x=>x.id===d.e); if (!e) return; notifyTeam('remind', `⏰ ${evName(e)} · ${fmtD(e)}${meetOf(e)?' · ritrovo '+meetOf(e):''} · inizio ${e.time||''}`, 'Non hai ancora risposto alle presenze: ci sei?', '#presenze', {eventId:e.id}); toast('Promemoria inviato a chi non ha risposto'); },
   ltab: d => { S.ltab = d.k; draw(); },
   lround: d => { S.lround = +d.n; draw(); },
   luSel: d => { S.draft.idx = +d.i; draw(); },
   luAdd: () => { const Dr=S.draft, cur=Dr.items[Dr.idx]; Dr.items.push({...JSON.parse(JSON.stringify(cur)), name:'Formazione '+(Dr.items.length+1), published:false}); Dr.idx = Dr.items.length-1; draw(); toast('Nuova formazione creata partendo da quella aperta.'); },
-  luDel: async (d,b) => { if (!confirm2(b)) return; const Dr=S.draft; Dr.items.splice(Dr.idx,1); if (!Dr.items.length) Dr.items.push(blankLu(1)); Dr.idx=0;
-    await write(()=>setDoc(D('events/'+Dr.eid), {lineups:Dr.items}, {merge:true}), 'Formazione eliminata'); draw(); },
-  who: d => { const e=S.events.find(x=>x.id===d.e); if (!e) return; openSheet(`${head('Presenti')}<p class="mute" style="margin:0">${esc(evName(e))} · ${esc(fmtD(e))} · ${esc(e.time||'')}</p>${attendees(e,false)}`); },
+  luDel: async (d,b) => { if (!confirm2(b)) return; const Dr=S.draft, e=S.events.find(x=>x.id===Dr.eid);
+    if (luLocked(e)) { toast('La partita è iniziata: le formazioni non si possono più modificare.'); draw(); return; }
+    Dr.items.splice(Dr.idx,1); if (!Dr.items.length) Dr.items.push(blankLu(1)); Dr.idx=0;
+    await write(()=>setDoc(D('events/'+Dr.eid), {lineups:Dr.items, lockAt:lockAtFor(e)}, {merge:true}), 'Formazione eliminata'); draw(); },
+  who: d => { const e=S.events.find(x=>x.id===d.e); if (!e) return; openSheet(`${head('Presenti')}<p class="mute" style="margin:0">${esc(evName(e))} · ${esc(fmtD(e))} · ${esc(timesTxt(e))}</p>${attendees(e,false)}`); },
   openLu: d => { S.fe = d.e; S.draft = null; ACT.go({t:'formazione'}); },
   editP: d => { const p=S.players[d.id]||{}; openSheet(`${head('Modifica')}<form data-form="editp" data-id="${esc(d.id)}"><label>Nome<input name="nome" required value="${esc(p.name||'')}"></label><label>Categoria${catSel(p.cat)}</label><p class="mute" style="margin:0">Mister, Preparatore atletico, Social media manager: possono pubblicare comunicazioni. Capitano: comunicazioni e formazioni.</p><label>Numero di maglia<input type="number" min="1" max="99" name="numero" value="${esc(p.number||'')}"></label><button class="pri" type="submit">Salva</button><button class="sec" type="button" data-act="delP" data-id="${esc(d.id)}">Rimuovi dalla rosa</button></form>`); },
   copyLu: () => { const src = past().concat(upcoming()).find(e=>e.type==='partita' && e.id!==S.draft.eid && getLus(e).length); if (!src) return toast('Nessuna formazione precedente da copiare.');
     const l = getLus(src).find(x=>x.published) || getLus(src)[0], cur = S.draft.items[S.draft.idx];
     Object.assign(cur, {module:l.module, slots:[...(l.slots||[])].concat(Array(7).fill('')).slice(0,7), bench:[...(l.bench||[])], tactic:l.tactic||''}); draw(); toast('Copiata da '+evName(src)+' ('+fmtD(src)+')'); },
   saveLu: async d => { const Dr=S.draft, pub=d.p==='1', e=S.events.find(x=>x.id===Dr.eid); if (!e) return;
+    if (luLocked(e)) { toast('La partita è iniziata: le formazioni non si possono più modificare.'); draw(); return; }
     const L = Dr.items[Dr.idx], was = L.published; L.bench = L.bench.filter(id=>!L.slots.includes(id)); L.published = pub;
-    if (await write(()=>setDoc(D('events/'+e.id), {lineups:Dr.items}, {merge:true}), pub?(was?'Formazione aggiornata':'Formazione pubblicata'):(was?'Formazione nascosta ai giocatori':'Bozza salvata'))) {
+    if (await write(()=>setDoc(D('events/'+e.id), {lineups:Dr.items, lockAt:lockAtFor(e)}, {merge:true}), pub?(was?'Formazione aggiornata':'Formazione pubblicata'):(was?'Formazione nascosta ai giocatori':'Bozza salvata'))) {
       if (pub && !was) notifyTeam('lineup', '⚽ Formazione pubblicata', `${L.name} per ${evName(e)} (${fmtD(e)}): modulo ${L.module}`, '#formazione');
       if (pub && !was) await write(()=>addDoc(C('posts'), {text:`Pubblicata la formazione "${L.name}" per ${evName(e)} di ${fmtD(e,{weekday:'long',day:'numeric',month:'long'})}: modulo ${L.module}. La trovate nella sezione Formazione.`, createdAt:Date.now(), author:asAdmin()?S.uid:actId()}));
       draw(); } else L.published = was; },
@@ -822,10 +843,12 @@ const FORMS = {
     const data={text:val(f,'testo'), important:f.elements.imp.checked, createdAt:Date.now(), author:asAdmin()?S.uid:actId()}; if (opts.length>1) data.options=opts;
     if (data.text && await write(()=>addDoc(C('posts'), data), 'Pubblicato')) { closeSheet(); notifyTeam(data.options?'poll':'post', data.options?'📊 Nuovo sondaggio':'📣 Nuova comunicazione', data.text, '#home'); } },
   ev: async f => { const id=f.dataset.id, old=S.events.find(e=>e.id===id)||{}, noi=val(f,'noi'), loro=val(f,'loro');
-    const data={type:val(f,'tipo'), date:val(f,'data'), time:val(f,'ora'), opponent:val(f,'avversario'), location:val(f,'luogo'), home:old.home!==false, notes:val(f,'note'),
+    const data={type:val(f,'tipo'), date:val(f,'data'), time:val(f,'ora'), meet:val(f,'tipo')==='partita' ? '' : val(f,'ritrovo'), opponent:val(f,'avversario'), location:val(f,'luogo'), home:old.home!==false, notes:val(f,'note'),
       result: noi!=='' && loro!=='' ? {us:+noi, them:+loro} : null};
     if (!data.date) return toast('Inserisci la data.');
     if (old.lineup) data.lineup = old.lineup; if (old.lineups) data.lineups = old.lineups;
+    // se la partita viene spostata prima che inizi, il blocco delle formazioni segue il nuovo orario
+    if (old.lockAt && !luLocked(old) && canLineup() && data.type==='partita') data.lockAt = lockAtFor(data);
     const ref = id ? D('events/'+id) : doc(C('events'));
     if (await write(()=>setDoc(ref, data, {merge:true}), 'Evento salvato')) closeSheet(); },
   me: async f => { if (S.admin && /amministratore/i.test(val(f,'nome'))) return toast('Come giocatore usa il tuo nome, non "Amministratore".');

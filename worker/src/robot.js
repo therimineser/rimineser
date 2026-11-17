@@ -35,6 +35,9 @@ export function romeToMs(date, time) {
   for (let i = 0; i < 2; i++) ms = wall - (rome(ms).utc - Math.floor(ms / 1000) * 1000);
   return ms;
 }
+// orario per le notifiche: "Ritrovo 21:15 · inizio 22:00" (partite: ritrovo sempre 45 minuti prima; altri eventi: events.meet)
+const hmMinus = (t, min) => { const m = /^(\d{1,2})[:.](\d{2})$/.exec(t || ''); if (!m) return ''; const x = ((+m[1]) * 60 + (+m[2]) - min + 1440) % 1440; return String(Math.floor(x / 60)).padStart(2, '0') + ':' + String(x % 60).padStart(2, '0'); };
+export const timesOf = e => { const meet = e.type === 'partita' ? hmMinus(e.time, 45) : (e.meet || ''); return meet ? `Ritrovo ${meet} · inizio ${e.time || ''}` : `Ore ${e.time || ''}`; };
 const norm = s => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 const keyOf = s => String(s).replace(/[^\w.:-]/g, '_').slice(0, 200);
 
@@ -180,15 +183,15 @@ export async function run(env, opt) {
         const title = `⚽ ${when}: The Rimineser F.P. vs ${e.opponent || 'avversario'}`;
         const all = await everyone(), yes = [], none = [];
         for (const u of all) { const a = await answer(u, e.id); if (a === 'si' || a === 'forse') yes.push(u); else if (!a) none.push(u); }
-        let n = await send(yes, { title, body: `Ore ${e.time || ''}${where}. Ci vediamo in campo!`, url: '#home', tag: 'match-' + e.id }, 'r' + h);
-        n += await send(none, { title, body: `Ore ${e.time || ''}${where}. Non hai ancora risposto: ci sei?`, url: '#presenze', tag: 'match-' + e.id }, 'r' + h);
+        let n = await send(yes, { title, body: `${timesOf(e)}${where}. Ci vediamo in campo!`, url: '#home', tag: 'match-' + e.id }, 'r' + h);
+        n += await send(none, { title, body: `${timesOf(e)}${where}. Non hai ancora risposto: ci sei?`, url: '#presenze', tag: 'match-' + e.id }, 'r' + h);
         log(`Promemoria partita ${e.id} (${h} ore prima) → ${n} telefoni`);
       } else if (e.date === tomorrow && R.hour >= REMIND_FROM_HOUR && !reminded[e.id] && !busy()) {
         reminded[e.id] = true;
         if (!(await claim('train-' + e.id))) continue;
         const none = [];
         for (const u of await everyone()) if (!(await answer(u, e.id))) none.push(u);
-        const n = await send(none, { title: '⏰ Domani: Allenamento', body: `Ore ${e.time || ''}${where}. Non hai ancora risposto: ci sei?`, url: '#presenze', tag: 'remind-' + e.id }, 'remind');
+        const n = await send(none, { title: '⏰ Domani: Allenamento', body: `${timesOf(e)}${where}. Non hai ancora risposto: ci sei?`, url: '#presenze', tag: 'remind-' + e.id }, 'remind');
         log(`Promemoria allenamento ${e.id} → ${n} telefoni`);
       }
     }

@@ -141,6 +141,20 @@ def event_start(e):
     return d.replace(tzinfo=TZ) if TZ else d
 
 
+def times_of(e):
+    """'Ritrovo 21:15 · inizio 22:00' (partite: ritrovo sempre 45 minuti prima; altri eventi: campo meet)."""
+    t = e.get('time') or ''
+    meet = e.get('meet') or ''
+    if e.get('type') == 'partita':
+        try:
+            h, m = (int(x) for x in t.replace('.', ':').split(':'))
+            x = (h * 60 + m - 45) % 1440
+            meet = '%02d:%02d' % (x // 60, x % 60)
+        except Exception:
+            meet = ''
+    return ('Ritrovo %s · inizio %s' % (meet, t)) if meet else ('Ore %s' % t)
+
+
 def ev_title(e):
     return ('vs ' + (e.get('opponent') or 'avversario')) if e.get('type') == 'partita' else 'Allenamento'
 
@@ -294,12 +308,12 @@ def main():
             title = '⚽ %s: The Rimineser F.P. vs %s' % (when, e.get('opponent') or 'avversario')
             yes = [u for u in everyone if answer(u, eid) in ('si', 'forse')]
             none = [u for u in everyone if not answer(u, eid)]
-            n = sender.send(yes, {'title': title, 'body': 'Ore %s%s. Ci vediamo in campo!' % (e.get('time', ''), where), 'url': '#home', 'tag': 'match-' + eid}, 'r%d' % h)
-            n += sender.send(none, {'title': title, 'body': 'Ore %s%s. Non hai ancora risposto: ci sei?' % (e.get('time', ''), where), 'url': '#presenze', 'tag': 'match-' + eid}, 'r%d' % h)
+            n = sender.send(yes, {'title': title, 'body': '%s%s. Ci vediamo in campo!' % (times_of(e), where), 'url': '#home', 'tag': 'match-' + eid}, 'r%d' % h)
+            n += sender.send(none, {'title': title, 'body': '%s%s. Non hai ancora risposto: ci sei?' % (times_of(e), where), 'url': '#presenze', 'tag': 'match-' + eid}, 'r%d' % h)
             log('Promemoria partita %s (%d ore prima) → %d telefoni' % (eid, h, n))
         elif e.get('date') == tomorrow and now.hour >= REMIND_FROM_HOUR and not reminded.get(eid):
             targets = [u for u in everyone if not answer(u, eid)]
-            n = sender.send(targets, {'title': '⏰ Domani: ' + ev_title(e), 'body': 'Ore %s%s. Non hai ancora risposto: ci sei?' % (e.get('time', ''), where),
+            n = sender.send(targets, {'title': '⏰ Domani: ' + ev_title(e), 'body': '%s%s. Non hai ancora risposto: ci sei?' % (times_of(e), where),
                                       'url': '#presenze', 'tag': 'remind-' + eid}, 'remind')
             log('Promemoria allenamento %s → %d telefoni' % (eid, n))
             reminded[eid] = True

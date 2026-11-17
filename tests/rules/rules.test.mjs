@@ -45,8 +45,8 @@ for (const u of ALL) {
   await t(`${u}: nuovo sondaggio`, can, () => addDoc(collection(db(u), 'posts'), { text: 'Sondaggio', options: ['a', 'b'], author: u, createdAt: 2 }));
   await t(`${u}: elimina comunicazione`, can, () => deleteDoc(doc(db(u), 'posts/x')));
   await t(`${u}: legge comunicazioni`, true, () => getDoc(doc(db(u), 'posts/x')));
-  await t(`${u}: modifica formazione`, lu, () => updateDoc(doc(db(u), 'events/ev'), { lineups: [{ name: 'B', published: true }] }));
-  await t(`${u}: crea partita già con formazione`, lu, () => setDoc(doc(db(u), 'events/nuovo'), { type: 'partita', date: '2026-12-09', lineups: [{ name: 'A' }] }));
+  await t(`${u}: modifica formazione`, lu, () => updateDoc(doc(db(u), 'events/ev'), { lineups: [{ name: 'B', published: true }], lockAt: Date.now() + 86400000 }));
+  await t(`${u}: crea partita già con formazione`, lu, () => setDoc(doc(db(u), 'events/nuovo'), { type: 'partita', date: '2026-12-09', lineups: [{ name: 'A' }], lockAt: Date.now() + 86400000 }));
   await t(`${u}: crea evento senza formazione`, true, () => setDoc(doc(db(u), 'events/nuovo2'), { type: 'allenamento', date: '2026-12-09' }));
   await t(`${u}: modifica orario partita (formazione invariata)`, true, () => setDoc(doc(db(u), 'events/ev'), { type: 'partita', date: '2026-12-01', time: '21:00', lineups: [{ name: 'A', published: true }] }, { merge: true }));
   await t(`${u}: segna presenza`, true, () => setDoc(doc(db(u), 'rsvp/' + u), { answers: { ev: 'si' } }, { merge: true }));
@@ -140,6 +140,24 @@ await t('membro: scouting con campi inventati', false, () => setDoc(doc(db('d1')
 await t('membro: cancella lo scouting', false, async () => { await seedSc(LK('d1')); return deleteDoc(doc(db('d1'), 'scout/ev')); });
 await t('admin: cancella lo scouting', true, async () => { await seedSc(LK('d1')); return deleteDoc(doc(db('admin'), 'scout/ev')); });
 await t('due prendono il lock insieme: il secondo no', false, async () => { await seedSc(null); await updateDoc(doc(db('p2'), 'scout/ev'), { lock: { uid: 'p2', name: 'p2', at: serverTimestamp() } }); return updateDoc(doc(db('p4'), 'scout/ev'), { lock: { uid: 'p4', name: 'p4', at: serverTimestamp() } }); });
+// formazioni bloccate per sempre dall'inizio della partita (lockAt)
+const seedEv = (lockAt) => env.withSecurityRulesDisabled(c => setDoc(doc(c.firestore(), 'events/blk'), { type: 'partita', date: '2026-11-01', time: '21:00', lineups: [{ name: 'A', published: true, slots: ['p2'] }], lockAt }));
+const PAST = () => Date.now() - 60000, NEXT = () => Date.now() + 3600000;
+for (const u of ['admin', 'c1']) {
+  await t(`${u}: modifica formazione PRIMA dell'inizio`, true, async () => { await seedEv(NEXT()); return updateDoc(doc(db(u), 'events/blk'), { lineups: [{ name: 'B' }], lockAt: NEXT() }); });
+  await t(`${u}: modifica formazione DOPO l'inizio`, false, async () => { await seedEv(PAST()); return updateDoc(doc(db(u), 'events/blk'), { lineups: [{ name: 'B' }], lockAt: NEXT() }); });
+  await t(`${u}: toglie le formazioni DOPO l'inizio`, false, async () => { await seedEv(PAST()); return updateDoc(doc(db(u), 'events/blk'), { lineups: deleteField() }); });
+  await t(`${u}: sposta in avanti il blocco DOPO l'inizio (per sbloccare)`, false, async () => { await seedEv(PAST()); return updateDoc(doc(db(u), 'events/blk'), { lockAt: NEXT() }); });
+  await t(`${u}: toglie il blocco DOPO l'inizio`, false, async () => { await seedEv(PAST()); return updateDoc(doc(db(u), 'events/blk'), { lockAt: deleteField() }); });
+  await t(`${u}: cancella l'evento DOPO l'inizio`, false, async () => { await seedEv(PAST()); return deleteDoc(doc(db(u), 'events/blk')); });
+  await t(`${u}: salva formazione con blocco nel passato`, false, async () => { await seedEv(NEXT()); return updateDoc(doc(db(u), 'events/blk'), { lineups: [{ name: 'B' }], lockAt: PAST() }); });
+  await t(`${u}: salva formazione senza blocco`, false, () => setDoc(doc(db(u), 'events/nuovo2'), { type: 'partita', date: '2026-12-09', lineups: [{ name: 'A' }] }));
+  await t(`${u}: sposta la partita (e il blocco) PRIMA dell'inizio`, true, async () => { await seedEv(NEXT()); return updateDoc(doc(db(u), 'events/blk'), { time: '22:00', lockAt: NEXT() + 3600000 }); });
+}
+await t('admin: segna il risultato DOPO l\'inizio (formazioni intatte)', true, async () => { await seedEv(PAST()); return updateDoc(doc(db('admin'), 'events/blk'), { result: { us: 3, them: 1 } }); });
+await t('membro: aggiunge note DOPO l\'inizio (formazioni intatte)', true, async () => { await seedEv(PAST()); return updateDoc(doc(db('p2'), 'events/blk'), { notes: 'bella partita' }); });
+await t('membro: imposta il blocco (non può)', false, async () => { await seedEv(NEXT()); return updateDoc(doc(db('p2'), 'events/blk'), { lockAt: NEXT() + 1000 }); });
+await t('membro: cancella evento futuro senza blocco attivo', true, async () => { await seedEv(NEXT()); return deleteDoc(doc(db('p2'), 'events/blk')); });
 await t('qualsiasi: crea squadra già esistente', false, () => setDoc(doc(db('nuovo'), 'config/team'), { coaches: ['nuovo'] }));
 // "chi è online"
 await t('membro: scrive il proprio battito online', true, () => setDoc(doc(db('p2'), 'presence/p2'), { at: serverTimestamp() }));

@@ -31,10 +31,17 @@ service cloud.firestore {
       allow delete: if canPost();
       allow create, update: if canPost() && request.resource.data.text is string && request.resource.data.text.size() < 5000;
     }
+    // Formazioni: lockAt = inizio della partita (ms). Prima dell'inizio le modificano Capitano e amministratore;
+    // dall'inizio sono bloccate PER SEMPRE: nessuno (nemmeno l'amministratore) può cambiarle, toglierle o cancellare l'evento.
+    function evLocked() { return 'lockAt' in resource.data && request.time.toMillis() >= resource.data.lockAt; }
+    function futureLock() { return request.resource.data.get('lockAt', 0) is int && request.resource.data.lockAt > request.time.toMillis(); }
     match /events/{id} {
-      allow read, delete: if isMember();
-      allow create: if isMember() && (!request.resource.data.keys().hasAny(['lineups', 'lineup']) || canLineup());
-      allow update: if isMember() && (!changes().hasAny(['lineups', 'lineup']) || canLineup());
+      allow read: if isMember();
+      allow delete: if isMember() && !evLocked();
+      allow create: if isMember() && (!request.resource.data.keys().hasAny(['lineups', 'lineup', 'lockAt']) || (canLineup() && futureLock()));
+      allow update: if isMember()
+                       && (!changes().hasAny(['lineups', 'lineup']) || (canLineup() && !evLocked() && futureLock()))
+                       && (!changes().hasAny(['lockAt']) || (canLineup() && !evLocked() && futureLock()));
     }
     match /players/{uid} {
       allow read: if isMember() || (signedIn() && request.auth.uid == uid);

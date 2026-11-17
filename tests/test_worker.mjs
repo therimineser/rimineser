@@ -155,6 +155,7 @@ check(!(await go()).length, 'Robot in ritardo: poi niente doppioni');
 base(at('2026-11-19', '21:01'));
 LEAGUE = { team: 'The Rimineser F.P.', updated: 'x', standings: [], rounds: [{ n: 7, matches: [{ home: 'Oasi del Mare', away: 'THE RIMINESER F.P.', date: '2026-11-20', time: '21:00', field: 'Riccione' }] }] };
 s = await go(); check(s.length === 7 && s[0][1].title === '⚽ Domani: The Rimineser F.P. vs Oasi del Mare' && s[0][1].body.includes('Campo Riccione'), 'Partita UISP: promemoria dal calendario del campionato', s[0]);
+check(s[0][1].body.startsWith('Ritrovo 20:15 · inizio 21:00'), 'Promemoria partita: ritrovo 45 minuti prima e ora di inizio', s[0][1].body);
 
 // promemoria partite: scelta separata 24/12/2 ore (con la vecchia scelta "remind" come valore di partenza)
 await match(at('2026-11-19', '21:03'), {});
@@ -166,6 +167,9 @@ base(at('2026-11-18', '11:00')); put('events/tr', { type: 'allenamento', date: '
 check(!(await go()).length, 'Allenamento: prima delle 12 del giorno prima niente');
 NOW = at('2026-11-18', '12:10'); s = await go();
 check(eq(who(s, 'Domani'), ['admin', 'c1', 'f1', 'm1', 'p3', 'p4']), 'Allenamento: dalle 12 del giorno prima solo a chi non ha risposto', who(s));
+check(s[0][1].body.startsWith('Ore 20:30'), 'Allenamento senza ritrovo: solo l\'ora', s[0][1].body);
+base(at('2026-11-18', '12:10')); put('events/tr', { type: 'allenamento', date: '2026-11-19', time: '20:30', meet: '20:15' });
+s = await go(); check(s.length && s[0][1].body.startsWith('Ritrovo 20:15 · inizio 20:30'), 'Allenamento con ritrovo: ritrovo e inizio', s[0] && s[0][1].body);
 check(!(await go()).length, 'Allenamento: non ripetuto');
 
 // 4. comunicato UISP
