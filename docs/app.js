@@ -713,7 +713,7 @@ const SC_SHOTS = ['on_in','on_out','off_in','off_out','blk','goal'];
 function scRadar(A, us, opp){
   const axes = [['Gol',['goal']],['Tiri',SC_SHOTS],['In porta',['on_in','on_out','goal']],['Angoli',['corner']],['Parate',['save']],['Falli',['foul']]];
   const val = (t, ks) => A.filter(a=>a.t===t && ks.includes(a.k)).length;
-  const W = 300, H = 270, cx = 150, cy = 140, R = 92, n = axes.length;
+  const W = 340, H = 270, cx = 170, cy = 140, R = 88, n = axes.length;
   const pt = (i, r) => { const ang = -Math.PI/2 + i*2*Math.PI/n; return [cx + r*Math.cos(ang), cy + r*Math.sin(ang)]; };
   const data = axes.map(([l,ks])=>({l, u:val('us',ks), t:val('them',ks)})).map(d=>({...d, m:Math.max(d.u, d.t, 1)}));
   const poly = key => data.map((d,i)=>pt(i, R*d[key]/d.m).map(v=>v.toFixed(1)).join(',')).join(' ');
@@ -750,6 +750,30 @@ function scHist(A, title, sub, series, fmt){
   return `<figure class="sc-fig"><figcaption><b>${title}</b><span class="mute">${sub}</span></figcaption><svg viewBox="0 0 ${W} ${H+4}" role="img" aria-label="${esc(title)}">${g}</svg>
     ${series.length>1?`<div class="sc-legend">${series.map(([c,nm])=>`<span><i class="${c}"></i>${esc(nm)}</span>`).join('')}</div>`:''}</figure>`;
 }
+// radar solo della squadra: tutte percentuali 0-100% sulla stessa scala (il bordo = 100%)
+function scRadarUs(A, us){
+  const c = ks => A.filter(a=>a.t==='us' && ks.includes(a.k)).length;
+  const pct = (a, b) => a+b ? Math.round(a/(a+b)*100) : null;
+  const shots = c(SC_SHOTS), onT = c(['on_in','on_out','goal']), inBox = c(['on_in','off_in']), outBox = c(['on_out','off_out']);
+  const axes = [
+    ['Passaggi', pct(c(['pass_ok']), c(['pass_ko'])), `${c(['pass_ok'])}/${c(['pass_ok'])+c(['pass_ko'])} riusciti`],
+    ['Cross', pct(c(['cross_ok']), c(['cross_ko'])), `${c(['cross_ok'])}/${c(['cross_ok'])+c(['cross_ko'])} riusciti`],
+    ['In porta', shots ? Math.round(onT/shots*100) : null, `${onT}/${shots} tiri`],
+    ['Gol / tiri', shots ? Math.round(c(['goal'])/shots*100) : null, `${c(['goal'])} gol su ${shots} tiri`],
+    ['Da area', pct(inBox, outBox), `${inBox} da area, ${outBox} da fuori`],
+    ['Recuperi', pct(c(['recov']), c(['lost'])), `${c(['recov'])} recuperati, ${c(['lost'])} persi`]];
+  const W = 340, H = 270, cx = 170, cy = 140, R = 88, n = axes.length;
+  const pt = (i, r) => { const ang = -Math.PI/2 + i*2*Math.PI/n; return [cx + r*Math.cos(ang), cy + r*Math.sin(ang)]; };
+  const grid = [25,50,75,100].map(f=>`<polygon points="${axes.map((_,i)=>pt(i,R*f/100).map(v=>v.toFixed(1)).join(',')).join(' ')}" class="sc-grid"/>`).join('')
+    + axes.map((_,i)=>{ const [x,y]=pt(i,R); return `<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" class="sc-grid"/>`; }).join('')
+    + [50,100].map(f=>`<text x="${cx+3}" y="${(cy-R*f/100+10).toFixed(1)}" class="sc-ax">${f}%</text>`).join('');
+  const poly = axes.map(([,v],i)=>pt(i, R*(v||0)/100).map(x=>x.toFixed(1)).join(',')).join(' ');
+  const lab = axes.map(([l,v],i)=>{ const [x,y]=pt(i,R+22); const anc = Math.abs(x-cx)<6 ? 'middle' : x>cx ? 'start' : 'end';
+    return `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="${anc}" class="sc-ax"><tspan font-weight="700">${l}</tspan><tspan x="${x.toFixed(1)}" dy="13">${v==null?'–':v+'%'}</tspan></text>`; }).join('');
+  const dots = axes.map(([l,v,det],i)=>{ const [x,y]=pt(i, R*(v||0)/100); return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4" class="sc-dot us"/><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="14" fill="transparent" data-act="scTip" data-tip="${esc(l)}: ${v==null?'nessun dato':v+'%'} (${esc(det)})"/>`; }).join('');
+  return `<figure class="sc-fig"><figcaption><b>Statistiche di ${esc(us)}</b><span class="mute">Tutto in percentuale: più la forma è grande, meglio è. Il bordo è il 100%.</span></figcaption>
+    <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Radar ${esc(us)}: ${axes.map(([l,v])=>`${l} ${v==null?'nessun dato':v+'%'}`).join(', ')}">${grid}<polygon points="${poly}" class="sc-area us"/>${dots}${lab}</svg></figure>`;
+}
 function scCharts(A, us, opp){
   if (!A.some(a=>a.k!=='sub' && a.k!=='mod')) return '';
   const shots = t => xs => xs.filter(a=>a.t===t && SC_SHOTS.includes(a.k)).length;
@@ -757,6 +781,7 @@ function scCharts(A, us, opp){
   return `<section class="card"><span class="lab">GRAFICI</span>${scRadar(A, us, opp)}
     ${scHist(A, 'Tiri ogni 5 minuti', 'Gol compresi. Tocca una barra per il numero.', [['us', us, shots('us')], ['them', opp, shots('them')]])}
     ${scHist(A, `Passaggi riusciti ogni 5 minuti (${esc(us)})`, 'Percentuale sui passaggi segnati in quei 5 minuti; vuoto = nessun passaggio segnato.', [['us', 'Passaggi riusciti', passPct]], '%')}
+    ${scRadarUs(A, us)}
     <p class="sc-tip mute" id="scTip" aria-live="polite">Tocca un punto o una barra per vedere il valore.</p></section>`;
 }
 // il cronometro si aggiorna da solo senza ridisegnare la pagina
