@@ -1,4 +1,4 @@
-Test regole Firestore: 348/348 superati
-Eseguito: 17/11/2026 21:43 · commit 97684e0
+Test regole Firestore: 469/469 superati
+Eseguito: 17/11/2026 23:18 · commit c3305ab
 
-Pubblicazione su Firebase: regole pubblicate (186f6104-80be-478f-8377-3337bef2495f)
+Pubblicazione su Firebase: regole pubblicate (6a802c97-4e40-4146-b551-40a283e82c42)
