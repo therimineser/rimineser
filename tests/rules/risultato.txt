@@ -1,3 +1,3 @@
-Test regole Firestore: 281/281 superati
-Eseguito: 17/11/2026 14:37 · commit 62681f3
+Test regole Firestore: 282/282 superati
+Eseguito: 17/11/2026 14:42 · commit 0d62a8b
 
