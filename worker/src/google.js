@@ -68,6 +68,7 @@ export const toFs = v => {
   if (v === null || v === undefined) return { nullValue: null };
   if (typeof v === 'boolean') return { booleanValue: v };
   if (typeof v === 'number') return Number.isInteger(v) ? { integerValue: String(v) } : { doubleValue: v };
+  if (v instanceof Date) return { timestampValue: v.toISOString() };
   if (typeof v === 'string') return { stringValue: v };
   if (Array.isArray(v)) return { arrayValue: { values: v.map(toFs) } };
   if (typeof v === 'object') return { mapValue: { fields: Object.fromEntries(Object.entries(v).map(([k, x]) => [k, toFs(x)])) } };

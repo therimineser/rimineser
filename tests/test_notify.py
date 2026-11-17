@@ -170,6 +170,12 @@ check(DB['robot/state'].get('logShown', '').startswith('2026-11-17 14:00:01'), '
 DB['robot/state']['workerAt'] = int(time.time() * 1000) - 10 * 60000
 check(who(run()) == ['admin', 'c1', 'f1', 'm1', 'p2', 'p3', 'p4'], 'Worker fermo da 10 minuti: la riserva GitHub invia lei')
 
+# quante persone sono online (riserva)
+base(NOW); now_utc = dt.datetime.now(dt.timezone.utc)
+DB['presence/p2'] = {'at': (now_utc - dt.timedelta(seconds=30)).strftime('%Y-%m-%dT%H:%M:%S.%fZ')}
+DB['presence/m1'] = {'at': (now_utc - dt.timedelta(minutes=10)).strftime('%Y-%m-%dT%H:%M:%S.%fZ')}
+run(); check(DB.get('stats/online', {}).get('n') == 1, 'Online (riserva): solo il numero, battiti recenti', DB.get('stats/online'))
+
 bad = [r for r in R if not r[0]]
 for r in bad: print('FALLITO', r[1], '->', str(r[2])[:300])
 print('Robot notifiche: %d/%d controlli superati' % (len(R) - len(bad), len(R)))

@@ -65,10 +65,15 @@ service cloud.firestore {
       allow read, update, delete: if false;
     }
     match /presence/{uid} {
-      // "chi è online": ognuno scrive solo il proprio battito (solo l'ora del server), gli iscritti lo leggono
-      allow read: if isMember();
+      // "chi è online": ognuno scrive solo il proprio battito (solo l'ora del server); NESSUNO lo legge dall'app:
+      // il robot (accesso da server) conta i battiti e pubblica solo il numero in stats/online
+      allow read: if false;
       allow create, update: if isMember() && request.auth.uid == uid && request.resource.data.keys().hasOnly(['at']) && request.resource.data.at == request.time;
       allow delete: if signedIn() && request.auth.uid == uid;
+    }
+    match /stats/{id} {
+      allow read: if isMember();   // stats/online = {n}: solo quante persone sono online, mai chi
+      allow write: if false;       // lo scrive il robot
     }
     match /private/{id} {
       // gettone GitHub: solo l'amministratore

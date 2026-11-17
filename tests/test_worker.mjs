@@ -204,9 +204,16 @@ const per = new Set(all.map(([u, d]) => u + '|' + d.title));
 check(all.length === 201 && per.size === 201, 'Tre comunicazioni a 67 telefoni: 201 notifiche, nessun doppione', all.length);
 check(maxCalls <= 48, 'Tre comunicazioni: mai oltre 48 chiamate per giro', maxCalls);
 // giro tranquillo: poche letture di Firestore
-base(T0); await go(); check(CALLS <= 9, 'Giro senza novità: poche chiamate (' + CALLS + ')', CALLS);
+base(T0); await go(); check(CALLS <= 11, 'Giro senza novità: poche chiamate (' + CALLS + ')', CALLS);
 check(typeof get('robot/state').workerAt === 'number', 'Battito del Worker salvato per il robot di riserva');
 
+// 8. quante persone sono online: solo il numero in stats/online
+base(T0); const iso = ms => new Date(ms).toISOString();
+put('presence/p2', { at: iso(T0 - 30000) }); put('presence/c1', { at: iso(T0 - 90000) }); put('presence/m1', { at: iso(T0 - 10 * 60000) });
+await go(); check(get('stats/online') && get('stats/online').n === 2, 'Online: conta solo i battiti degli ultimi 3 minuti', get('stats/online'));
+const t1 = DB['stats/online'].t; await go(); check(DB['stats/online'].t === t1, 'Online: se il numero non cambia non riscrive');
+delete DB['presence/p2']; await go(); check(get('stats/online').n === 1, 'Online: chi chiude l\'app non viene più contato', get('stats/online'));
+check(!Object.keys(get('stats/online')).some(k => !['n', 'at'].includes(k)), 'Online: nel numero pubblicato nessun nome', get('stats/online'));
 // 7. chiamata dall'app: accesso verificato
 globalThis.fetch = fakeFetch;
 base(T0); put('outbox/a', { kind: 'post', title: 'Da app', sent: false });

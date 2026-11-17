@@ -238,6 +238,12 @@ export async function run(env, opt) {
         log(`Comunicato UISP → ${n} telefoni`);
       }
     }
+    // 5) quante persone sono online: conta i battiti degli ultimi 3 minuti e pubblica SOLO il numero (stats/online)
+    if (!busy()) {
+      const on = await st.query('presence', [['at', 'GREATER_THAN_OR_EQUAL', new Date(nowMs - 3 * 60000)]]);
+      const n = Object.keys(on).length;
+      if (n !== state.online) { await st.patch('stats/online', { n, at: nowMs }); changed.online = n; }
+    }
     changed.workerAt = nowMs;   // il robot su GitHub vede che il Worker è vivo e non fa doppioni
   }
 

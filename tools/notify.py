@@ -364,6 +364,17 @@ def main():
             log('Comunicato UISP → %d telefoni' % n)
         changed_state['uisp'] = L['updated']
 
+    # 5) quante persone sono online (solo il numero, in stats/online)
+    try:
+        lim = dt.datetime.now(dt.timezone.utc) - dt.timedelta(minutes=3)
+        n = sum(1 for v in st.list('presence').values()
+                if isinstance(v.get('at'), str) and dt.datetime.fromisoformat(v['at'].replace('Z', '+00:00')) >= lim)
+        if n != state.get('online'):
+            st.patch('stats/online', {'n': n, 'at': int(dt.datetime.now().timestamp() * 1000)})
+            changed_state['online'] = n
+    except Exception as e:
+        log('Conteggio online non riuscito:', e)
+
     if changed_state:
         st.patch('robot/state', changed_state)
     sender.cleanup()

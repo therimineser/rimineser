@@ -1,6 +1,6 @@
 // Test delle regole Firestore (eseguiti dal robot GitHub "Test regole" sull'emulatore ufficiale).
 import { initializeTestEnvironment, assertSucceeds, assertFails } from '@firebase/rules-unit-testing';
-import { doc, getDoc, setDoc, updateDoc, deleteDoc, addDoc, collection, deleteField, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, addDoc, collection, deleteField, serverTimestamp } from 'firebase/firestore';
 import { readFileSync, writeFileSync } from 'node:fs';
 
 const env = await initializeTestEnvironment({
@@ -109,7 +109,13 @@ await t('membro: battito online di un altro', false, () => setDoc(doc(db('p2'), 
 await t('membro: battito online con ora finta', false, () => setDoc(doc(db('p2'), 'presence/p2'), { at: new Date(2030, 0, 1) }));
 await t('membro: battito online con altri campi', false, () => setDoc(doc(db('p2'), 'presence/p2'), { at: serverTimestamp(), x: 1 }));
 await t('in attesa: scrive battito online', false, () => setDoc(doc(db('pend'), 'presence/pend'), { at: serverTimestamp() }));
-await t('membro: legge chi è online', true, () => getDoc(doc(db('p2'), 'presence/m1')));
+await t('membro: legge chi è online', false, () => getDoc(doc(db('p2'), 'presence/m1')));
+await t('admin: legge chi è online', false, () => getDoc(doc(db('admin'), 'presence/m1')));
+await t('membro: legge il proprio battito', false, () => getDoc(doc(db('p2'), 'presence/p2')));
+await t('membro: elenca chi è online', false, () => getDocs(collection(db('p2'), 'presence')));
+await t('membro: legge quante persone sono online', true, () => getDoc(doc(db('p2'), 'stats/online')));
+await t('in attesa: legge quante persone sono online', false, () => getDoc(doc(db('pend'), 'stats/online')));
+await t('admin: scrive il numero di online', false, () => setDoc(doc(db('admin'), 'stats/online'), { n: 99 }));
 await t('in attesa: legge chi è online', false, () => getDoc(doc(db('pend'), 'presence/m1')));
 await t('non registrato: legge chi è online', false, () => getDoc(doc(db(null), 'presence/m1')));
 await t('membro: toglie il proprio battito', true, () => deleteDoc(doc(db('p2'), 'presence/p2')));

@@ -153,8 +153,8 @@ onAuthStateChanged(auth, u=>{
 
 /* ---------- chi è online ---------- */
 // Ogni app aperta (e visibile) scrive presence/<uid> = ora del server ogni minuto; chiudendo o nascondendo l'app lo toglie.
-// La Rosa legge presence solo mentre è aperta (poche letture) e mostra solo QUANTI sono online (battito negli ultimi 3 minuti), non chi.
-const ONLINE_MS = 3*60*1000;
+// Nessuno può leggere presence (regole): il robot conta ogni minuto i battiti degli ultimi 3 minuti e pubblica solo il numero
+// in stats/online, che la Rosa legge mentre è aperta.
 let beatTimer = null, presSub = null;
 const beat = () => { if (S.phase==='app' && S.uid && document.visibilityState==='visible') setDoc(D('presence/'+S.uid), {at: serverTimestamp()}).catch(()=>{}); };
 function presenceOn(on){
@@ -165,16 +165,11 @@ function presenceOff(){ presenceOn(false); if (S.uid) return deleteDoc(D('presen
 document.addEventListener('visibilitychange', ()=>{ if (S.phase!=='app') return; if (document.visibilityState==='visible') presenceOn(true); else presenceOff(); });
 addEventListener('pagehide', ()=>{ if (S.phase==='app') presenceOff(); });
 function watchPresence(on){
-  if (on && !presSub) presSub = onSnapshot(C('presence'), s=>{ S.presence = Object.fromEntries(s.docs.map(d=>[d.id, d.data().at])); if (S.tab==='rosa') draw(); }, ()=>{});
+  if (on && !presSub) presSub = onSnapshot(D('stats/online'), s=>{ S.online = s.exists() ? s.data().n : null; if (S.tab==='rosa') draw(); }, ()=>{});
   if (!on && presSub) { presSub(); presSub = null; }
 }
-setInterval(()=>{ if (S.phase==='app' && S.tab==='rosa') draw(); }, 30*1000);
-const atMs = v => !v ? 0 : typeof v.toMillis === 'function' ? v.toMillis() : +new Date(v);
-function isOnline(id){
-  const pr = S.presence || {}, owner = (S.players[id]||{}).owner;
-  if (id === actId() || (owner && owner === S.uid)) return document.visibilityState === 'visible';   // io sono online
-  return [id, owner].some(k => k && Date.now() - atMs(pr[k]) < ONLINE_MS);
-}
+// il conteggio arriva dal robot (ogni minuto): chi sta guardando la Rosa è online di sicuro, quindi almeno 1
+const onlineCount = () => typeof S.online === 'number' ? Math.max(1, S.online) : null;
 
 /* ---------- pezzi di interfaccia ---------- */
 const icoPlus = '<svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
@@ -453,8 +448,8 @@ function vArchivio(){
     ${e.notes?`<p class="txt mute">${esc(e.notes)}</p>`:''}</details>`; }).join('');
 }
 function vRosa(){
-  const r = roster(), on = r.filter(isOnline).length;
-  let h = `<div class="row sp"><h2>Rosa</h2><span class="chip online-n"><i class="dot-on"></i>Online ora: ${on}</span></div>`;
+  const r = roster(), on = onlineCount();
+  let h = `<div class="row sp"><h2>Rosa</h2>${on!=null?`<span class="chip online-n"><i class="dot-on"></i>Online ora: ${on}</span>`:''}</div>`;
   h += r.length ? CATS.map(([k,pl])=>{ const ids=r.filter(id=>catOf(id)===k); if (!ids.length) return '';
     return `<section class="card"><span class="lab">${pl.toUpperCase()} · ${ids.length}</span>${ids.map(id=>{ const p=S.players[id]||{}; return `<div class="row" style="padding:6px 0"><span class="num">${esc(isPl(id)?(p.number||'–'):pl[0])}</span><div style="flex:1"><b>${esc(nameOf(id))}</b>${mine(id)?' <span class="chip">Tu</span>':''}<div class="mute" style="font-size:13px">${esc(CATS.find(c=>c[0]===k)[2])}${p.manual?' · aggiunto dall\'amministratore':''}</div></div>${asAdmin()&&!mine(id)?`<button class="lnk" data-act="editP" data-id="${esc(id)}">Modifica</button>`:''}</div>`; }).join('')}</section>`; }).join('') : '<section class="card"><div class="empty">Nessuno ancora in rosa.</div></section>';
   return h;
