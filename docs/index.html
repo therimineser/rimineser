@@ -69,7 +69,11 @@ h3{font-size:21px}
 .chip{display:inline-flex;align-items:center;font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px;background:var(--line);white-space:nowrap}
 .dot-on{display:inline-block;width:10px;height:10px;border-radius:50%;background:#1DB954;box-shadow:0 0 0 2px rgba(29,185,84,.25);vertical-align:middle}
 .online-n{gap:6px;background:var(--okbg);color:var(--ok)}
-.sc-clock{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.sc-clock b{font:800 20px "Barlow Condensed",sans-serif}.sc-time{font:800 34px "Barlow Condensed",sans-serif;flex:1;font-variant-numeric:tabular-nums}
+.sc-clock{display:flex;flex-direction:column;align-items:center;gap:0;padding:4px 0}.sc-half{font-size:13px;font-weight:700;color:var(--mute);text-transform:uppercase;letter-spacing:.5px}
+.sc-time{font:800 52px "Barlow Condensed",sans-serif;line-height:1;font-variant-numeric:tabular-nums}
+.sc-cbtn{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}.sc-cbtn button{flex:1;min-width:140px}.sc-cbtn .lnk{flex-basis:100%}
+.sc-lock{display:flex;align-items:center;justify-content:space-between;gap:10px;border-radius:12px;padding:10px 12px;background:var(--line);font-size:14px}
+.sc-lock.on{background:var(--okbg);color:var(--ok);font-weight:700}.sc-lock.busy{background:var(--redbg)}.sc-lock>span{flex:1;min-width:0}.sc-lock .pri{min-height:40px;white-space:nowrap;flex:none;padding:0 12px}
 .sc-players{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
 .sc-pl{border:2px solid var(--line);background:var(--card);border-radius:12px;min-height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;padding:4px}
 .sc-pl b{font:800 20px "Barlow Condensed",sans-serif}.sc-pl span{font-size:11px;font-weight:600;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -79,7 +83,7 @@ h3{font-size:21px}
 .sc-a.ok{border-color:var(--ok);color:var(--ok)}.sc-a.ko{border-color:var(--red);color:var(--red)}.sc-a.goal{background:var(--ok);border-color:var(--ok);color:#fff}
 .sc-a.us{border-color:var(--ink)}.sc-a.them{border-color:var(--line);color:var(--mute)}.sc-a.goalthem{background:#555;border-color:#555;color:#fff}
 .sc-vs{display:grid;grid-template-columns:1fr 1fr}
-.sc-score{display:flex;align-items:center;justify-content:center;gap:14px;font-weight:700}.sc-score b{font:800 36px "Barlow Condensed",sans-serif}
+.sc-score{display:flex;align-items:center;justify-content:center;gap:14px;font-weight:700;text-align:center}.sc-score span{flex:1}.sc-score b{font:800 36px "Barlow Condensed",sans-serif}
 .sc-a:active{transform:scale(.97)}.sc-a:disabled{opacity:.35}
 .sc-a i{position:absolute;top:3px;right:7px;font-style:normal;font-size:11px;opacity:.8}
 .sc-log{font-size:13px;color:var(--mute);display:flex;flex-direction:column;gap:2px}.sc-log b{color:var(--ink)}

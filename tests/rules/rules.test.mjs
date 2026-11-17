@@ -109,23 +109,37 @@ await t('in attesa: NON legge config/team (uid admin nascosti)', false, () => ge
 await t('rifiutato: NON legge config/team', false, () => getDoc(doc(db('rej'), 'config/team')));
 await t('in attesa: legge comunque il proprio profilo (schermata attesa)', true, () => getDoc(doc(db('pend'), 'players/pend')));
 await t('rifiutato: legge comunque il proprio profilo (schermata rifiuto)', true, () => getDoc(doc(db('rej'), 'players/rej')));
-// scouting: tutti gli iscritti approvati, nessun altro
-const SC = { acts: [{ id: 'a1', k: 'pass_ok', t: 'us', s: 10, h: 1, ts: 1 }], half: 1, base: 0, start: null };
-await t('admin: scrive lo scouting', true, () => setDoc(doc(db('admin'), 'scout/ev'), SC));
-await t('dirigente: scrive lo scouting', true, () => setDoc(doc(db('d1'), 'scout/ev'), SC));
-await t('dirigente: aggiunge un\'azione', true, async () => { await env.withSecurityRulesDisabled(c => setDoc(doc(c.firestore(), 'scout/ev'), SC)); return updateDoc(doc(db('d1'), 'scout/ev'), { acts: [...SC.acts, { id: 'a2', k: 'goal', t: 'them', s: 20, h: 1, ts: 2 }] }); });
-await t('dirigente: legge lo scouting', true, async () => { await env.withSecurityRulesDisabled(c => setDoc(doc(c.firestore(), 'scout/ev'), SC)); return getDoc(doc(db('d1'), 'scout/ev')); });
-await t('admin: legge lo scouting', true, async () => { await env.withSecurityRulesDisabled(c => setDoc(doc(c.firestore(), 'scout/ev'), SC)); return getDoc(doc(db('admin'), 'scout/ev')); });
-for (const u of ['m1', 'c1', 'p2', 'pr1', 's1', 'a1', 'f1', 'p4']) {
-  await t(`${u}: legge lo scouting`, true, async () => { await env.withSecurityRulesDisabled(c => setDoc(doc(c.firestore(), 'scout/ev'), SC)); return getDoc(doc(db(u), 'scout/ev')); });
-  await t(`${u}: scrive lo scouting`, true, () => setDoc(doc(db(u), 'scout/ev'), SC));
+// scouting: tutti gli iscritti approvati, ma UNO SOLO alla volta (lock)
+const ACTS = [{ id: 'a1', k: 'pass_ok', t: 'us', s: 10, h: 1, ts: 1 }];
+const SC = { acts: ACTS, half: 1, base: 0, start: null };
+const LK = (uid, ago = 0) => ({ uid, name: uid, at: new Date(Date.now() - ago) });
+const MY = () => ({ uid: 'x', name: 'x', at: serverTimestamp() });
+const seedSc = (lock) => env.withSecurityRulesDisabled(c => setDoc(doc(c.firestore(), 'scout/ev'), lock ? { ...SC, lock } : SC));
+const ALLM = ['admin', 'm1', 'c1', 'p2', 'pr1', 's1', 'a1', 'f1', 'd1', 'p4'];
+for (const u of ALLM) {
+  await t(`${u}: legge lo scouting`, true, async () => { await seedSc(LK('qualcuno')); return getDoc(doc(db(u), 'scout/ev')); });
+  await t(`${u}: crea lo scouting prendendo il lock`, true, () => setDoc(doc(db(u), 'scout/ev'), { ...SC, lock: { uid: u, name: u, at: serverTimestamp() } }));
+  await t(`${u}: prende il lock libero`, true, async () => { await seedSc(null); return updateDoc(doc(db(u), 'scout/ev'), { lock: { uid: u, name: u, at: serverTimestamp() } }); });
+  await t(`${u}: segna azioni senza avere il lock`, false, async () => { await seedSc(null); return updateDoc(doc(db(u), 'scout/ev'), { acts: [...ACTS, { id: 'a2', k: 'goal', t: 'us', s: 20, h: 1, ts: 2 }] }); });
+  await t(`${u}: segna azioni con il proprio lock`, true, async () => { await seedSc(LK(u)); return updateDoc(doc(db(u), 'scout/ev'), { acts: [...ACTS, { id: 'a2', k: 'goal', t: 'us', s: 20, h: 1, ts: 2 }] }); });
+  await t(`${u}: segna azioni mentre un altro ha il lock`, false, async () => { await seedSc(LK('altro', 5000)); return updateDoc(doc(db(u), 'scout/ev'), { acts: [...ACTS, { id: 'a2', k: 'goal', t: 'us', s: 20, h: 1, ts: 2 }] }); });
+  await t(`${u}: ruba il lock a chi sta segnando`, false, async () => { await seedSc(LK('altro', 5000)); return updateDoc(doc(db(u), 'scout/ev'), { lock: { uid: u, name: u, at: serverTimestamp() } }); });
+  await t(`${u}: prende il lock scaduto (3 minuti)`, true, async () => { await seedSc(LK('altro', 3 * 60000)); return updateDoc(doc(db(u), 'scout/ev'), { lock: { uid: u, name: u, at: serverTimestamp() } }); });
+  await t(`${u}: rinnova il proprio lock`, true, async () => { await seedSc(LK(u, 40000)); return updateDoc(doc(db(u), 'scout/ev'), { lock: { uid: u, name: u, at: serverTimestamp() } }); });
+  await t(`${u}: lascia il proprio lock`, true, async () => { await seedSc(LK(u)); return updateDoc(doc(db(u), 'scout/ev'), { lock: deleteField() }); });
+  await t(`${u}: toglie il lock di un altro`, false, async () => { await seedSc(LK('altro', 5000)); return updateDoc(doc(db(u), 'scout/ev'), { lock: deleteField() }); });
+  await t(`${u}: prende il lock a nome di un altro`, false, async () => { await seedSc(null); return updateDoc(doc(db(u), 'scout/ev'), { lock: { uid: 'altro', name: 'altro', at: serverTimestamp() } }); });
+  await t(`${u}: lock con ora finta`, false, async () => { await seedSc(null); return updateDoc(doc(db(u), 'scout/ev'), { lock: { uid: u, name: u, at: new Date(2030, 0, 1) } }); });
+  await t(`${u}: lock con campi inventati`, false, async () => { await seedSc(null); return updateDoc(doc(db(u), 'scout/ev'), { lock: { uid: u, name: u, at: serverTimestamp(), x: 1 } }); });
 }
 await t('in attesa: legge lo scouting', false, () => getDoc(doc(db('pend'), 'scout/ev')));
-await t('in attesa: scrive lo scouting', false, () => setDoc(doc(db('pend'), 'scout/ev'), SC));
+await t('in attesa: prende il lock', false, async () => { await seedSc(null); return updateDoc(doc(db('pend'), 'scout/ev'), { lock: { uid: 'pend', name: 'p', at: serverTimestamp() } }); });
 await t('rifiutato: scrive lo scouting', false, () => setDoc(doc(db('rej'), 'scout/ev'), SC));
 await t('non registrato: legge lo scouting', false, () => getDoc(doc(db(null), 'scout/ev')));
-await t('dirigente: scouting con campi inventati', false, () => setDoc(doc(db('d1'), 'scout/ev'), { ...SC, nome: 'x' }));
-await t('dirigente: cancella lo scouting', false, async () => { await env.withSecurityRulesDisabled(c => setDoc(doc(c.firestore(), 'scout/ev'), SC)); return deleteDoc(doc(db('d1'), 'scout/ev')); });
+await t('membro: scouting con campi inventati', false, () => setDoc(doc(db('d1'), 'scout/ev'), { ...SC, nome: 'x' }));
+await t('membro: cancella lo scouting', false, async () => { await seedSc(LK('d1')); return deleteDoc(doc(db('d1'), 'scout/ev')); });
+await t('admin: cancella lo scouting', true, async () => { await seedSc(LK('d1')); return deleteDoc(doc(db('admin'), 'scout/ev')); });
+await t('due prendono il lock insieme: il secondo no', false, async () => { await seedSc(null); await updateDoc(doc(db('p2'), 'scout/ev'), { lock: { uid: 'p2', name: 'p2', at: serverTimestamp() } }); return updateDoc(doc(db('p4'), 'scout/ev'), { lock: { uid: 'p4', name: 'p4', at: serverTimestamp() } }); });
 await t('qualsiasi: crea squadra già esistente', false, () => setDoc(doc(db('nuovo'), 'config/team'), { coaches: ['nuovo'] }));
 // "chi è online"
 await t('membro: scrive il proprio battito online', true, () => setDoc(doc(db('p2'), 'presence/p2'), { at: serverTimestamp() }));

@@ -97,10 +97,23 @@ service cloud.firestore {
     }
     // Scouting: statistiche della partita, le può segnare qualunque iscritto approvato (anche chi è in panchina)
     function canScout() { return isMember(); }
+    // Un solo operatore alla volta: lock = {uid, name, at}. Chi segna lo rinnova ogni 30 s; scaduto da 2 minuti è libero.
+    function scLockOf(d) { return d.get('lock', null); }
+    function scHeldByMe() { return scLockOf(resource.data) != null && scLockOf(resource.data).uid == request.auth.uid; }
+    function scFree() { return scLockOf(resource.data) == null || scLockOf(resource.data).at < request.time - duration.value(2, 'm'); }
+    function scLockOk(l) { return l != null && l.keys().hasOnly(['uid', 'name', 'at']) && l.uid == request.auth.uid && l.at == request.time && l.name is string && l.name.size() < 60; }
+    function scFields() { return request.resource.data.keys().hasOnly(['acts', 'half', 'base', 'start', 'lock', 'updatedAt'])
+                                  && request.resource.data.get('acts', []) is list && request.resource.data.get('acts', []).size() <= 3000; }
     match /scout/{eid} {
       allow read: if canScout();
-      allow create, update: if canScout() && request.resource.data.keys().hasOnly(['acts', 'half', 'base', 'start', 'updatedAt'])
-                               && request.resource.data.get('acts', []) is list && request.resource.data.get('acts', []).size() <= 3000;
+      allow create: if canScout() && scFields() && (scLockOf(request.resource.data) == null || scLockOk(scLockOf(request.resource.data)));
+      allow update: if canScout() && scFields() && (
+          // prendere o rinnovare il lock: libero, scaduto o già mio
+          (scLockOf(request.resource.data) != scLockOf(resource.data) && scLockOf(request.resource.data) != null && scLockOk(scLockOf(request.resource.data)) && (scFree() || scHeldByMe()))
+          // lasciare il lock (solo se è mio)
+          || (scLockOf(request.resource.data) == null && scLockOf(resource.data) != null && scHeldByMe())
+          // qualunque altra scrittura (azioni, cronometro): solo chi ha il lock, senza cambiarlo
+          || (scLockOf(request.resource.data) == scLockOf(resource.data) && scHeldByMe()));
       allow delete: if isAdmin();
     }
     match /private/{id} {

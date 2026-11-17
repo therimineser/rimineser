@@ -550,11 +550,20 @@ function scWatch(eid){
   if (eid === scSubEid) return; if (scSub) { scSub(); scSub = null; }
   scSubEid = eid; if (!eid) return;
   scSub = onSnapshot(D('scout/'+eid), s=>{ const d = s.exists() ? s.data() : {};
-    S.scout = {eid, acts:[...(d.acts||[])].sort((a,b)=>(a.ts||0)-(b.ts||0)), half:d.half||1, base:d.base||0, start:d.start||null};
+    S.scout = {eid, acts:[...(d.acts||[])].sort((a,b)=>(a.ts||0)-(b.ts||0)), half:d.half||1, base:d.base||0, start:d.start||null, lock:d.lock||null};
     if (S.tab==='scouting') draw(); }, e=>console.error('scout', e));
 }
 function scState(eid){ scWatch(eid); return S.scout && S.scout.eid===eid ? S.scout : (S.scout = {eid, acts:[], half:1, base:0, start:null}); }
 const scWrite = (eid, data) => write(()=>setDoc(D('scout/'+eid), {...data, updatedAt: Date.now()}, {merge:true}));
+// Un solo operatore alla volta: lock = {uid, name, at (ora del server)}. Chi segna lo rinnova ogni 30 s;
+// se non viene rinnovato da 2 minuti (app chiusa, telefono spento) chiunque può prendere il posto. Le regole lo fanno rispettare.
+const SC_LOCK_MS = 2*60*1000, TEAM = () => (S.leagueDef && S.leagueDef.team) || 'The Rimineser F.P.';
+const tsMs = v => !v ? 0 : typeof v.toMillis === 'function' ? v.toMillis() : +new Date(v);
+const scMine = d => !!(d && d.lock && d.lock.uid === S.uid);
+const scFree = d => !d || !d.lock || scMine(d) || (d.lock.at && Date.now() - tsMs(d.lock.at) > SC_LOCK_MS);
+const scLockBody = () => ({uid: S.uid, name: S.admin && asAdmin() ? 'Amministratore' : nameOf(actId()), at: serverTimestamp()});
+setInterval(()=>{ const x = S.scout; if (x && scMine(x) && document.visibilityState==='visible')
+  setDoc(D('scout/'+x.eid), {lock: scLockBody(), updatedAt: Date.now()}, {merge:true}).catch(()=>{}); }, 30*1000);
 const scSecs = d => d.base + (d.start ? Math.floor((Date.now()-d.start)/1000) : 0);
 const scMin = s => Math.floor(s/60)+1;
 const mmss = s => String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
@@ -565,22 +574,28 @@ function vScouting(){
   if (!matches.length) return `<h2>Scouting</h2><div class="empty">Nessuna partita in calendario.</div>`;
   const eid = (S.scoutEid && matches.some(m=>m.id===S.scoutEid)) ? S.scoutEid : (upcoming().find(e=>e.type==='partita')||matches[0]).id;
   const e = matches.find(m=>m.id===eid), d = scState(eid), A = d.acts, secs = scSecs(d);
-  const opp = esc(short(e.opponent||'Loro'));
+  const opp = esc(short(e.opponent||'Avversari')), us = esc(TEAM()), mine = scMine(d), free = scFree(d);
   const gUs = scCount(A,'goal','us'), gThem = scCount(A,'goal','them');
-  const btn = (k,l,c,t) => { const n = scCount(A,k,t); return `<button class="sc-a ${c}" data-act="scAdd" data-k="${k}" data-t="${t}">${l}<i>${n||''}</i></button>`; };
+  const btn = (k,l,c,t) => { const n = scCount(A,k,t); return `<button class="sc-a ${c}" data-act="scAdd" data-k="${k}" data-t="${t}" ${mine?'':'disabled'}>${l}<i>${n||''}</i></button>`; };
+  const who = d.lock && d.lock.name ? esc(d.lock.name) : 'qualcuno';
+  const lockBar = mine ? `<div class="sc-lock on"><span>✍️ Stai segnando tu</span><button class="lnk" data-act="scLeave">Lascia</button></div>`
+    : free ? `<div class="sc-lock"><span>Nessuno sta segnando questa partita.</span><button class="pri" data-act="scTake">✋ Segna tu</button></div>`
+    : `<div class="sc-lock busy"><span>🔒 Sta segnando <b>${who}</b>: puoi solo guardare.</span></div>`;
   let h = `<div class="row sp"><h2>Scouting</h2></div>
   <section class="card"><select data-ch="scev" aria-label="Partita">${matches.map(m=>`<option value="${esc(m.id)}" ${m.id===eid?'selected':''}>${esc(fmtD(m)||'')} – ${esc(evName(m))}</option>`).join('')}</select>
-    <div class="sc-score"><span>Noi</span><b>${gUs} – ${gThem}</b><span>${opp}</span></div>
-    <div class="sc-clock"><b>${d.half}T</b><span class="sc-time" id="scTime">${mmss(secs)}</span>
-      <button class="${d.start?'sec':'pri'}" data-act="scClock">${d.start?'⏸ Pausa':(secs?'▶ Riprendi':'▶ Avvia')}</button>
-      <button class="sec" data-act="scHalf">${d.half===1?'2° tempo':'1° tempo'}</button></div></section>`;
+    <div class="sc-score"><span>${us}</span><b>${gUs} – ${gThem}</b><span>${opp}</span></div>
+    <div class="sc-clock"><span class="sc-half">${d.half}° tempo</span><span class="sc-time" id="scTime">${mmss(secs)}</span></div>
+    ${mine?`<div class="sc-cbtn"><button class="${d.start?'sec':'pri'}" data-act="scClock">${d.start?'⏸ Pausa':(secs?'▶ Riprendi':'▶ Avvia')}</button>
+      <button class="sec" data-act="scHalf">${d.half===1?'Passa al 2° tempo':'Torna al 1° tempo'}</button>
+      ${secs||d.start?`<button class="lnk" data-act="scClockReset">Azzera cronometro</button>`:''}</div>`:''}
+    ${lockBar}</section>`;
   // azioni solo nostre
-  h += `<section class="card"><span class="lab">NOI</span>${SC_US.map(([g,a])=>`<div class="sc-g"><span class="mute" style="font-size:13px;font-weight:600">${g}</span><div class="sc-acts">${a.map(([k,l,c])=>btn(k,l,c,'us')).join('')}</div></div>`).join('')}</section>`;
+  h += `<section class="card"><span class="lab">${us.toUpperCase()}</span>${SC_US.map(([g,a])=>`<div class="sc-g"><span class="mute" style="font-size:13px;font-weight:600">${g}</span><div class="sc-acts">${a.map(([k,l,c])=>btn(k,l,c,'us')).join('')}</div></div>`).join('')}</section>`;
   // azioni per noi e per loro, affiancate
-  h += `<section class="card"><div class="sc-vs"><span class="lab">NOI</span><span class="lab" style="text-align:right">${opp.toUpperCase()}</span></div>
+  h += `<section class="card"><div class="sc-vs"><span class="lab">${us.toUpperCase()}</span><span class="lab" style="text-align:right">${opp.toUpperCase()}</span></div>
     ${SC_BOTH.map(([g,a])=>`<div class="sc-g"><span class="mute" style="font-size:13px;font-weight:600">${g}</span>${a.map(([k,l])=>`<div class="sc-acts">${btn(k,l,k==='goal'?'goal':'us','us')}${btn(k,l,k==='goal'?'goalthem':'them','them')}</div>`).join('')}</div>`).join('')}
-    <div class="btns"><button class="sec" data-act="scUndo" ${A.length?'':'disabled'}>↶ Annulla ultima</button></div>
-    ${A.length?`<div class="sc-log">${A.slice(-5).reverse().map(a=>`<div><b>${a.h}T ${scMin(a.s)}'</b> ${a.t==='us'?'Noi':opp} · ${esc(SC_LAB[a.k]||a.k)}${a.p?' · '+esc(nameOf(a.p)):''}${a.a?' (assist '+esc(short(nameOf(a.a)))+')':''}</div>`).join('')}</div>`:''}</section>`;
+    <div class="btns"><button class="sec" data-act="scUndo" ${A.length&&mine?'':'disabled'}>↶ Annulla ultima</button></div>
+    ${A.length?`<div class="sc-log">${A.slice(-5).reverse().map(a=>`<div><b>${a.h}T ${scMin(a.s)}'</b> ${a.t==='us'?esc(TEAM()):opp} · ${esc(SC_LAB[a.k]||a.k)}${a.p?' · '+esc(nameOf(a.p)):''}${a.a?' (assist '+esc(short(nameOf(a.a)))+')':''}</div>`).join('')}</div>`:''}</section>`;
   // riepilogo per tempo
   const pct = (a,b) => a+b ? Math.round(a/(a+b)*100)+'%' : '–';
   const cols = [1,2,0];   // 1T, 2T, totale
@@ -597,10 +612,10 @@ function vScouting(){
     ['Parate', h=>`${scCount(A,'save','us',h)} · ${scCount(A,'save','them',h)}`]
   ];
   const scorers = A.filter(a=>a.k==='goal' && a.t==='us');
-  h += `<section class="card"><span class="lab">RIEPILOGO</span><span class="mute" style="font-size:13px">Dove ci sono due numeri: noi · ${opp}</span>
+  h += `<section class="card"><span class="lab">RIEPILOGO</span><span class="mute" style="font-size:13px">Dove ci sono due numeri: ${esc(TEAM())} · ${opp}</span>
     <div style="overflow-x:auto"><table class="sc-tab"><thead><tr><th></th><th>1° tempo</th><th>2° tempo</th><th>Totale</th></tr></thead><tbody>${rows.map(([l,f])=>`<tr><td>${l}</td>${val(f)}</tr>`).join('')}</tbody></table></div>
     ${scorers.length?`<div><b>Marcatori</b><div class="sc-log">${scorers.map(a=>`<div><b>${a.h}T ${scMin(a.s)}'</b> ${a.p?esc(nameOf(a.p)):'gol'}${a.a?' (assist '+esc(nameOf(a.a))+')':''}</div>`).join('')}</div></div>`:''}
-    ${A.length?`<button class="lnk" data-act="scReset">Azzera i dati di questa partita</button>`:''}</section>`;
+    ${A.length&&mine?`<button class="lnk" data-act="scReset">Azzera i dati di questa partita</button>`:''}</section>`;
   return h;
 }
 // dopo gol/cartellino nostro: chi è stato? (facoltativo)
@@ -611,7 +626,7 @@ function scAsk(i, field){
     <button class="sec" data-act="scPick" data-i="${i}" data-f="${field}" data-id="">${field==='a'?'Nessun assist':'Salta'}</button>`);
 }
 // il cronometro si aggiorna da solo senza ridisegnare la pagina
-setInterval(()=>{ const el = document.getElementById('scTime'); if (el && S.scout) el.textContent = mmss(scSecs(S.scout)); }, 1000);
+setInterval(()=>{ const el = document.getElementById('scTime'); if (el && S.scout) el.textContent = mmss(scSecs(S.scout)); }, 250);
 
 /* ---------- disegno ---------- */
 const TABS = [
@@ -709,19 +724,24 @@ const ACT = {
   mode: () => { mode = asAdmin() ? 'player' : 'admin'; try { localStorage.setItem('rim-mode', mode); } catch(_) {} draw(); toast(asAdmin() ? 'Modalità Amministratore' : 'Modalità Giocatore'); },
   asDir: d => { const on = ans(actId(),d.e)==='si' && roleAt(actId(),d.e)==='dirigente';
     write(()=>setDoc(D('rsvp/'+actId()), on ? {answers:{[d.e]: deleteField()}, roles:{[d.e]: deleteField()}} : {answers:{[d.e]:'si'}, roles:{[d.e]:'dirigente'}}, {merge:true})); },
-  scAdd: d => { const x = S.scout; const a = {id:Math.random().toString(36).slice(2,9), k:d.k, t:d.t, s:scSecs(x), h:x.half, ts:Date.now()};
+  scAdd: d => { const x = S.scout; if (!scMine(x)) return toast('Sta segnando un\'altra persona.'); const a = {id:Math.random().toString(36).slice(2,9), k:d.k, t:d.t, s:scSecs(x), h:x.half, ts:Date.now()};
     x.acts.push(a); write(()=>setDoc(D('scout/'+x.eid), {acts: arrayUnion(a), updatedAt: Date.now()}, {merge:true}));
     if (navigator.vibrate) navigator.vibrate(30); draw();
-    if (d.t==='us' && SC_WHO.includes(d.k)) scAsk(x.acts.length-1, 'p'); else toast(`${d.t==='us'?'Noi':'Loro'}: ${SC_LAB[d.k]}`); },
+    if (d.t==='us' && SC_WHO.includes(d.k)) scAsk(x.acts.length-1, 'p'); else toast(`${d.t==='us'?TEAM():'Avversari'}: ${SC_LAB[d.k]}`); },
   scPick: async d => { const x = S.scout, a = x.acts[+d.i]; closeSheet(); if (!a) return;
     if (d.id) { const b = {...a, [d.f]: d.id}; x.acts[+d.i] = b; draw();
       await write(()=>updateDoc(D('scout/'+x.eid), {acts: arrayRemove(a)})); await write(()=>updateDoc(D('scout/'+x.eid), {acts: arrayUnion(b)}));
       if (d.f==='p' && a.k==='goal') scAsk(x.acts.findIndex(z=>z.id===b.id), 'a'); } },
-  scUndo: () => { const x = S.scout; const a = x.acts.pop(); draw(); if (!a) return;
+  scUndo: () => { const x = S.scout; if (!scMine(x)) return; const a = x.acts.pop(); draw(); if (!a) return;
     write(()=>updateDoc(D('scout/'+x.eid), {acts: arrayRemove(a)})); toast('Annullato: '+SC_LAB[a.k]); },
-  scClock: () => { const x = S.scout; if (x.start) { x.base = scSecs(x); x.start = null; } else x.start = Date.now(); scWrite(x.eid, {base:x.base, start:x.start, half:x.half}); draw(); },
-  scHalf: () => { const x = S.scout; x.half = x.half===1 ? 2 : 1; x.base = 0; x.start = null; scWrite(x.eid, {base:0, start:null, half:x.half}); draw(); },
-  scReset: (d,b) => { if (!confirm2(b)) return; const x = S.scout; Object.assign(x, {acts:[], half:1, base:0, start:null}); write(()=>setDoc(D('scout/'+x.eid), {acts:[], half:1, base:0, start:null, updatedAt:Date.now()})); draw(); },
+  scClock: () => { const x = S.scout; if (!scMine(x)) return; if (x.start) { x.base = scSecs(x); x.start = null; } else x.start = Date.now(); scWrite(x.eid, {base:x.base, start:x.start, half:x.half}); draw(); },
+  scHalf: () => { const x = S.scout; if (!scMine(x)) return; x.half = x.half===1 ? 2 : 1; x.base = 0; x.start = null; scWrite(x.eid, {base:0, start:null, half:x.half}); draw(); },
+  scClockReset: (d,b) => { const x = S.scout; if (!scMine(x) || !confirm2(b)) return; x.base = 0; x.start = null; scWrite(x.eid, {base:0, start:null}); draw(); toast('Cronometro azzerato'); },
+  scTake: async () => { const x = S.scout; try { await setDoc(D('scout/'+x.eid), {lock: scLockBody(), updatedAt: Date.now()}, {merge:true}); toast('Ora segni tu'); }
+    catch(_) { toast('Qualcun altro ha appena iniziato a segnare.'); } },
+  scLeave: async (d,b) => { const x = S.scout; if (!scMine(x)) return; if (!confirm2(b)) return;
+    await write(()=>updateDoc(D('scout/'+x.eid), {lock: deleteField(), updatedAt: Date.now()})); toast('Hai lasciato: ora può segnare qualcun altro'); },
+  scReset: (d,b) => { if (!confirm2(b)) return; const x = S.scout; if (!scMine(x)) return; Object.assign(x, {acts:[], half:1, base:0, start:null}); write(()=>setDoc(D('scout/'+x.eid), {acts:[], half:1, base:0, start:null, lock:scLockBody(), updatedAt:Date.now()})); draw(); },
   cyc: d => { const o=['','si','forse','no']; setRsvp(d.id, d.e, o[(o.indexOf(ans(d.id,d.e))+1)%4]); },
   vote: d => { const i=+d.i, same=(S.votes[S.uid]?.answers||{})[d.p]===i; write(()=>setDoc(D('votes/'+S.uid), {answers:{[d.p]: same ? deleteField() : i}}, {merge:true})); },
   remind: d => { const e=S.events.find(x=>x.id===d.e); if (!e) return; const miss=squad().filter(id=>!ans(id,e.id)).map(nameOf);
