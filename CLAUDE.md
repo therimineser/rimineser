@@ -12,7 +12,7 @@ App web installabile (PWA) per la squadra di calcio a 7 **The Rimineser F.P.** (
 
 ## Funzioni
 - **Bacheca**: un solo riquadro "PROSSIMO APPUNTAMENTO" (partita o allenamento) con Presente/Forse/Assente, pulsante "Presenti (n)" e, se partita, "Formazione/Formazioni"; riquadro posizione UISP; comunicazioni con autore e sondaggi.
-- **Presenze**: per evento, divise per categoria (Giocatori, Allenatori, Dirigenza, Pubblico); in ogni categoria Presenti/Forse visibili, poi due gruppi separati "Assenti (n)" (nomi neri) e "Non hanno ancora risposto (n)" (nomi grigi); chiunque può cambiare la risposta altrui; pulsante notifica a chi non ha risposto (solo admin); copia promemoria WhatsApp.
+- **Presenze**: per evento, divise per categoria (Giocatori, Allenatori, Dirigenza, Pubblico); in ogni categoria Presenti/Forse visibili, poi due gruppi separati "Assenti (n)" (nomi su grigio scuro #555) e "Non hanno ancora risposto (n)" (nomi grigi); chiunque può cambiare la risposta altrui; pulsante notifica a chi non ha risposto (solo admin); copia promemoria WhatsApp.
 - **Formazione**: più formazioni per partita (A, B…), moduli 2-3-1, 3-2-1, 3-1-2, 2-2-2, 2-1-2-1, panchina, tattica, pubblica/nascondi, copia dall'ultima partita.
 - **Calendario**: eventi manuali + partite UISP create in automatico (id `uisp-<giornata>`; data/ora/campo/risultato arrivano dai comunicati).
 - **Campionato**: classifica, statistiche con grafici (gol per giornata, gol fatti/subiti, ammonizioni, punti disciplina), risultati, calendario (tutte le giornate pubblicate da UISP), marcatori, cartellini (da `docs/campionato.json`; cartellini cumulati in `cards`).
