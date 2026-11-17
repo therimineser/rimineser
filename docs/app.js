@@ -186,10 +186,9 @@ document.addEventListener('visibilitychange', ()=>{
   if (document.visibilityState==='hidden') hiddenAt = Date.now();
   else if (hiddenAt && Date.now()-hiddenAt >= 30*60*1000) { hiddenAt = 0; countView(); }
 });
-const MESI = ['gen','feb','mar','apr','mag','giu','lug','ago','set','ott','nov','dic'];
 async function loadViews(){
   const now = new Date(), out = [];
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < 2; i++) {   // mese corrente + precedente (per "Ieri" il primo del mese)
     const [y,m] = romeDate(new Date(now.getFullYear(), now.getMonth()-i, 15)).split('-');
     const s = await getDoc(D(`stats/views-${y}-${m}`)).catch(()=>null);
     out.push({ y, m, data: s && s.exists() ? s.data() : {} });
@@ -205,8 +204,7 @@ function vViews(){
   const days = Array.from({length:+d}, (_,i)=>cur['d'+String(i+1).padStart(2,'0')]||0), max = Math.max(1, ...days);
   return `<section class="card"><span class="lab">VISUALIZZAZIONI</span><span class="mute">Quante volte è stata aperta l'app da tutti gli iscritti (te compreso). Solo numeri: nessun nome e nessun orario.</span>
     <div class="row" style="gap:8px">${[['Oggi',today],['Ieri',yest],['Questo mese',cur.total||0]].map(([l,n])=>`<div class="vstat"><b>${n}</b><span>${l}</span></div>`).join('')}</div>
-    <div class="vbars" role="img" aria-label="Aperture per giorno di questo mese">${days.map((n,i)=>`<i style="height:${Math.round(n/max*100)}%" title="${i+1}: ${n}"></i>`).join('')}</div>
-    <div class="mute" style="font-size:13px">${V.months.filter((x,i)=>!i||x.data.total).map(x=>`${MESI[+x.m-1]} ${x.y}: <b>${x.data.total||0}</b>`).join(' · ')}</div></section>`;
+    <div class="vbars" role="img" aria-label="Aperture per giorno di questo mese">${days.map((n,i)=>`<i style="height:${Math.round(n/max*100)}%" title="${i+1}: ${n}"></i>`).join('')}</div></section>`;
 }
 
 /* ---------- pezzi di interfaccia ---------- */
