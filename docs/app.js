@@ -115,6 +115,8 @@ function ensureAdminPlayer(){
   const g = gid(), old = S.players[S.uid];
   if (!S.players[g]) write(()=>setDoc(D('players/'+g), {name:(old&&old.name)||S.authName, number:(old&&old.number)||'', role:(old&&old.role)||'', cat:'giocatore', approved:true, owner:S.uid, createdAt:Date.now()}));
   if (old) write(()=>deleteDoc(D('players/'+S.uid)));
+  // il profilo giocatore dell'amministratore non deve chiamarsi "Amministratore"
+  const pg = S.players[g]; if (pg && /amministratore/i.test(pg.name||'')) write(()=>updateDoc(D('players/'+g), {name:'Giacomo Lucidi'}));
   const r = S.rsvp[S.uid]; if (r && r.answers && Object.keys(r.answers).length && !S.rsvp[g]) write(()=>setDoc(D('rsvp/'+g), {answers:{...r.answers}}));
 }
 function stopMember(){ stop(memberSubs); memberOn = false; S.loaded = new Set(['team']); }
@@ -565,7 +567,8 @@ const FORMS = {
     if (old.lineup) data.lineup = old.lineup; if (old.lineups) data.lineups = old.lineups;
     const ref = id ? D('events/'+id) : doc(C('events'));
     if (await write(()=>setDoc(ref, data, {merge:true}), 'Evento salvato')) closeSheet(); },
-  me: async f => { const data={name:val(f,'nome'), number:val(f,'numero'), role:val(f,'ruolo'), cat:val(f,'cat')||'giocatore'}; if (!data.name) return;
+  me: async f => { if (S.admin && /amministratore/i.test(val(f,'nome'))) return toast('Come giocatore usa il tuo nome, non "Amministratore".');
+    const data={name:val(f,'nome'), number:val(f,'numero'), role:val(f,'ruolo'), cat:val(f,'cat')||'giocatore'}; if (!data.name) return;
     const ok = S.admin ? await write(()=>setDoc(D('players/'+gid()), {...data, approved:true, owner:S.uid}, {merge:true}), 'Profilo giocatore salvato')
                        : await write(()=>updateDoc(D('players/'+S.uid), data), 'Profilo salvato');
     if (ok) { closeSheet(); if (auth.currentUser) updateProfile(auth.currentUser, {displayName:data.name}).catch(()=>{}); } },
