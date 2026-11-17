@@ -1,12 +1,13 @@
 name: Test regole
 
 # Prova le regole del database (firestore.rules) sull'emulatore ufficiale di Firebase
-# e salva l'esito in tests/rules/risultato.txt.
+# e salva l'esito in tests/rules/risultato.txt. Se tutti i test passano, le pubblica su Firebase
+# (tools/pubblica_regole.py): niente più copia-incolla nella console.
 on:
   workflow_dispatch: {}
   push:
     branches: [main]
-    paths: ['firestore.rules', 'tests/rules/**', '.github/workflows/test-regole.yml', '!tests/rules/risultato.txt']
+    paths: ['firestore.rules', 'tests/rules/**', 'tools/pubblica_regole.py', '.github/workflows/test-regole.yml', '!tests/rules/risultato.txt']
 
 permissions:
   contents: write
@@ -31,6 +32,15 @@ jobs:
         id: run
         continue-on-error: true
         run: npx firebase emulators:exec --only firestore --project rimineser-test "node tests/rules/rules.test.mjs"
+      - name: Pubblica le regole su Firebase
+        if: steps.run.outcome == 'success'
+        env:
+          FIREBASE_SA: ${{ secrets.FIREBASE_SA }}
+        run: |
+          [ -f tests/rules/risultato.txt ] || touch tests/rules/risultato.txt
+          python3 -m pip install -q --disable-pip-version-check --user --break-system-packages google-auth requests 2>/dev/null \
+            || python3 -m pip install -q --disable-pip-version-check --user google-auth requests
+          python3 tools/pubblica_regole.py
       - name: Salva l'esito
         if: always()
         run: |

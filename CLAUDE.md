@@ -29,7 +29,7 @@ App web installabile (PWA) per la squadra di calcio a 7 **The Rimineser F.P.** (
 - `tools/notify.py` = robot notifiche di **riserva** su GitHub: stessa logica (Firestore REST + FCM v1, segreto `FIREBASE_SA`); se il Worker ha girato negli ultimi 4 minuti non invia nulla e copia solo `robot/log` nel ramo `registro`. Se si cambia la logica delle notifiche, va cambiata in entrambi.
 - `.github/workflows/uisp.yml` = ogni 5 min (controllo rapido, legge solo se c'è un PDF nuovo) + su push: aggiorna campionato, committa, pubblica Pages, sveglia notifiche.
 - `.github/workflows/notifiche.yml` = ogni 5 min + workflow_dispatch (l'app lo sveglia con il gettone salvato in Firestore `private/robot`).
-- `firestore.rules` = regole (copiate a mano nella console Firebase: se cambiano, vanno ri-incollate lì).
+- `firestore.rules` = regole. Pubblicate in automatico su Firebase da `.github/workflows/test-regole.yml` (con `tools/pubblica_regole.py` e `FIREBASE_SA`) solo se tutti i test sull'emulatore passano; l'esito della pubblicazione è l'ultima riga di `tests/rules/risultato.txt`. Se la pubblicazione fallisse per permessi, vanno incollate a mano nella console Firebase.
 
 ## Test
 - Regole: `.github/workflows/test-regole.yml` gira sull'emulatore Firebase a ogni modifica di `firestore.rules` o `tests/rules/` e scrive l'esito in `tests/rules/risultato.txt` (leggibile con git anche senza accesso ai log di Actions).
