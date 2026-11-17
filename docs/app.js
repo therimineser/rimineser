@@ -526,14 +526,69 @@ function vImpostazioni(){
   return h;
 }
 
+/* ---------- scouting: statistiche a bordo campo ----------
+   Un operatore tocca prima il giocatore (resta selezionato) e poi l'azione. Ogni tocco = {p: giocatore, k: azione, s: secondi di gioco}.
+   ANTEPRIMA: i dati restano sul telefono di chi li segna (localStorage "rim-scout-<evento>"), anche senza rete al campo. */
+const SC_GROUPS = [
+  ['Passaggi', [['pass_ok','✓ Passaggio','ok'],['pass_ko','✗ Passaggio','ko'],['key','Passaggio chiave',''],['assist','Assist','ok'],['cross_ok','✓ Cross','ok'],['cross_ko','✗ Cross','ko']]],
+  ['Tiri', [['on_in','In porta · area','ok'],['on_out','In porta · fuori area','ok'],['off_in','Fuori · area','ko'],['off_out','Fuori · fuori area','ko'],['blk','Tiro respinto',''],['goal','⚽ Gol','goal']]],
+  ['Duelli e difesa', [['drib_ok','✓ Dribbling','ok'],['drib_ko','✗ Dribbling','ko'],['tkl_ok','Contrasto vinto','ok'],['tkl_ko','Contrasto perso','ko'],['inter','Intercetto','ok'],['recov','Palla recuperata','ok'],['lost','Palla persa','ko'],['clear','Spazzata','']]],
+  ['Falli e cartellini', [['foul_c','Fallo fatto','ko'],['foul_s','Fallo subito',''],['offside','Fuorigioco','ko'],['yellow','🟨 Giallo','ko'],['red','🟥 Rosso','ko']]],
+  ['Portiere', [['save','Parata','ok'],['gk_out','Uscita','ok'],['conc','Gol subito','ko']]]
+];
+const SC_LAB = Object.fromEntries(SC_GROUPS.flatMap(([,a])=>a.map(([k,l])=>[k,l])));
+const scKey = eid => 'rim-scout-'+eid;
+function scLoad(eid){ try { return JSON.parse(localStorage.getItem(scKey(eid))) || null; } catch(_) { return null; } }
+function scSave(eid, d){ try { localStorage.setItem(scKey(eid), JSON.stringify(d)); } catch(_) {} }
+function scState(eid){ return S.scout && S.scout.eid===eid ? S.scout : (S.scout = Object.assign({eid, acts:[], half:1, base:0, start:null, sel:''}, scLoad(eid)||{}, {eid})); }
+const scSecs = d => d.base + (d.start ? Math.floor((Date.now()-d.start)/1000) : 0);
+const scMin = s => Math.floor(s/60)+1;
+const mmss = s => String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
+function scStats(acts){
+  const st = {}, add = (p,k) => { const o = st[p] ||= {}; o[k] = (o[k]||0)+1; };
+  acts.forEach(a=>add(a.p, a.k)); return st;
+}
+function vScouting(){
+  const matches = [...upcoming(), ...past()].filter(e=>e.type==='partita');
+  if (!matches.length) return `<h2>Scouting</h2><div class="empty">Nessuna partita in calendario.</div>`;
+  const eid = (S.scoutEid && matches.some(m=>m.id===S.scoutEid)) ? S.scoutEid : (upcoming().find(e=>e.type==='partita')||matches[0]).id;
+  const e = matches.find(m=>m.id===eid), d = scState(eid);
+  const pres = roster().filter(id=>isPl(id) && ans(id,eid)==='si' && roleAt(id,eid)!=='dirigente');
+  const players = pres.length ? pres : squad();
+  const secs = scSecs(d), st = scStats(d.acts);
+  let h = `<div class="row sp"><h2>Scouting</h2><span class="chip">Anteprima</span></div>
+  <section class="card"><select data-ch="scev" aria-label="Partita">${matches.map(m=>`<option value="${esc(m.id)}" ${m.id===eid?'selected':''}>${esc(fmtD(m)||'')} – ${esc(evName(m))}</option>`).join('')}</select>
+    <div class="sc-clock"><b>${d.half}T</b><span class="sc-time" id="scTime">${mmss(secs)}</span>
+      <button class="${d.start?'sec':'pri'}" data-act="scClock">${d.start?'⏸ Pausa':(secs?'▶ Riprendi':'▶ Avvia')}</button>
+      <button class="sec" data-act="scHalf">${d.half===1?'2° tempo':'1° tempo'}</button></div></section>
+  <section class="card"><span class="lab">1 · TOCCA IL GIOCATORE</span>${pres.length?'':'<span class="mute" style="font-size:13px">Nessuno ha ancora segnato "Presente": mostro tutta la rosa.</span>'}
+    <div class="sc-players">${players.map(id=>`<button class="sc-pl ${d.sel===id?'on':''}" aria-pressed="${d.sel===id}" data-act="scSel" data-id="${esc(id)}"><b>${esc(S.players[id]?.number||'–')}</b><span>${esc(short(nameOf(id)))}</span></button>`).join('')}</div></section>
+  <section class="card"><span class="lab">2 · TOCCA L'AZIONE${d.sel?` · <span style="color:var(--ink)">${esc(nameOf(d.sel))}</span>`:''}</span>
+    ${SC_GROUPS.map(([g,a])=>`<div class="sc-g"><span class="mute" style="font-size:13px;font-weight:600">${g}</span><div class="sc-acts">${a.map(([k,l,c])=>`<button class="sc-a ${c}" data-act="scAdd" data-k="${k}" ${d.sel?'':'disabled'}>${l}<i>${d.sel?(st[d.sel]?.[k]||''):''}</i></button>`).join('')}</div></div>`).join('')}
+    <div class="btns"><button class="sec" data-act="scUndo" ${d.acts.length?'':'disabled'}>↶ Annulla ultima</button></div>
+    ${d.acts.length?`<div class="sc-log">${d.acts.slice(-5).reverse().map(a=>`<div><b>${a.h}T ${scMin(a.s)}'</b> ${esc(short(nameOf(a.p)))} · ${esc(SC_LAB[a.k]||a.k)}</div>`).join('')}</div>`:''}</section>`;
+  // riepilogo
+  const tot = k => d.acts.filter(a=>a.k===k).length, pct = (a,b) => a+b ? Math.round(a/(a+b)*100)+'%' : '–';
+  const row = id => { const o = st[id]||{}, onT=(o.on_in||0)+(o.on_out||0), sh=onT+(o.off_in||0)+(o.off_out||0)+(o.blk||0);
+    return `<tr><td>${esc(short(nameOf(id)))}</td><td>${o.pass_ok||0}/${(o.pass_ok||0)+(o.pass_ko||0)} <span class="mute">${pct(o.pass_ok||0,o.pass_ko||0)}</span></td><td>${onT}/${sh}</td><td>${o.goal||0}</td><td>${o.assist||0}</td><td>${(o.recov||0)+(o.inter||0)+(o.tkl_ok||0)}</td><td>${o.lost||0}</td></tr>`; };
+  const ids = Object.keys(st);
+  h += `<section class="card"><span class="lab">RIEPILOGO</span>
+    <div class="sc-team"><div><b>${pct(tot('pass_ok'),tot('pass_ko'))}</b><span>passaggi riusciti</span></div><div><b>${tot('on_in')+tot('on_out')}/${tot('on_in')+tot('on_out')+tot('off_in')+tot('off_out')+tot('blk')}</b><span>tiri in porta</span></div><div><b>${tot('on_in')+tot('off_in')}·${tot('on_out')+tot('off_out')}</b><span>tiri area · fuori</span></div><div><b>${tot('goal')}</b><span>gol</span></div></div>
+    ${ids.length?`<div style="overflow-x:auto"><table class="sc-tab"><thead><tr><th>Giocatore</th><th>Passaggi</th><th>Tiri porta</th><th>Gol</th><th>Ass.</th><th>Recuperi</th><th>Perse</th></tr></thead><tbody>${ids.map(row).join('')}</tbody></table></div>`:'<span class="mute">Qui compariranno le statistiche dei giocatori.</span>'}
+    ${d.acts.length?`<button class="lnk" data-act="scReset">Azzera i dati di questa partita</button>`:''}</section>`;
+  return h;
+}
+// il cronometro si aggiorna da solo senza ridisegnare la pagina
+setInterval(()=>{ const el = document.getElementById('scTime'); if (el && S.scout) el.textContent = mmss(scSecs(S.scout)); }, 1000);
+
 /* ---------- disegno ---------- */
 const TABS = [
   ['home','Bacheca','<path d="M3 10.5 12 3l9 7.5V21h-6v-6H9v6H3z"/>'],
-  ['presenze','Presenze','<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>'],
   ['formazione','Formazione','<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 12h18"/><circle cx="12" cy="12" r="3"/>'],
   ['calendario','Calendario','<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'],
   ['campionato','Campionato','<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/>'],
-  ['archivio','Archivio','<path d="M4 4h16v5H4z"/><path d="M5 9v11h14V9"/><path d="M10 13h4"/>']
+  ['archivio','Archivio','<path d="M4 4h16v5H4z"/><path d="M5 9v11h14V9"/><path d="M10 13h4"/>'],
+  ['scouting','Scouting','<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6M12 2v3"/>']
 ];
 function shell(){
   if ($('#app')) return;
@@ -574,7 +629,7 @@ function draw(){
   if (!['posts','events','players','rsvp','votes'].every(k=>S.loaded.has(k)) && !S.slow) h = `<div class="empty">Caricamento…</div>`;
   else {
     if (S.slow) h += `<div class="card" role="status" style="background:var(--maybg)">Connessione lenta o assente: i dati potrebbero non essere aggiornati.</div>`;
-    h += ({home:vHome,presenze:vPresenze,formazione:vFormazione,calendario:vCalendario,campionato:vCampionato,archivio:vArchivio,rosa:vRosa,impostazioni:vImpostazioni}[S.tab]||vHome)();
+    h += ({home:vHome,presenze:vPresenze,formazione:vFormazione,calendario:vCalendario,campionato:vCampionato,archivio:vArchivio,rosa:vRosa,impostazioni:vImpostazioni,scouting:vScouting}[S.tab]||vHome)();
   }
   $('#app').innerHTML = h;
 }
@@ -619,6 +674,12 @@ const ACT = {
   mode: () => { mode = asAdmin() ? 'player' : 'admin'; try { localStorage.setItem('rim-mode', mode); } catch(_) {} draw(); toast(asAdmin() ? 'Modalità Amministratore' : 'Modalità Giocatore'); },
   asDir: d => { const on = ans(actId(),d.e)==='si' && roleAt(actId(),d.e)==='dirigente';
     write(()=>setDoc(D('rsvp/'+actId()), on ? {answers:{[d.e]: deleteField()}, roles:{[d.e]: deleteField()}} : {answers:{[d.e]:'si'}, roles:{[d.e]:'dirigente'}}, {merge:true})); },
+  scSel: d => { const x = S.scout; x.sel = x.sel===d.id ? '' : d.id; scSave(x.eid, x); draw(); },
+  scAdd: d => { const x = S.scout; if (!x.sel) return; x.acts.push({p:x.sel, k:d.k, s:scSecs(x), h:x.half}); scSave(x.eid, x); if (navigator.vibrate) navigator.vibrate(30); draw(); toast(`${short(nameOf(x.sel))}: ${SC_LAB[d.k]}`); },
+  scUndo: () => { const x = S.scout; const a = x.acts.pop(); scSave(x.eid, x); draw(); if (a) toast('Annullato: '+SC_LAB[a.k]); },
+  scClock: () => { const x = S.scout; if (x.start) { x.base = scSecs(x); x.start = null; } else x.start = Date.now(); scSave(x.eid, x); draw(); },
+  scHalf: () => { const x = S.scout; x.half = x.half===1 ? 2 : 1; x.base = 0; x.start = null; scSave(x.eid, x); draw(); },
+  scReset: (d,b) => { if (!confirm2(b)) return; const x = S.scout; Object.assign(x, {acts:[], half:1, base:0, start:null}); scSave(x.eid, x); draw(); },
   cyc: d => { const o=['','si','forse','no']; setRsvp(d.id, d.e, o[(o.indexOf(ans(d.id,d.e))+1)%4]); },
   vote: d => { const i=+d.i, same=(S.votes[S.uid]?.answers||{})[d.p]===i; write(()=>setDoc(D('votes/'+S.uid), {answers:{[d.p]: same ? deleteField() : i}}, {merge:true})); },
   remind: d => { const e=S.events.find(x=>x.id===d.e); if (!e) return; const miss=squad().filter(id=>!ans(id,e.id)).map(nameOf);
@@ -698,6 +759,7 @@ document.addEventListener('change', e=>{ const t=e.target, c=t.dataset.ch; if (!
   if (c==='fe') { S.fe=t.value; S.draft=null; t.blur(); draw(); }
   if (c==='steam') { S.steam = t.value; t.blur(); draw(); return; }
   if (c==='mycat') { write(()=>updateDoc(D('players/'+S.uid), {cat:t.value}), 'Salvato'); return; }
+  if (c==='scev') { S.scoutEid = t.value; S.scout = null; t.blur(); draw(); return; }
   if (c==='dark') { setDark(t.checked); return; }
   if (c==='pref') { const prefs={...allPrefs((S.myTok||{}).prefs), [t.value]: t.checked}; write(()=>setDoc(D('tokens/'+S.uid), {prefs}, {merge:true})); return; }
   const L = S.draft && S.draft.items[S.draft.idx];
@@ -706,5 +768,5 @@ document.addEventListener('change', e=>{ const t=e.target, c=t.dataset.ch; if (!
 });
 document.addEventListener('input', e=>{ const k=e.target.dataset.in, L=S.draft&&S.draft.items[S.draft.idx]; if (!L) return; if (k==='tac') L.tactic = e.target.value; if (k==='luname') L.name = e.target.value; });
 addEventListener('beforeinstallprompt', e=>{ e.preventDefault(); installEvt = e; if (S.phase==='app') draw(); });
-const fromHash = () => { const h=location.hash.slice(1); if (['home','presenze','formazione','calendario','campionato','archivio','rosa','impostazioni'].includes(h)) { S.tab=h; if (S.phase==='app') draw(); } };
+const fromHash = () => { const h=location.hash.slice(1); if (['home','presenze','formazione','calendario','campionato','archivio','rosa','impostazioni','scouting'].includes(h)) { S.tab=h; if (S.phase==='app') draw(); } };
 addEventListener('hashchange', fromHash); fromHash();
