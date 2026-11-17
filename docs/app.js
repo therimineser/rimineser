@@ -213,9 +213,13 @@ function vViews(){
 const icoPlus = '<svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
 function counts(eid){ const r={si:0,forse:0,no:0,none:0}; squad().filter(id=>plAt(id,eid)).forEach(id=>{ r[ans(id,eid)||'none']++; }); return r; }
 function rsvpBtns(eid){ if (asAdmin()) return `<div style="display:flex;flex-direction:column;gap:8px"><span class="mute">Sei in modalità Amministratore: per segnarti alle presenze passa al tuo profilo giocatore.</span><button class="sec" data-act="mode">⇄ Passa a Giocatore</button></div>`; const my=ans(actId(),eid);
-  const role = roleAt(actId(),eid), asRole = isPl(actId()) && (my==='si' || my==='forse')
-    ? `<div class="row" style="gap:8px;align-items:center"><span class="mute" style="font-size:14px">Ci sono come:</span><div class="mods" role="group" aria-label="Ci sono come" style="flex:1">${[['','Giocatore'],['dirigente','Dirigenza']].map(([v,l])=>`<button class="${role===v?'on':''}" aria-pressed="${role===v}" data-act="role" data-e="${esc(eid)}" data-v="${v}">${l}</button>`).join('')}</div></div>` : '';
-  return `<div class="btns">${['si','forse','no'].map(v=>`<button class="b ${my===v?v:''}" aria-pressed="${my===v}" data-act="rsvp" data-e="${esc(eid)}" data-v="${v}">${LAB[v]}</button>`).join('')}</div>${asRole}`; }
+  return `<div class="btns">${['si','forse','no'].map(v=>`<button class="b ${my===v?v:''}" aria-pressed="${my===v}" data-act="rsvp" data-e="${esc(eid)}" data-v="${v}">${LAB[v]}</button>`).join('')}</div>`; }
+// Piccolo tasto FUORI dal riquadro: un tocco = presente come dirigenza (solo per giocatori/capitano)
+function dirBtn(eid){
+  if (asAdmin() || !isPl(actId())) return '';
+  const on = ans(actId(),eid)==='si' && roleAt(actId(),eid)==='dirigente';
+  return `<div class="dirbtn"><button class="lnk" data-act="asDir" data-e="${esc(eid)}" aria-pressed="${on}">${on?'✓ Ci sei come dirigenza · annulla':'Vengo come dirigenza'}</button></div>`;
+}
 function bar(eid){ const c=counts(eid), n=Math.max(1,c.si+c.forse+c.no+c.none);
   return `<div class="bar" aria-hidden="true"><i style="width:${c.si/n*100}%;background:var(--ok)"></i><i style="width:${c.forse/n*100}%;background:var(--may)"></i><i style="width:${c.no/n*100}%;background:var(--ink)"></i></div>
   <div class="mute">Giocatori: ${c.si} present${c.si===1?'e':'i'} · ${c.forse} forse · ${c.no} assenti · ${c.none} senza risposta${(()=>{ const o=roster().filter(id=>!plAt(id,eid)&&ans(id,eid)==='si').length; return o?` · +${o} tra staff e pubblico`:''; })()}</div>`; }
@@ -395,10 +399,10 @@ function vHome(){
     <div class="row" style="gap:14px"><span class="res" style="white-space:nowrap">${esc(nx.time||'--:--')}</span><span class="mute" style="text-transform:capitalize">${esc(fmtD(nx,{weekday:'long',day:'numeric',month:'long'}))}</span></div>
     <div class="row mute" style="gap:6px"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s7-6.5 7-12a7 7 0 0 0-14 0c0 5.5 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg>${esc(nx.location||'Campo da definire')}</div>
     ${rsvpBtns(nx.id)}${bar(nx.id)}
-    <div class="btns"><button class="sec" style="flex:1" data-act="who" data-e="${esc(nx.id)}">Presenti (${pres})</button>${isM?`<button class="pri" style="flex:1" data-act="openLu" data-e="${esc(nx.id)}">${nLu>1?'Formazioni ('+nLu+')':'Formazione'}</button>`:''}</div></section>`; }
+    <div class="btns"><button class="sec" style="flex:1" data-act="who" data-e="${esc(nx.id)}">Presenti (${pres})</button>${isM?`<button class="pri" style="flex:1" data-act="openLu" data-e="${esc(nx.id)}">${nLu>1?'Formazioni ('+nLu+')':'Formazione'}</button>`:''}</div></section>${dirBtn(nx.id)}`; }
   const lp = ourPos(); if (lp) h += `<button class="card" style="flex-direction:row;align-items:center;border:0;text-align:left;width:100%" data-act="go" data-t="campionato"><span class="num" style="width:46px;height:46px;font-size:24px">${lp.pos}°</span><span style="flex:1;min-width:0"><b>Campionato UISP · ${lp.pt} punti</b><br><span class="mute" style="white-space:nowrap;font-size:13.5px">${lp.v} vinte · ${lp.n} pareggiate · ${lp.p} perse</span></span>›</button>`;
   if (!nx) h += `<section class="card dark"><span class="lab" style="color:#FF4D5E">CALENDARIO</span><p class="txt">Nessun evento in programma.${S.coach?' Aggiungilo dal Calendario.':''}</p></section>`;
-  h += `<div class="row sp"><h2>Comunicazioni</h2><span class="mute">della squadra</span></div>`;
+  h += `<div class="row sp"><h2>Comunicazioni</h2></div>`;
   h += S.posts.length ? S.posts.map(vPost).join('') : `<div class="empty">Ancora nessuna comunicazione.</div>`;
   if (S.config.instagram) { const u=String(S.config.instagram).replace(/^@/,''); h += `<a class="card" style="flex-direction:row;align-items:center;text-decoration:none;color:inherit" href="https://www.instagram.com/${encodeURIComponent(u)}/" target="_blank" rel="noopener"><svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="var(--red)"/></svg><span style="flex:1"><b>Seguici su Instagram</b><br><span class="mute">@${esc(u)}</span></span>›</a>`; }
   if (canPost()) h += `<button class="fab" data-act="newPost" aria-label="Nuova comunicazione o sondaggio">${icoPlus}</button>`;
@@ -425,7 +429,7 @@ function vPresenze(){
     <details><summary>Presenti</summary>
       ${attendees(e,true)}
       ${S.coach?`<p class="mute" style="margin:0">Tocca un nome per cambiare la sua risposta.</p>${S.admin?`<button class="pri" data-act="pushRemind" data-e="${esc(e.id)}">🔔 Notifica a chi non ha risposto</button>`:''}<button class="sec" data-act="remind" data-e="${esc(e.id)}">Copia promemoria per WhatsApp</button>`:''}
-    </details></section>`;
+    </details></section>${dirBtn(e.id)}`;
   }).join('');
 }
 function luCard(l, sm){
@@ -601,9 +605,11 @@ const ACT = {
       if (err) err.textContent = e.code==='auth/popup-blocked' ? 'Il telefono ha bloccato la finestra di Google: riprova o usa email e password.' : 'Accesso con Google non riuscito qui: usa email e password.'; } },
   install: async () => { if (!installEvt) return; installEvt.prompt(); try { await installEvt.userChoice; } catch(_){} installEvt = null; draw(); },
   beCoach: () => write(()=>setDoc(D('config/team'), {coaches:[S.uid], instagram:'', createdAt:Date.now()}), 'Sei l\'amministratore della squadra!'),
-  rsvp: d => setRsvp(actId(), d.e, ans(actId(),d.e)===d.v ? '' : d.v),
+  rsvp: d => { const id = actId(), wasDir = !!roleAt(id,d.e), v = ans(id,d.e)===d.v && !wasDir ? '' : d.v;   // i tasti normali = come giocatore
+    write(()=>setDoc(D('rsvp/'+id), {answers:{[d.e]: v || deleteField()}, ...(wasDir ? {roles:{[d.e]: deleteField()}} : {})}, {merge:true})); },
   mode: () => { mode = asAdmin() ? 'player' : 'admin'; try { localStorage.setItem('rim-mode', mode); } catch(_) {} draw(); toast(asAdmin() ? 'Modalità Amministratore' : 'Modalità Giocatore'); },
-  role: d => write(()=>setDoc(D('rsvp/'+actId()), {roles:{[d.e]: d.v ? d.v : deleteField()}}, {merge:true})),
+  asDir: d => { const on = ans(actId(),d.e)==='si' && roleAt(actId(),d.e)==='dirigente';
+    write(()=>setDoc(D('rsvp/'+actId()), on ? {answers:{[d.e]: deleteField()}, roles:{[d.e]: deleteField()}} : {answers:{[d.e]:'si'}, roles:{[d.e]:'dirigente'}}, {merge:true})); },
   cyc: d => { const o=['','si','forse','no']; setRsvp(d.id, d.e, o[(o.indexOf(ans(d.id,d.e))+1)%4]); },
   vote: d => { const i=+d.i, same=(S.votes[S.uid]?.answers||{})[d.p]===i; write(()=>setDoc(D('votes/'+S.uid), {answers:{[d.p]: same ? deleteField() : i}}, {merge:true})); },
   remind: d => { const e=S.events.find(x=>x.id===d.e); if (!e) return; const miss=squad().filter(id=>!ans(id,e.id)).map(nameOf);
