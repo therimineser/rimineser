@@ -37,7 +37,7 @@ const MODS = {
   '2-1-2-1':[[50,89,'POR'],[30,71,'DIF'],[70,71,'DIF'],[50,56,'CEN'],[20,40,'CEN'],[80,40,'CEN'],[50,19,'ATT']]
 };
 const ROLES = ['Portiere','Difensore','Centrocampista','Attaccante','Jolly'];
-const CATS = [['mister','Mister','Mister'],['capitano','Capitano','Capitano'],['giocatore','Giocatori','Giocatore'],['allenatore','Allenatori','Allenatore'],['dirigente','Dirigenza','Dirigente'],['pubblico','Pubblico','Pubblico / tifoso']];
+const CATS = [['mister','Mister','Mister'],['capitano','Capitano','Capitano'],['giocatore','Giocatori','Giocatore'],['allenatore','Allenatori','Allenatore'],['preparatore','Preparatori atletici','Preparatore atletico'],['dirigente','Dirigenza','Dirigente'],['social','Social media manager','Social media manager'],['pubblico','Pubblico','Pubblico / tifoso']];
 const catOf = id => S.players[id]?.cat || 'giocatore';
 const STAFFCATS = ['mister','capitano'];   // le assegna solo l'amministratore
 const isPl = id => ['giocatore','capitano'].includes(catOf(id));
