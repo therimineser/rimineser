@@ -207,7 +207,7 @@ async function notifyTeam(kind, title, body, url, extra){
   wakeRobot();
 }
 async function wakeRobot(){
-  if (!canPost()) return;   // il gettone lo leggono solo admin, Mister, Capitano, Preparatore e Social: per gli altri parte il giro automatico
+  if (!S.admin) return;   // il gettone lo legge solo l'amministratore: per gli altri parte il giro automatico del robot
   try {
     if (!S.robot) { const d = await getDoc(D('private/robot')); S.robot = d.exists() ? d.data() : {}; }
     const tok = S.robot.token; if (!tok) return;
@@ -341,7 +341,7 @@ function vPresenze(){
     <h3>${esc(evName(e))}</h3>${rsvpBtns(e.id)}${bar(e.id)}
     <details><summary>Presenti</summary>
       ${attendees(e,true)}
-      ${S.coach?`<p class="mute" style="margin:0">Tocca un nome per cambiare la sua risposta.</p><button class="pri" data-act="pushRemind" data-e="${esc(e.id)}">🔔 Notifica a chi non ha risposto</button><button class="sec" data-act="remind" data-e="${esc(e.id)}">Copia promemoria per WhatsApp</button>`:''}
+      ${S.coach?`<p class="mute" style="margin:0">Tocca un nome per cambiare la sua risposta.</p>${S.admin?`<button class="pri" data-act="pushRemind" data-e="${esc(e.id)}">🔔 Notifica a chi non ha risposto</button>`:''}<button class="sec" data-act="remind" data-e="${esc(e.id)}">Copia promemoria per WhatsApp</button>`:''}
     </details></section>`;
   }).join('');
 }

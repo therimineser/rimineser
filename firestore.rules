@@ -61,12 +61,12 @@ service cloud.firestore {
       allow create: if isMember() && request.resource.data.sent == false && outKind() in ['post', 'poll', 'lineup', 'remind', 'test']
                        && (!(outKind() in ['post', 'poll']) || canPost())
                        && (outKind() != 'lineup' || canLineup())
-                       && (outKind() != 'test' || isAdmin());
+                       && (!(outKind() in ['test', 'remind']) || isAdmin());
       allow read, update, delete: if false;
     }
     match /private/{id} {
-      // gettone GitHub: lo leggono solo amministratore e chi può pubblicare (serve a far partire subito le notifiche)
-      allow read: if canPost();
+      // gettone GitHub: solo l'amministratore
+      allow read: if isAdmin();
       allow write: if isAdmin();
     }
     match /league/{id} {

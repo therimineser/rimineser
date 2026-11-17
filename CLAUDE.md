@@ -12,7 +12,7 @@ App web installabile (PWA) per la squadra di calcio a 7 **The Rimineser F.P.** (
 
 ## Funzioni
 - **Bacheca**: un solo riquadro "PROSSIMO APPUNTAMENTO" (partita o allenamento) con Presente/Forse/Assente, pulsante "Presenti (n)" e, se partita, "Formazione/Formazioni"; riquadro posizione UISP; comunicazioni con autore e sondaggi.
-- **Presenze**: per evento, divise per categoria (Giocatori, Allenatori, Dirigenza, Pubblico); chiunque può cambiare la risposta altrui; pulsante notifica a chi non ha risposto; copia promemoria WhatsApp.
+- **Presenze**: per evento, divise per categoria (Giocatori, Allenatori, Dirigenza, Pubblico); chiunque può cambiare la risposta altrui; pulsante notifica a chi non ha risposto (solo admin); copia promemoria WhatsApp.
 - **Formazione**: più formazioni per partita (A, B…), moduli 2-3-1, 3-2-1, 3-1-2, 2-2-2, 2-1-2-1, panchina, tattica, pubblica/nascondi, copia dall'ultima partita.
 - **Calendario**: eventi manuali + partite UISP create in automatico (id `uisp-<giornata>`; data/ora/campo/risultato arrivano dai comunicati).
 - **Campionato**: classifica, statistiche con grafici (gol per giornata, gol fatti/subiti, ammonizioni, punti disciplina), risultati, calendario (tutte le giornate pubblicate da UISP), marcatori, cartellini (da `docs/campionato.json`; cartellini cumulati in `cards`).
@@ -36,7 +36,7 @@ App web installabile (PWA) per la squadra di calcio a 7 **The Rimineser F.P.** (
 - App: la prova nel browser usa un finto Firebase (imports di app.js puntati a un `fake.js` in memoria) con Playwright; non è nel repo.
 
 ## Dati Firestore (progetto Firebase `rimineser`, europe-west8)
-`config/team` {coaches:[uid admin], instagram} · `players/{uid}` {name, number, cat, approved, manual?} · `posts/{id}` {text, important, options?, author, createdAt} · `events/{id}` {type, date, time, opponent, location, home, notes, result, lineups[]} · `rsvp/{uid}` {answers:{eventId: si|forse|no}} · `votes/{uid}` {answers:{postId: idx}} · `tokens/{uid}` {tokens:{fcmToken: ts}, prefs} · `outbox/{id}` · `private/robot` {token, leggibile solo da admin e categorie che pubblicano} · `robot/state`.
+`config/team` {coaches:[uid admin], instagram} · `players/{uid}` {name, number, cat, approved, manual?} · `posts/{id}` {text, important, options?, author, createdAt} · `events/{id}` {type, date, time, opponent, location, home, notes, result, lineups[]} · `rsvp/{uid}` {answers:{eventId: si|forse|no}} · `votes/{uid}` {answers:{postId: idx}} · `tokens/{uid}` {tokens:{fcmToken: ts}, prefs} · `outbox/{id}` · `private/robot` {token, leggibile solo dall'admin: solo l'app dell'admin sveglia subito il robot, per gli altri vale il giro ogni 5 min} · `robot/state`.
 
 ## Come si aggiorna
 Modificare i file in `docs/` e fare push su `main`: il workflow ripubblica in ~1-2 minuti e i telefoni prendono la versione nuova alla riapertura (service worker network-first). Nel workflow non toccare `docs/campionato.json` a mano (lo gestisce il robot).

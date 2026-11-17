@@ -53,7 +53,7 @@ for (const u of ALL) {
   await t(`${u}: vota sondaggio`, true, () => setDoc(doc(db(u), 'votes/' + u), { answers: { x: 0 } }, { merge: true }));
   await t(`${u}: notifica "comunicazione" in coda`, can, () => addDoc(collection(db(u), 'outbox'), { kind: 'post', title: 't', body: 'b', sent: false }));
   await t(`${u}: notifica "formazione" in coda`, lu, () => addDoc(collection(db(u), 'outbox'), { kind: 'lineup', title: 't', body: 'b', sent: false }));
-  await t(`${u}: notifica "promemoria presenze" in coda`, true, () => addDoc(collection(db(u), 'outbox'), { kind: 'remind', eventId: 'ev', title: 't', body: 'b', sent: false }));
+  await t(`${u}: notifica "promemoria presenze" in coda`, u === 'admin', () => addDoc(collection(db(u), 'outbox'), { kind: 'remind', eventId: 'ev', title: 't', body: 'b', sent: false }));
   await t(`${u}: notifica di prova`, u === 'admin', () => addDoc(collection(db(u), 'outbox'), { kind: 'test', title: 't', body: 'b', sent: false }));
   await t(`${u}: notifica senza tipo (= comunicazione)`, can, () => addDoc(collection(db(u), 'outbox'), { title: 't', body: 'b', sent: false }));
   await t(`${u}: notifica di tipo inventato`, false, () => addDoc(collection(db(u), 'outbox'), { kind: 'boh', title: 't', sent: false }));
@@ -68,7 +68,7 @@ for (const u of Object.keys(PEOPLE)) {
   await t(`${u}: salva profilo con stessa categoria`, true, () => updateDoc(doc(db(u), 'players/' + u), { name: 'X', number: '', cat: PEOPLE[u] }));
   await t(`${u}: si dà un'etichetta/campo extra`, false, () => updateDoc(doc(db(u), 'players/' + u), { tag: 'capitano' }));
   await t(`${u}: modifica categoria di un altro`, false, () => updateDoc(doc(db(u), 'players/p2'), { cat: 'mister' }));
-  await t(`${u}: legge il gettone del robot`, priv, () => getDoc(doc(db(u), 'private/robot')));
+  await t(`${u}: legge il gettone del robot`, false, () => getDoc(doc(db(u), 'private/robot')));
   await t(`${u}: scrive il gettone del robot`, false, () => setDoc(doc(db(u), 'private/robot'), { token: 'x' }));
   await t(`${u}: si fa amministratore`, false, () => updateDoc(doc(db(u), 'config/team'), { coaches: ['admin', u] }));
   await t(`${u}: cambia Instagram`, true, () => updateDoc(doc(db(u), 'config/team'), { instagram: 'pagina' }));
