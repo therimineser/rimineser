@@ -1,6 +1,17 @@
 {
-  "id": "promemoria-esempio-4",
-  "title": "⚽ Domani: The Rimineser F.P. vs Oasi del Mare",
-  "body": "Ore 22:00 · Campo Riccione. Ci vediamo in campo! (notifica di esempio)",
-  "url": "#home"
+  "id": "tutte-le-notifiche-1",
+  "nota": "Esempi mandati SOLO all'amministratore, una volta per id: per rimandarli cambiare id.",
+  "notifiche": [
+    {"title": "📣 Nuova comunicazione", "body": "Domani si gioca alle 22 a Riccione: ritrovo al campo alle 21:30, portate maglia rossa e bianca.", "url": "#home"},
+    {"title": "📊 Nuovo sondaggio", "body": "Cena di squadra: venerdì o sabato?", "url": "#home"},
+    {"title": "⚽ Formazione pubblicata", "body": "Formazione A per vs Oasi del Mare (mer 18 nov): modulo 2-3-1", "url": "#formazione"},
+    {"title": "⏰ vs Oasi del Mare · mer 18 nov 22:00", "body": "Non hai ancora risposto alle presenze: ci sei?", "url": "#presenze"},
+    {"title": "⚽ Domani: The Rimineser F.P. vs Oasi del Mare", "body": "Ore 22:00 · Campo Riccione. Ci vediamo in campo!", "url": "#home"},
+    {"title": "⚽ Tra 12 ore: The Rimineser F.P. vs Oasi del Mare", "body": "Ore 22:00 · Campo Riccione. Non hai ancora risposto: ci sei?", "url": "#presenze"},
+    {"title": "⚽ Tra 2 ore: The Rimineser F.P. vs Oasi del Mare", "body": "Ore 22:00 · Campo Riccione. Ci vediamo in campo!", "url": "#home"},
+    {"title": "⏰ Domani: Allenamento", "body": "Ore 20:30 · Palestra. Non hai ancora risposto: ci sei?", "url": "#presenze"},
+    {"title": "🏆 Nuovo comunicato UISP", "body": "Anfiteatro FC 3-5 The Rimineser F.P. · siamo 3° in classifica · prossima: Oasi del Mare 18/11 22:00", "url": "#campionato"},
+    {"title": "👤 Nuova richiesta di iscrizione", "body": "Mario Rossi (Giocatore) vuole entrare in squadra: approvalo in Impostazioni.", "url": "#impostazioni"},
+    {"title": "🔔 Prova notifiche", "body": "Se leggi questo messaggio, le notifiche funzionano!", "url": "#home"}
+  ]
 }

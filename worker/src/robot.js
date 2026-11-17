@@ -200,8 +200,11 @@ export async function run(env, opt) {
       changed.esempi = [...(state.esempi || []), ex.id].slice(-20);
       if (await claim('esempio-' + ex.id)) {
         const t = await tokens();
-        const n = await send((await coaches()).filter(u => u in t), { title: ex.title || 'Prova', body: ex.body || '', url: ex.url || '#home', tag: 'esempio-' + ex.id }, null);
-        log(`Notifica di esempio "${ex.title}" → ${n} telefoni`);
+        const admins = (await coaches()).filter(u => u in t);
+        const list = Array.isArray(ex.notifiche) ? ex.notifiche : [ex];
+        let n = 0;   // una alla volta, così arrivano nell'ordine del file
+        for (const [i, m] of list.entries()) n += await send(admins, { title: m.title || 'Prova', body: m.body || '', url: m.url || '#home', tag: `esempio-${ex.id}-${i}` }, null);
+        log(`Notifiche di esempio "${ex.id}" (${list.length}) → ${n} invii all'amministratore`);
       }
     }
 

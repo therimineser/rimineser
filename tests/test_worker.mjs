@@ -178,6 +178,8 @@ check(!(await go()).length && get('robot/state').uisp === 'primo', 'UISP: al pri
 // notifica di esempio
 base(T0); EX = { id: 'nuovo-esempio', title: 'Esempio', body: 'b' };
 check(eq(who(await go()), ['admin']), 'Esempio: solo all\'amministratore'); check(!(await go()).length, 'Esempio: una volta sola');
+base(T0); EX = { id: 'tutte', notifiche: [{ title: 'A' }, { title: 'B' }, { title: 'C' }] };
+s = await go(); check(eq(who(s), ['admin']) && eq(s.map(([, d]) => d.title), ['A', 'B', 'C']) && new Set(s.map(([, d]) => d.tag)).size === 3, 'Esempi multipli: tutti, in ordine, solo all\'amministratore', s.map(([u, d]) => u + ':' + d.title));
 
 // 5. token scaduto pulito
 base(T0); put('tokens/p3', { tokens: { 'dead-1': 1, 'tok-p3': 2 } }); TOKOWNER['dead-1'] = 'p3'; put('outbox/a', { kind: 'post', title: 'x', sent: false });

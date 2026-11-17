@@ -51,6 +51,7 @@ oa.service_account = sa
 os.environ['FIREBASE_SA'] = json.dumps({'project_id': 'rimineser'})
 import notify
 
+ESEMPIO_ID = json.load(open(os.path.join(ROOT, 'tools', 'esempio-notifica.json'), encoding='utf-8'))['id']
 TOKOWNER = {}
 def base(now):
     DB.clear(); SENT.clear(); TOKOWNER.clear()
@@ -61,7 +62,7 @@ def base(now):
     DB['players/rej'] = {'name': 'rej', 'cat': 'giocatore', 'approved': False, 'rejected': True}
     for u in ['admin', 'm1', 'c1', 'p2', 'p3', 'p4', 'f1', 'pend', 'rej']:
         DB['tokens/' + u] = {'tokens': {'tok-' + u: 1}, 'prefs': {}}; TOKOWNER['tok-' + u] = u
-    DB['robot/state'] = {'requests': ['pend', 'rej'], 'uisp': 'x', 'esempi': ['promemoria-esempio-4']}
+    DB['robot/state'] = {'requests': ['pend', 'rej'], 'uisp': 'x', 'esempi': [ESEMPIO_ID]}
     notify.now_rome = lambda: now
     notify.league = lambda: None
 
