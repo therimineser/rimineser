@@ -60,9 +60,9 @@ for (const u of ALL) {
 }
 for (const u of Object.keys(PEOPLE)) {
   const priv = ['mister', 'capitano', 'preparatore', 'social'].includes(PEOPLE[u]);
-  await t(`${u}: si promuove Capitano da solo`, false, () => updateDoc(doc(db(u), 'players/' + u), { cat: 'capitano' }));
-  await t(`${u}: si promuove Mister da solo`, false, () => updateDoc(doc(db(u), 'players/' + u), { cat: 'mister' }));
-  await t(`${u}: si promuove Social da solo`, false, () => updateDoc(doc(db(u), 'players/' + u), { cat: 'social' }));
+  if (PEOPLE[u] !== 'capitano') await t(`${u}: si promuove Capitano da solo`, false, () => updateDoc(doc(db(u), 'players/' + u), { cat: 'capitano' }));
+  if (PEOPLE[u] !== 'mister') await t(`${u}: si promuove Mister da solo`, false, () => updateDoc(doc(db(u), 'players/' + u), { cat: 'mister' }));
+  if (PEOPLE[u] !== 'social') await t(`${u}: si promuove Social da solo`, false, () => updateDoc(doc(db(u), 'players/' + u), { cat: 'social' }));
   await t(`${u}: cambia la propria categoria in "pubblico"`, !priv, () => updateDoc(doc(db(u), 'players/' + u), { cat: 'pubblico' }));
   await t(`${u}: cambia nome e numero`, true, () => updateDoc(doc(db(u), 'players/' + u), { name: 'Nuovo nome', number: '12' }));
   await t(`${u}: salva profilo con stessa categoria`, true, () => updateDoc(doc(db(u), 'players/' + u), { name: 'X', number: '', cat: PEOPLE[u] }));
