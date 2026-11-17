@@ -5,6 +5,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="light only">
+<script>try{if(localStorage.getItem("rim-theme")==="dark"){document.documentElement.dataset.theme="dark";document.querySelector('meta[name=color-scheme]').content="dark"}}catch(e){}</script>
 <meta name="theme-color" content="#E30613">
 <meta name="description" content="L'app della squadra The Rimineser Football Project">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -29,7 +30,7 @@
 --mute:light-dark(#5C5F66,#A6A9B0);--line:light-dark(#E4E4E4,#2B2E35);--red:light-dark(#E30613,#FF3B4F);
 --redbg:light-dark(#FFE3E5,#45101A);--top:#E30613;--black:#111111;--pitch:#22A04B;--ok:light-dark(#00843D,#2BD46E);--okbg:light-dark(#D9F7E5,#0F3A22);
 --may:#FFB300;--mayink:light-dark(#8A5A00,#FFC94D);--maybg:light-dark(#FFF1CC,#3A2C08)}
-:root[data-theme]{color-scheme:light}
+:root[data-theme="dark"]{color-scheme:dark}
 *{box-sizing:border-box;min-width:0}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Inter,system-ui,sans-serif;overflow-x:clip}
 h1,h2,h3,.cond{font-family:"Barlow Condensed",Inter,sans-serif;font-weight:700;line-height:1.05;margin:0}
@@ -59,7 +60,7 @@ h3{font-size:21px}
 .b{min-height:46px;border-radius:12px;border:2px solid var(--line);background:var(--card);font-weight:600;font-size:15px;padding:0 14px;flex:1}
 .b.si{background:var(--ok);border-color:var(--ok);color:#fff}
 .b.forse{background:var(--may);border-color:var(--may);color:#111}
-.b.bdir{min-height:38px;font-size:14px;flex:none;align-self:center;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0 16px;border-radius:999px;border-style:dashed;color:#444}
+.b.bdir{min-height:38px;font-size:14px;flex:none;align-self:center;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0 16px;border-radius:999px;border-style:dashed;color:var(--mute)}
 .b.bdir.on{background:#555;border:2px solid #555;color:#fff}
 .b.no{background:var(--ink);border-color:var(--ink);color:var(--card)}
 .pri{min-height:46px;border-radius:12px;border:0;background:var(--red);color:#fff;font-weight:700;padding:0 18px}
@@ -67,9 +68,9 @@ h3{font-size:21px}
 .lnk{border:0;background:none;color:var(--red);font-weight:600;font-size:14px;min-height:44px;padding:0 4px}
 .chip{display:inline-flex;align-items:center;font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px;background:var(--line);white-space:nowrap}
 .dot-on{display:inline-block;width:10px;height:10px;border-radius:50%;background:#1DB954;box-shadow:0 0 0 2px rgba(29,185,84,.25);vertical-align:middle}
-.online-n{gap:6px;background:#E8F8EE;color:#0E7A36}
+.online-n{gap:6px;background:var(--okbg);color:var(--ok)}
 .vstat{flex:1;background:var(--line);border-radius:12px;padding:10px;display:flex;flex-direction:column;align-items:center;gap:2px}
-.vstat b{font:800 28px "Barlow Condensed",sans-serif;line-height:1}.vstat span{font-size:12px;color:#555}
+.vstat b{font:800 28px "Barlow Condensed",sans-serif;line-height:1}.vstat span{font-size:12px;color:var(--mute)}
 .vbars{display:flex;align-items:flex-end;gap:2px;height:60px}.vbars i{flex:1;background:#E30613;border-radius:2px 2px 0 0;min-height:2px}
 .chip.tag{background:#111;color:#fff;font-size:11px;padding:2px 7px;margin-left:4px;vertical-align:1px}
 .chip.partita{background:var(--redbg);color:var(--red)}

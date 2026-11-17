@@ -504,6 +504,13 @@ function vRosa(){
   return h;
 }
 
+// Modalità notte: solo su questo telefono (localStorage "rim-theme"); i colori scuri sono già nei token CSS (light-dark)
+const isDark = () => document.documentElement.dataset.theme === 'dark';
+function setDark(on){
+  if (on) document.documentElement.dataset.theme = 'dark'; else delete document.documentElement.dataset.theme;
+  const m = document.querySelector('meta[name=color-scheme]'); if (m) m.content = on ? 'dark' : 'light only';
+  try { localStorage.setItem('rim-theme', on ? 'dark' : 'light'); } catch(_) {}
+}
 function vImpostazioni(){
   const me = S.players[actId()] || {}, pe = pendingP();
   let h = `<div class="row sp"><h2>Impostazioni</h2></div>`;
@@ -511,6 +518,7 @@ function vImpostazioni(){
     <div class="btns"><button class="pri" data-act="me">Il mio profilo</button><button class="sec" data-act="logout">Esci</button></div></section>`;
   if (asAdmin() && pe.length) h += `<section class="card install"><b>Da approvare</b>${pe.map(id=>`<div class="row sp"><span>${esc(nameOf(id))} <span class="mute">· ${esc(CATS.find(c=>c[0]===catOf(id))[2])}</span></span><span class="row" style="gap:4px"><button class="lnk" data-act="rejP" data-id="${esc(id)}">Rifiuta</button><button class="pri" data-act="okP" data-id="${esc(id)}">Approva</button></span></div>`).join('')}</section>`;
   h += vPushCard(true) || `<section class="card"><span class="lab">NOTIFICHE</span><span class="mute">Su questo dispositivo le notifiche non sono disponibili.</span></section>`;
+  h += `<section class="card"><span class="lab">ASPETTO</span><label class="ck"><input type="checkbox" data-ch="dark" ${isDark()?'checked':''}>🌙 Modalità notte (schermo più scuro)</label></section>`;
   if (asAdmin()) h += vViews();
   if (asAdmin()) h += `<section class="card"><span class="lab">AMMINISTRATORE</span><span class="mute">Aggiungi in rosa chi non usa l'app: potrai segnare tu le sue presenze.</span><button class="pri" data-act="addP">+ Aggiungi nuovo iscritto</button></section>`;
   if (asAdmin()) h += `<section class="card"><span class="lab">SQUADRA</span><form data-form="team"><label>Profilo Instagram<input name="ig" value="${esc(S.config.instagram||'')}" placeholder="@nomeprofilo"></label>
@@ -690,6 +698,7 @@ document.addEventListener('change', e=>{ const t=e.target, c=t.dataset.ch; if (!
   if (c==='fe') { S.fe=t.value; S.draft=null; t.blur(); draw(); }
   if (c==='steam') { S.steam = t.value; t.blur(); draw(); return; }
   if (c==='mycat') { write(()=>updateDoc(D('players/'+S.uid), {cat:t.value}), 'Salvato'); return; }
+  if (c==='dark') { setDark(t.checked); return; }
   if (c==='pref') { const prefs={...allPrefs((S.myTok||{}).prefs), [t.value]: t.checked}; write(()=>setDoc(D('tokens/'+S.uid), {prefs}, {merge:true})); return; }
   const L = S.draft && S.draft.items[S.draft.idx];
   if (c==='slot') { const i=+t.dataset.i; L.slots=L.slots.map((x,j)=>j!==i&&x===t.value&&t.value?'':x); L.slots[i]=t.value; L.bench=L.bench.filter(x=>x!==t.value); t.blur(); draw(); }
