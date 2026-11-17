@@ -51,10 +51,12 @@ const MEET_MATCH_MIN = 45;
 const hmMinus = (t, min) => { const m = /^(\d{1,2})[:.](\d{2})$/.exec(t||''); if (!m) return ''; const x = ((+m[1])*60 + (+m[2]) - min + 1440) % 1440; return String(Math.floor(x/60)).padStart(2,'0')+':'+String(x%60).padStart(2,'0'); };
 const meetOf = e => e.type==='partita' ? hmMinus(e.time, MEET_MATCH_MIN) : (e.meet||'');
 const timesTxt = e => [meetOf(e) && 'Ritrovo '+meetOf(e), e.time && 'inizio '+e.time].filter(Boolean).join(' · ');
-// Formazioni bloccate per sempre dall'inizio della partita (anche per l'amministratore): events.lockAt = inizio in ms (lo impongono le regole)
+// Formazioni bloccate per sempre 5 ore dopo l'inizio della partita (anche per l'amministratore): events.lockAt in ms (lo impongono le regole).
+// Fino ad allora le cambiano Capitano/admin e chi sta facendo lo scouting (cambi a fine primo tempo, sostituzioni…).
+const LU_LOCK_MS = 5*3600*1000;
 const kickMs = e => e.date ? new Date(e.date+'T'+(e.time||'23:59')).getTime() : NaN;
-const luLocked = e => !!e && e.type==='partita' && Date.now() >= Math.min(isNaN(kickMs(e)) ? Infinity : kickMs(e), e.lockAt||Infinity);
-const lockAtFor = e => { const k = kickMs(e); return isNaN(k) ? Date.now() + 400*86400000 : k; };
+const luLocked = e => !!e && e.type==='partita' && Date.now() >= Math.min(isNaN(kickMs(e)) ? Infinity : kickMs(e) + LU_LOCK_MS, e.lockAt||Infinity);
+const lockAtFor = e => { const k = kickMs(e); return isNaN(k) ? Date.now() + 400*86400000 : k + LU_LOCK_MS; };
 const isUp = e => evT(e) > Date.now() - 3*36e5;
 const upcoming = () => S.events.filter(isUp).sort((a,b)=>evT(a)-evT(b));
 const past = () => S.events.filter(e=>!isUp(e)).sort((a,b)=>evT(b)-evT(a));
@@ -447,29 +449,35 @@ function vPresenze(){
 function luCard(l, sm){
   return `<div><b>Panchina</b><div class="names">${(l.bench||[]).map(id=>`<span class="chip">${esc(nameOf(id))}</span>`).join('')||'<span class="mute">—</span>'}</div></div>${l.tactic?`<div><b>Tattica</b><p class="txt">${esc(l.tactic)}</p></div>`:''}`;
 }
+const scHolderOf = eid => !!(S.scout && S.scout.eid===eid && scMine(S.scout));
+const canEditLu = e => !!e && !luLocked(e) && (canLineup() || scHolderOf(e.id));
 function vFormazione(){
   const ms = [...upcoming().filter(e=>e.type==='partita'), ...past().filter(e=>e.type==='partita')];
   if (!ms.length) return `<h2>Formazione</h2><div class="empty">Nessuna partita in calendario.</div>`;
   if (!ms.find(e=>e.id===S.fe)) S.fe = ms[0].id;
   const e = ms.find(x=>x.id===S.fe);
+  if (canScout()) scWatch(e.id);   // per sapere se chi guarda sta facendo lo scouting di questa partita
   let h = `<h2>Formazione</h2><label>Partita<select data-ch="fe">${ms.map(x=>`<option value="${esc(x.id)}" ${x.id===S.fe?'selected':''}>${esc(fmtD(x))} – ${esc(evName(x))}</option>`).join('')}</select></label>`;
   if (luLocked(e)){
     const lus = getLus(e).filter(l=>l.published || canLineup());
-    h += `<section class="card install"><b>🔒 Formazioni bloccate</b><span class="mute">La partita è iniziata: le formazioni sono salvate così per sempre e nessuno può più modificarle.</span></section>`;
+    h += `<section class="card install"><b>🔒 Formazioni bloccate</b><span class="mute">Sono passate 5 ore dall'inizio della partita: le formazioni sono salvate così per sempre e nessuno può più modificarle.</span></section>`;
     if (!lus.length) return h + `<div class="card"><p class="txt mute">Per questa partita non era stata inserita nessuna formazione.</p></div>`;
     return h + lus.map(l=>`<section class="card"><div class="row sp"><h3>${esc(l.name||'Formazione')}</h3><span class="row" style="gap:6px">${l.published?'':'<span class="chip">Bozza</span>'}<span class="chip">${esc(l.module)}</span></span></div>${pitch(l)}${luCard(l)}</section>`).join('');
   }
-  if (!canLineup()){
+  if (!canEditLu(e)){
     const pub = getLus(e).filter(l=>l.published);
     if (!pub.length) return h + `<div class="card"><p class="txt mute">Nessuna formazione ancora pubblicata per questa partita.</p></div>`;
     if (pub.length>1) h += `<p class="mute" style="margin:0">Ci sono ${pub.length} formazioni possibili.</p>`;
     return h + pub.map(l=>`<section class="card"><div class="row sp"><h3>${esc(l.name||'Formazione')}</h3><span class="chip">${esc(l.module)}</span></div>${pitch(l)}${luCard(l)}</section>`).join('');
   }
+  const srcLu = JSON.stringify(getLus(e));
+  if (S.draft && S.draft.eid === e.id && !S.draft.dirty && S.draft.src !== srcLu) S.draft = null;
   if (!S.draft || S.draft.eid !== e.id){ const items = getLus(e).map(l=>({name:l.name||'Formazione', module:l.module||'2-3-1', slots:[...(l.slots||[])].concat(Array(7).fill('')).slice(0,7), bench:[...(l.bench||[])], tactic:l.tactic||'', published:!!l.published}));
-    S.draft = {eid:e.id, idx:0, items: items.length ? items : [blankLu(1)]}; }
+    S.draft = {eid:e.id, idx:0, src:srcLu, items: items.length ? items : [blankLu(1)]}; }
   const Dr = S.draft; if (Dr.idx >= Dr.items.length) Dr.idx = 0;
   const L = Dr.items[Dr.idx], r = squad(), pos = MODS[L.module];
   const mark = id => (({si:' ✓',forse:' ?',no:' ✗'})[ans(id,e.id)] || '') + (roleAt(id,e.id)==='dirigente' ? ' (dirigenza)' : '');
+  if (scHolderOf(e.id) && !canLineup()) h += `<section class="card install"><b>✍️ Stai facendo lo scouting di questa partita</b><span class="mute">Puoi modificare la formazione: i cambi si vedono subito anche nello Scouting.</span></section>`;
   h += `<div class="mods" role="tablist" aria-label="Formazioni">${Dr.items.map((l,i)=>`<button role="tab" class="${i===Dr.idx?'on':''}" aria-selected="${i===Dr.idx}" data-act="luSel" data-i="${i}">${esc(l.name||'Formazione '+(i+1))}${l.published?' ✓':''}</button>`).join('')}<button data-act="luAdd" aria-label="Aggiungi una formazione">+ Nuova</button></div>
   <section class="card"><div class="row sp"><span class="chip ${L.published?'si':''}">${L.published?'Pubblicata':'Bozza: i giocatori non la vedono'}</span><button class="lnk" data-act="copyLu">Copia dall'ultima partita</button></div>
     <label>Nome formazione<input data-in="luname" value="${esc(L.name)}" maxlength="30"></label>
@@ -556,7 +564,13 @@ const SC_BOTH = [ // noi | loro
   ['Tiri', [['on_in','In porta · area'],['on_out','In porta · fuori area'],['off_in','Fuori · area'],['off_out','Fuori · fuori area'],['blk','Tiro respinto'],['goal','⚽ Gol']]],
   ['Altro', [['corner','Calcio d\'angolo'],['foul','Fallo'],['yellow','🟨 Giallo'],['red','🟥 Rosso'],['save','Parata del portiere']]]
 ];
-const SC_LAB = Object.fromEntries([...SC_US, ...SC_BOTH].flatMap(([,a])=>a.map(([k,l])=>[k,l])));
+const SC_LAB = Object.assign(Object.fromEntries([...SC_US, ...SC_BOTH].flatMap(([,a])=>a.map(([k,l])=>[k,l]))), {sub:'🔁 Sostituzione', mod:'Cambio modulo'});
+// Formazione in campo = la stessa di "Formazione" (events.lineups): la prima pubblicata, altrimenti la prima salvata.
+const scLiveIdx = e => { const lus = getLus(e); const i = lus.findIndex(l=>l.published); return i >= 0 ? i : (lus.length ? 0 : -1); };
+// Chi può entrare: solo giocatori presenti quel giorno (non assenti, non "presente come dirigenza", non altre categorie) o in panchina
+const scCanEnter = (e, L) => { const field = (L.slots||[]).filter(Boolean);
+  const pres = roster().filter(id=>isPl(id) && ans(id,e.id)==='si' && roleAt(id,e.id)!=='dirigente');
+  return [...new Set([...(L.bench||[]).filter(id=>S.players[id]), ...pres])].filter(id=>!field.includes(id)); };
 const SC_WHO = ['goal','yellow','red'];   // per questi (nostri) si chiede il giocatore
 // Dati online: scout/{evento} = {acts:[{id,k,t,s,h,ts,p?,a?}], half, base, start}. Leggono e scrivono tutti gli iscritti approvati (regole).
 // Firestore tiene una copia sul telefono: al campo funziona anche senza rete e si sincronizza appena torna.
@@ -615,13 +629,24 @@ function vScouting(){
       <button class="sec" data-act="scHalf">${d.half===1?'Passa al 2° tempo':'Torna al 1° tempo'}</button>
       ${secs||d.start?`<button class="lnk" data-act="scClockReset">Azzera cronometro</button>`:''}</div>`:''}
     ${lockBar}</section>`;
+  // formazione in campo (condivisa con la pagina Formazione)
+  { const li = scLiveIdx(e), L = li >= 0 ? getLus(e)[li] : null, locked = luLocked(e);
+    const chip = id => `<span class="chip">${esc(S.players[id]?.number ? S.players[id].number+' ' : '')}${esc(short(nameOf(id)))}</span>`;
+    h += `<section class="card"><div class="row sp"><span class="lab">FORMAZIONE IN CAMPO</span>${L?`<span class="chip">${esc(L.module||'')}</span>`:''}</div>`;
+    if (!L) h += `<span class="mute">Per questa partita non c'è ancora una formazione.</span>`;
+    else h += `<div class="names">${(L.slots||[]).filter(id=>id && S.players[id]).map(chip).join('') || '<span class="mute">Nessun titolare inserito.</span>'}</div>
+      <div><span class="mute" style="font-size:13px;font-weight:600">Panchina</span><div class="names">${(L.bench||[]).filter(id=>S.players[id]).map(chip).join('') || '<span class="mute">—</span>'}</div></div>`;
+    if (mine && !locked) h += `<div class="sc-cbtn">${L?`<button class="pri" data-act="scSubStart">🔁 Sostituzione</button><button class="sec" data-act="scModStart">Cambia modulo</button>`:''}
+      <button class="${L?'lnk':'pri'}" data-act="scEditLu" data-e="${esc(e.id)}">${L?'✏️ Modifica formazione':'✏️ Inserisci formazione'}</button></div>`;
+    if (locked && L) h += `<span class="mute" style="font-size:13px">🔒 Formazione bloccata (5 ore dopo l'inizio).</span>`;
+    h += `</section>`; }
   // azioni solo nostre
   h += `<section class="card"><span class="lab">${us.toUpperCase()}</span>${SC_US.map(([g,a])=>`<div class="sc-g"><span class="mute" style="font-size:13px;font-weight:600">${g}</span><div class="sc-acts">${a.map(([k,l,c])=>btn(k,l,c,'us')).join('')}</div></div>`).join('')}</section>`;
   // azioni per noi e per loro, affiancate
   h += `<section class="card"><div class="sc-vs"><span class="lab">${us.toUpperCase()}</span><span class="lab" style="text-align:right">${opp.toUpperCase()}</span></div>
     ${SC_BOTH.map(([g,a])=>`<div class="sc-g"><span class="mute" style="font-size:13px;font-weight:600">${g}</span>${a.map(([k,l])=>`<div class="sc-acts">${btn(k,l,k==='goal'?'goal':'us','us')}${btn(k,l,k==='goal'?'goalthem':'them','them')}</div>`).join('')}</div>`).join('')}
     <div class="btns"><button class="sec" data-act="scUndo" ${A.length&&mine?'':'disabled'}>↶ Annulla ultima</button></div>
-    ${A.length?`<div class="sc-log">${A.slice(-5).reverse().map(a=>`<div><b>${a.h}T ${scMin(a.s)}'</b> ${a.t==='us'?esc(TEAM()):opp} · ${esc(SC_LAB[a.k]||a.k)}${a.p?' · '+esc(nameOf(a.p)):''}${a.k==='goal'&&scGoalNote(a)?' ('+esc(scGoalNote(a))+')':''}</div>`).join('')}</div>`:''}</section>`;
+    ${A.length?`<div class="sc-log">${A.slice(-5).reverse().map(a=>`<div><b>${a.h}T ${scMin(a.s)}'</b> ${a.k==='sub' ? `🔁 Esce ${esc(nameOf(a.o))}, entra ${esc(nameOf(a.p))}` : a.k==='mod' ? `Modulo ${esc(a.m||'')}` : `${a.t==='us'?esc(TEAM()):opp} · ${esc(SC_LAB[a.k]||a.k)}${a.p?' · '+esc(nameOf(a.p)):''}`}${a.k==='goal'&&scGoalNote(a)?' ('+esc(scGoalNote(a))+')':''}</div>`).join('')}</div>`:''}</section>`;
   // riepilogo per tempo
   const pct = (a,b) => a+b ? Math.round(a/(a+b)*100)+'%' : '–';
   const cols = [1,2,0];   // 1T, 2T, totale
@@ -637,10 +662,11 @@ function vScouting(){
     ['Falli', h=>`${scCount(A,'foul','us',h)} · ${scCount(A,'foul','them',h)}`],
     ['Parate', h=>`${scCount(A,'save','us',h)} · ${scCount(A,'save','them',h)}`]
   ];
-  const scorers = A.filter(a=>a.k==='goal' && a.t==='us');
+  const scorers = A.filter(a=>a.k==='goal' && a.t==='us'), subs = A.filter(a=>a.k==='sub');
   h += `<section class="card"><span class="lab">RIEPILOGO</span><span class="mute" style="font-size:13px">Dove ci sono due numeri: ${esc(TEAM())} · ${opp}</span>
     <div style="overflow-x:auto"><table class="sc-tab"><thead><tr><th></th><th>1° tempo</th><th>2° tempo</th><th>Totale</th></tr></thead><tbody>${rows.map(([l,f])=>`<tr><td>${l}</td>${val(f)}</tr>`).join('')}</tbody></table></div>
     ${scorers.length?`<div><b>Marcatori</b><div class="sc-log">${scorers.map(a=>`<div><b>${a.h}T ${scMin(a.s)}'</b> ${a.p?esc(nameOf(a.p)):'gol'}${a.k==='goal'&&scGoalNote(a)?' ('+esc(scGoalNote(a))+')':''}</div>`).join('')}</div></div>`:''}
+    ${subs.length?`<div><b>Sostituzioni</b><div class="sc-log">${subs.map(a=>`<div><b>${a.h}T ${scMin(a.s)}'</b> esce ${esc(nameOf(a.o))} · entra ${esc(nameOf(a.p))}</div>`).join('')}</div></div>`:''}
     ${A.length&&mine?`<button class="lnk" data-act="scReset">Azzera i dati di questa partita</button>`:''}</section>`;
   return h;
 }
@@ -659,6 +685,26 @@ function scAsk(i, field){
   const pl = id => `<button class="sc-pl" data-act="scPick" data-i="${i}" data-f="${field}" data-id="${esc(id)}"><b>${esc(S.players[id]?.number||'–')}</b><span>${esc(short(nameOf(id)))}</span></button>`;
   openSheet(`${head(q)}${groups.map(([l,ids])=>`<span class="lab">${esc(l.toUpperCase())}</span><div class="sc-players">${ids.map(pl).join('')}</div>`).join('')}
     <button class="sec" data-act="scPick" data-i="${i}" data-f="${field}" data-id="">${field==='a'?'Nessun assist':'Salta'}</button>`);
+}
+function scSubSheet(step, outId){
+  const x = S.scout, e = S.events.find(v=>v.id===x.eid), li = scLiveIdx(e), L = getLus(e)[li]; if (!L) return;
+  const btn = (id, extra) => `<button class="sc-pl" data-act="scSubPick" data-step="${step}" data-id="${esc(id)}" ${extra||''}><b>${esc(S.players[id]?.number||'–')}</b><span>${esc(short(nameOf(id)))}</span></button>`;
+  if (step==='out') { const field = (L.slots||[]).filter(id=>id && S.players[id]);
+    return openSheet(`${head('🔁 Chi esce?')}${field.length?`<div class="sc-players">${field.map(id=>btn(id)).join('')}</div>`:'<p class="mute">Nessun titolare in campo.</p>'}`); }
+  const cand = scCanEnter(e, L);
+  openSheet(`${head('🔁 Chi entra?')}<p class="mute" style="margin:0">Esce ${esc(nameOf(outId))} · ${x.half}° tempo, ${scMin(scSecs(x))}'</p>
+    ${cand.length?`<div class="sc-players">${cand.map(id=>btn(id, `data-out="${esc(outId)}"`)).join('')}</div>`:'<p class="mute">Nessun giocatore presente disponibile: solo chi ha detto "Presente" (o è in panchina) può entrare.</p>'}`);
+}
+function scModSheet(){
+  const x = S.scout, e = S.events.find(v=>v.id===x.eid), L = getLus(e)[scLiveIdx(e)]; if (!L) return;
+  openSheet(`${head('Cambia modulo')}<div class="sc-how">${Object.keys(MODS).map(m=>`<button class="${m===L.module?'pri':'sec'}" data-act="scModPick" data-m="${m}">${m}</button>`).join('')}</div>`);
+}
+// scrive la formazione aggiornata (stessa di "Formazione") e registra l'azione nello scouting
+async function scSaveLu(e, li, L, act){
+  const lus = getLus(e).map((l,i)=>i===li ? L : l), x = S.scout;
+  if (!(await write(()=>setDoc(D('events/'+e.id), {lineups:lus, lockAt:lockAtFor(e)}, {merge:true})))) return false;
+  const a = {id:Math.random().toString(36).slice(2,9), t:'us', s:scSecs(x), h:x.half, ts:Date.now(), ...act};
+  x.acts.push(a); write(()=>setDoc(D('scout/'+x.eid), {acts: arrayUnion(a), updatedAt: Date.now()}, {merge:true})); draw(); return true;
 }
 // il cronometro si aggiorna da solo senza ridisegnare la pagina
 setInterval(()=>{ const el = document.getElementById('scTime'); if (el && S.scout) el.textContent = mmss(scSecs(S.scout)); }, 250);
@@ -709,7 +755,7 @@ function draw(){
   watchPresence(S.tab==='rosa');
   const scBtn = document.querySelector('#tabs [data-t=scouting]'); if (scBtn) scBtn.hidden = !canScout();
   if (S.tab==='scouting' && !canScout()) S.tab = 'home';
-  if (S.tab!=='scouting' && scSub) { scSub(); scSub = null; scSubEid = ''; S.scout = null; }
+  if (S.tab!=='scouting' && S.tab!=='formazione' && scSub) { scSub(); scSub = null; scSubEid = ''; S.scout = null; }
   let h = '';
   if (!['posts','events','players','rsvp','votes'].every(k=>S.loaded.has(k)) && !S.slow) h = `<div class="empty">Caricamento…</div>`;
   else {
@@ -770,11 +816,28 @@ const ACT = {
     if (d.id) { const b = {...a, [d.f]: d.id}; x.acts[+d.i] = b; draw();
       await write(()=>updateDoc(D('scout/'+x.eid), {acts: arrayRemove(a)})); await write(()=>updateDoc(D('scout/'+x.eid), {acts: arrayUnion(b)})); id = b.id; }
     if (d.f==='p' && a.k==='goal') scAskHow(x.acts.findIndex(z=>z.id===id)); },
+  scEditLu: d => { if (!scMine(S.scout)) return; S.fe = d.e; S.draft = null; S.tab = 'formazione'; history.replaceState(null,'','#formazione'); draw(); scrollTo(0,0); },
+  scSubStart: () => { if (scMine(S.scout)) scSubSheet('out'); },
+  scSubPick: async d => { const x = S.scout; if (!scMine(x)) return closeSheet();
+    if (d.step==='out') return scSubSheet('in', d.id);
+    closeSheet(); const e = S.events.find(v=>v.id===x.eid), li = scLiveIdx(e); if (li < 0 || luLocked(e)) return;
+    const L = JSON.parse(JSON.stringify(getLus(e)[li])), out = d.out, inn = d.id, k = (L.slots||[]).indexOf(out); if (k < 0) return;
+    L.slots[k] = inn; L.bench = [...(L.bench||[]).filter(id=>id!==inn), out];
+    if (await scSaveLu(e, li, L, {k:'sub', o:out, p:inn})) toast(`🔁 Esce ${short(nameOf(out))}, entra ${short(nameOf(inn))}`); },
+  scModStart: () => { if (scMine(S.scout)) scModSheet(); },
+  scModPick: async d => { const x = S.scout; closeSheet(); if (!scMine(x)) return; const e = S.events.find(v=>v.id===x.eid), li = scLiveIdx(e); if (li < 0 || luLocked(e)) return;
+    const old = getLus(e)[li], L = {...old, module:d.m}; if (await scSaveLu(e, li, L, {k:'mod', m:d.m, pm:old.module||''})) toast('Modulo '+d.m); },
   scHow: async d => { const x = S.scout, i = +d.i, a = x.acts[i]; closeSheet(); if (!a || !d.v) return;
     const b = {...a, g: d.v}; x.acts[i] = b; draw();
     await write(()=>updateDoc(D('scout/'+x.eid), {acts: arrayRemove(a)})); await write(()=>updateDoc(D('scout/'+x.eid), {acts: arrayUnion(b)}));
     if (d.v==='assist') scAsk(x.acts.findIndex(z=>z.id===b.id), 'a'); },
   scUndo: () => { const x = S.scout; if (!scMine(x)) return; const a = x.acts.pop(); draw(); if (!a) return;
+    // annullare una sostituzione o un cambio di modulo rimette a posto anche la formazione
+    if (a.k==='sub' || a.k==='mod') { const e = S.events.find(v=>v.id===x.eid), li = scLiveIdx(e);
+      if (li >= 0 && !luLocked(e)) { const L = JSON.parse(JSON.stringify(getLus(e)[li]));
+        if (a.k==='sub') { const k = (L.slots||[]).indexOf(a.p); if (k >= 0) { L.slots[k] = a.o; L.bench = [...(L.bench||[]).filter(id=>id!==a.o), a.p]; } }
+        else if (a.pm) L.module = a.pm;
+        write(()=>setDoc(D('events/'+e.id), {lineups:getLus(e).map((l,i)=>i===li?L:l), lockAt:lockAtFor(e)}, {merge:true})); } }
     write(()=>updateDoc(D('scout/'+x.eid), {acts: arrayRemove(a)})); toast('Annullato: '+SC_LAB[a.k]); },
   scClock: () => { const x = S.scout; if (!scMine(x)) return; if (x.start) { x.base = scSecs(x); x.start = null; } else x.start = Date.now(); scWrite(x.eid, {base:x.base, start:x.start, half:x.half}); draw(); },
   scHalf: () => { const x = S.scout; if (!scMine(x)) return; x.half = x.half===1 ? 2 : 1; x.base = 0; x.start = null; scWrite(x.eid, {base:0, start:null, half:x.half}); draw(); },
@@ -797,31 +860,31 @@ const ACT = {
   newEv: () => evForm(),
   editEv: d => evForm(S.events.find(e=>e.id===d.id)),
   delEv: async (d,b) => { if (confirm2(b) && await write(()=>deleteDoc(D('events/'+d.id)), 'Evento eliminato')) closeSheet(); },
-  mod: d => { S.draft.items[S.draft.idx].module = d.m; draw(); },
+  mod: d => { S.draft.items[S.draft.idx].module = d.m; S.draft.dirty = true; draw(); },
   pushOn: () => enablePush(),
   pushTest: () => { notifyTeam('test', '🔔 Prova notifiche', 'Se leggi questo messaggio, le notifiche funzionano!', '#home'); toast('Notifica di prova inviata'); },
   pushRemind: d => { const e=S.events.find(x=>x.id===d.e); if (!e) return; notifyTeam('remind', `⏰ ${evName(e)} · ${fmtD(e)}${meetOf(e)?' · ritrovo '+meetOf(e):''} · inizio ${e.time||''}`, 'Non hai ancora risposto alle presenze: ci sei?', '#presenze', {eventId:e.id}); toast('Promemoria inviato a chi non ha risposto'); },
   ltab: d => { S.ltab = d.k; draw(); },
   lround: d => { S.lround = +d.n; draw(); },
   luSel: d => { S.draft.idx = +d.i; draw(); },
-  luAdd: () => { const Dr=S.draft, cur=Dr.items[Dr.idx]; Dr.items.push({...JSON.parse(JSON.stringify(cur)), name:'Formazione '+(Dr.items.length+1), published:false}); Dr.idx = Dr.items.length-1; draw(); toast('Nuova formazione creata partendo da quella aperta.'); },
+  luAdd: () => { const Dr=S.draft, cur=Dr.items[Dr.idx]; Dr.dirty = true; Dr.items.push({...JSON.parse(JSON.stringify(cur)), name:'Formazione '+(Dr.items.length+1), published:false}); Dr.idx = Dr.items.length-1; draw(); toast('Nuova formazione creata partendo da quella aperta.'); },
   luDel: async (d,b) => { if (!confirm2(b)) return; const Dr=S.draft, e=S.events.find(x=>x.id===Dr.eid);
-    if (luLocked(e)) { toast('La partita è iniziata: le formazioni non si possono più modificare.'); draw(); return; }
+    if (!canEditLu(e)) { toast('Non puoi più modificare questa formazione.'); draw(); return; }
     Dr.items.splice(Dr.idx,1); if (!Dr.items.length) Dr.items.push(blankLu(1)); Dr.idx=0;
-    await write(()=>setDoc(D('events/'+Dr.eid), {lineups:Dr.items, lockAt:lockAtFor(e)}, {merge:true}), 'Formazione eliminata'); draw(); },
+    await write(()=>setDoc(D('events/'+Dr.eid), {lineups:Dr.items, lockAt:lockAtFor(e)}, {merge:true}), 'Formazione eliminata'); Dr.dirty = false; Dr.src = JSON.stringify(Dr.items); draw(); },
   who: d => { const e=S.events.find(x=>x.id===d.e); if (!e) return; openSheet(`${head('Presenti')}<p class="mute" style="margin:0">${esc(evName(e))} · ${esc(fmtD(e))} · ${esc(timesTxt(e))}</p>${attendees(e,false)}`); },
   openLu: d => { S.fe = d.e; S.draft = null; ACT.go({t:'formazione'}); },
   editP: d => { const p=S.players[d.id]||{}; openSheet(`${head('Modifica')}<form data-form="editp" data-id="${esc(d.id)}"><label>Nome<input name="nome" required value="${esc(p.name||'')}"></label><label>Categoria${catSel(p.cat)}</label><p class="mute" style="margin:0">Mister, Preparatore atletico, Social media manager: possono pubblicare comunicazioni. Capitano: comunicazioni e formazioni.</p><label>Numero di maglia<input type="number" min="1" max="99" name="numero" value="${esc(p.number||'')}"></label><button class="pri" type="submit">Salva</button><button class="sec" type="button" data-act="delP" data-id="${esc(d.id)}">Rimuovi dalla rosa</button></form>`); },
   copyLu: () => { const src = past().concat(upcoming()).find(e=>e.type==='partita' && e.id!==S.draft.eid && getLus(e).length); if (!src) return toast('Nessuna formazione precedente da copiare.');
-    const l = getLus(src).find(x=>x.published) || getLus(src)[0], cur = S.draft.items[S.draft.idx];
+    const l = getLus(src).find(x=>x.published) || getLus(src)[0], cur = S.draft.items[S.draft.idx]; S.draft.dirty = true;
     Object.assign(cur, {module:l.module, slots:[...(l.slots||[])].concat(Array(7).fill('')).slice(0,7), bench:[...(l.bench||[])], tactic:l.tactic||''}); draw(); toast('Copiata da '+evName(src)+' ('+fmtD(src)+')'); },
   saveLu: async d => { const Dr=S.draft, pub=d.p==='1', e=S.events.find(x=>x.id===Dr.eid); if (!e) return;
-    if (luLocked(e)) { toast('La partita è iniziata: le formazioni non si possono più modificare.'); draw(); return; }
+    if (!canEditLu(e)) { toast(luLocked(e) ? 'Sono passate 5 ore dall\'inizio: le formazioni non si possono più modificare.' : 'Non puoi modificare questa formazione.'); draw(); return; }
     const L = Dr.items[Dr.idx], was = L.published; L.bench = L.bench.filter(id=>!L.slots.includes(id)); L.published = pub;
     if (await write(()=>setDoc(D('events/'+e.id), {lineups:Dr.items, lockAt:lockAtFor(e)}, {merge:true}), pub?(was?'Formazione aggiornata':'Formazione pubblicata'):(was?'Formazione nascosta ai giocatori':'Bozza salvata'))) {
       if (pub && !was) notifyTeam('lineup', '⚽ Formazione pubblicata', `${L.name} per ${evName(e)} (${fmtD(e)}): modulo ${L.module}`, '#formazione');
       if (pub && !was) await write(()=>addDoc(C('posts'), {text:`Pubblicata la formazione "${L.name}" per ${evName(e)} di ${fmtD(e,{weekday:'long',day:'numeric',month:'long'})}: modulo ${L.module}. La trovate nella sezione Formazione.`, createdAt:Date.now(), author:asAdmin()?S.uid:actId()}));
-      draw(); } else L.published = was; },
+      Dr.dirty = false; Dr.src = JSON.stringify(Dr.items); draw(); } else L.published = was; },
   me: () => { const p=S.players[actId()]||{}; openSheet(`${head('Il mio profilo')}<form data-form="me"><label>Nome e cognome<input name="nome" required value="${esc(p.name||S.authName)}"></label><label>Numero di maglia<input type="number" min="1" max="99" name="numero" value="${esc(p.number||'')}"></label><label>Categoria${catSel(p.cat||'giocatore')}</label><button class="pri" type="submit">Salva</button></form>`); },
   addP: () => openSheet(`${head('Aggiungi giocatore')}<p class="mute" style="margin:0">Per chi non usa l'app: potrai segnare tu le sue presenze.</p><form data-form="addp"><label>Nome e cognome<input name="nome" required></label><label>Categoria${catSel('giocatore')}</label><label>Numero di maglia<input type="number" min="1" max="99" name="numero"></label><button class="pri" type="submit">Aggiungi</button></form>`),
   okP: d => write(()=>updateDoc(D('players/'+d.id), {approved:true, rejected:false}), 'Giocatore approvato'),
@@ -872,10 +935,11 @@ document.addEventListener('change', e=>{ const t=e.target, c=t.dataset.ch; if (!
   if (c==='dark') { setDark(t.checked); return; }
   if (c==='pref') { const prefs={...allPrefs((S.myTok||{}).prefs), [t.value]: t.checked}; write(()=>setDoc(D('tokens/'+S.uid), {prefs}, {merge:true})); return; }
   const L = S.draft && S.draft.items[S.draft.idx];
+  if ((c==='slot' || c==='bench') && S.draft) S.draft.dirty = true;
   if (c==='slot') { const i=+t.dataset.i; L.slots=L.slots.map((x,j)=>j!==i&&x===t.value&&t.value?'':x); L.slots[i]=t.value; L.bench=L.bench.filter(x=>x!==t.value); t.blur(); draw(); }
   if (c==='bench') L.bench = t.checked ? [...L.bench, t.value] : L.bench.filter(x=>x!==t.value);
 });
-document.addEventListener('input', e=>{ const k=e.target.dataset.in, L=S.draft&&S.draft.items[S.draft.idx]; if (!L) return; if (k==='tac') L.tactic = e.target.value; if (k==='luname') L.name = e.target.value; });
+document.addEventListener('input', e=>{ const k=e.target.dataset.in, L=S.draft&&S.draft.items[S.draft.idx]; if (!L) return; if (k==='tac') L.tactic = e.target.value; if (k==='luname') L.name = e.target.value; if (k==='tac'||k==='luname') S.draft.dirty = true; });
 addEventListener('beforeinstallprompt', e=>{ e.preventDefault(); installEvt = e; if (S.phase==='app') draw(); });
 const fromHash = () => { const h=location.hash.slice(1); if (['home','presenze','formazione','calendario','campionato','archivio','rosa','impostazioni','scouting'].includes(h)) { S.tab=h; if (S.phase==='app') draw(); } };
 addEventListener('hashchange', fromHash); fromHash();

@@ -158,6 +158,20 @@ await t('admin: segna il risultato DOPO l\'inizio (formazioni intatte)', true, a
 await t('membro: aggiunge note DOPO l\'inizio (formazioni intatte)', true, async () => { await seedEv(PAST()); return updateDoc(doc(db('p2'), 'events/blk'), { notes: 'bella partita' }); });
 await t('membro: imposta il blocco (non può)', false, async () => { await seedEv(NEXT()); return updateDoc(doc(db('p2'), 'events/blk'), { lockAt: NEXT() + 1000 }); });
 await t('membro: cancella evento futuro senza blocco attivo', true, async () => { await seedEv(NEXT()); return deleteDoc(doc(db('p2'), 'events/blk')); });
+// chi sta facendo lo scouting può cambiare la formazione (fino a 5 ore dopo l'inizio)
+const seedLive = (lockAt, scLock) => env.withSecurityRulesDisabled(async c => { const d = c.firestore();
+  await setDoc(doc(d, 'events/live'), { type: 'partita', date: '2026-11-18', time: '22:00', lineups: [{ name: 'A', published: true, module: '2-3-1', slots: ['p2'], bench: ['p4'] }], lockAt });
+  if (scLock) await setDoc(doc(d, 'scout/live'), { acts: [], half: 1, base: 0, start: null, lock: scLock }); });
+const SUB = { lineups: [{ name: 'A', published: true, module: '2-3-1', slots: ['p4'], bench: ['p2'] }] };
+await t('scouting (giocatore col lock): fa una sostituzione', true, async () => { await seedLive(NEXT(), LK('p2')); return updateDoc(doc(db('p2'), 'events/live'), { ...SUB, lockAt: NEXT() }); });
+await t('scouting (dirigente col lock): cambia modulo', true, async () => { await seedLive(NEXT(), LK('d1')); return updateDoc(doc(db('d1'), 'events/live'), { lineups: [{ name: 'A', published: true, module: '3-2-1', slots: ['p2'], bench: ['p4'] }], lockAt: NEXT() }); });
+await t('scouting: crea la formazione se non c\'è', true, async () => { await env.withSecurityRulesDisabled(c => setDoc(doc(c.firestore(), 'scout/nuova'), { acts: [], lock: LK('p2') })); return setDoc(doc(db('p2'), 'events/nuova'), { lineups: [{ name: 'A' }], lockAt: NEXT() }); });
+await t('giocatore senza lock: cambia la formazione', false, async () => { await seedLive(NEXT(), LK('altro')); return updateDoc(doc(db('p2'), 'events/live'), { ...SUB, lockAt: NEXT() }); });
+await t('giocatore con lock scaduto (3 minuti): cambia la formazione', false, async () => { await seedLive(NEXT(), LK('p2', 3 * 60000)); return updateDoc(doc(db('p2'), 'events/live'), { ...SUB, lockAt: NEXT() }); });
+await t('giocatore col lock di UN\'ALTRA partita: cambia questa', false, async () => { await seedLive(NEXT(), null); await env.withSecurityRulesDisabled(c => setDoc(doc(c.firestore(), 'scout/altra'), { acts: [], lock: LK('p2') })); return updateDoc(doc(db('p2'), 'events/live'), { ...SUB, lockAt: NEXT() }); });
+await t('scouting col lock: cambia la formazione DOPO il blocco (5 ore)', false, async () => { await seedLive(PAST(), LK('p2')); return updateDoc(doc(db('p2'), 'events/live'), { ...SUB, lockAt: NEXT() }); });
+await t('capitano: cambia la formazione durante la partita (prima delle 5 ore)', true, async () => { await seedLive(NEXT(), LK('p2')); return updateDoc(doc(db('c1'), 'events/live'), { ...SUB, lockAt: NEXT() }); });
+await t('in attesa con un lock finto: cambia la formazione', false, async () => { await seedLive(NEXT(), LK('pend')); return updateDoc(doc(db('pend'), 'events/live'), { ...SUB, lockAt: NEXT() }); });
 await t('qualsiasi: crea squadra già esistente', false, () => setDoc(doc(db('nuovo'), 'config/team'), { coaches: ['nuovo'] }));
 // "chi è online"
 await t('membro: scrive il proprio battito online', true, () => setDoc(doc(db('p2'), 'presence/p2'), { at: serverTimestamp() }));

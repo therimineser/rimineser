@@ -31,17 +31,23 @@ service cloud.firestore {
       allow delete: if canPost();
       allow create, update: if canPost() && request.resource.data.text is string && request.resource.data.text.size() < 5000;
     }
-    // Formazioni: lockAt = inizio della partita (ms). Prima dell'inizio le modificano Capitano e amministratore;
-    // dall'inizio sono bloccate PER SEMPRE: nessuno (nemmeno l'amministratore) può cambiarle, toglierle o cancellare l'evento.
+    // Formazioni: lockAt = inizio della partita + 5 ore (ms). Fino ad allora le modificano Capitano, amministratore e chi sta
+    // facendo lo scouting di quella partita (lock attivo in scout/{id}); poi sono bloccate PER SEMPRE: nessuno (nemmeno
+    // l'amministratore) può cambiarle, toglierle o cancellare l'evento.
     function evLocked() { return 'lockAt' in resource.data && request.time.toMillis() >= resource.data.lockAt; }
     function futureLock() { return request.resource.data.get('lockAt', 0) is int && request.resource.data.lockAt > request.time.toMillis(); }
+    function scoutPath(id) { return /databases/$(database)/documents/scout/$(id); }
+    function scoutHolder(id) { return isMember() && exists(scoutPath(id)) && get(scoutPath(id)).data.get('lock', null) != null
+                                      && get(scoutPath(id)).data.lock.uid == request.auth.uid
+                                      && get(scoutPath(id)).data.lock.at > request.time - duration.value(2, 'm'); }
+    function canEditLineup(id) { return canLineup() || scoutHolder(id); }
     match /events/{id} {
       allow read: if isMember();
       allow delete: if isMember() && !evLocked();
-      allow create: if isMember() && (!request.resource.data.keys().hasAny(['lineups', 'lineup', 'lockAt']) || (canLineup() && futureLock()));
+      allow create: if isMember() && (!request.resource.data.keys().hasAny(['lineups', 'lineup', 'lockAt']) || (canEditLineup(id) && futureLock()));
       allow update: if isMember()
-                       && (!changes().hasAny(['lineups', 'lineup']) || (canLineup() && !evLocked() && futureLock()))
-                       && (!changes().hasAny(['lockAt']) || (canLineup() && !evLocked() && futureLock()));
+                       && (!changes().hasAny(['lineups', 'lineup']) || (canEditLineup(id) && !evLocked() && futureLock()))
+                       && (!changes().hasAny(['lockAt']) || (canEditLineup(id) && !evLocked() && futureLock()));
     }
     match /players/{uid} {
       allow read: if isMember() || (signedIn() && request.auth.uid == uid);
