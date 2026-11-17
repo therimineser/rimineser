@@ -40,26 +40,30 @@ jobs:
           T: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           A: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
-          # gettone personale o dell'account: uno dei due controlli deve dire "active"
-          u=$(curl -s -H "Authorization: Bearer $T" https://api.cloudflare.com/client/v4/user/tokens/verify)
-          a=$(curl -s -H "Authorization: Bearer $T" "https://api.cloudflare.com/client/v4/accounts/$A/tokens/verify")
-          echo "Gettone personale: $(echo "$u" | jq -c '{success, status: .result.status, errors: [.errors[]?.message]}')"
-          echo "Gettone dell'account: $(echo "$a" | jq -c '{success, status: .result.status, errors: [.errors[]?.message]}')"
-          w=$(curl -s -H "Authorization: Bearer $T" "https://api.cloudflare.com/client/v4/accounts/$A/workers/scripts")
-          echo "Lettura Worker dell'account: $(echo "$w" | jq -c '{success, errors: [.errors[]? | "\(.code) \(.message)"]}')"
-          s=$(curl -s -H "Authorization: Bearer $T" "https://api.cloudflare.com/client/v4/accounts/$A/workers/subdomain")
-          echo "Sottodominio workers.dev: $(echo "$s" | jq -c '{success, subdomain: .result.subdomain, errors: [.errors[]? | "\(.code) \(.message)"]}')"
+          set +e
+          # tollera spazi/a capo o l'indirizzo intero incollato al posto del solo codice
+          T=$(printf '%s' "$T" | tr -d '[:space:]'); T=${T#Bearer}
+          ID=$(printf '%s' "$A" | grep -oiE '[0-9a-f]{32}' | head -1 | tr 'A-F' 'a-f')
+          echo "::add-mask::$T"; echo "::add-mask::$ID"
+          if [ -z "$ID" ]; then echo "::error::CLOUDFLARE_ACCOUNT_ID non contiene un Account ID (32 caratteri 0-9 a-f)"; exit 1; fi
+          [ "$ID" != "$(printf '%s' "$A" | tr -d '[:space:]')" ] && echo "Nota: l'Account ID salvato conteneva altro oltre al codice (sistemato in automatico)"
+          echo "CF_TOKEN=$T" >> "$GITHUB_ENV"; echo "CF_ACCOUNT=$ID" >> "$GITHUB_ENV"
+          j() { jq -c '{success, status: .result.status, subdomain: .result.subdomain, errors: [.errors[]? | "\(.code) \(.message)"]}' 2>/dev/null || echo "(risposta non leggibile)"; }
+          echo "Gettone personale: $(curl -s -H "Authorization: Bearer $T" https://api.cloudflare.com/client/v4/user/tokens/verify | j)"
+          echo "Gettone dell'account: $(curl -s -H "Authorization: Bearer $T" "https://api.cloudflare.com/client/v4/accounts/$ID/tokens/verify" | j)"
+          echo "Lettura Worker dell'account: $(curl -s -H "Authorization: Bearer $T" "https://api.cloudflare.com/client/v4/accounts/$ID/workers/scripts" | j)"
+          echo "Sottodominio workers.dev: $(curl -s -H "Authorization: Bearer $T" "https://api.cloudflare.com/client/v4/accounts/$ID/workers/subdomain" | j)"
+          exit 0
       - name: Pubblica su Cloudflare
         id: deploy
         if: steps.segreti.outputs.ok == 'true'
         working-directory: worker
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           FIREBASE_SA: ${{ secrets.FIREBASE_SA }}
           WRANGLER_SEND_METRICS: 'false'
         run: |
           set -o pipefail
+          export CLOUDFLARE_API_TOKEN="$CF_TOKEN" CLOUDFLARE_ACCOUNT_ID="$CF_ACCOUNT"
           npx -y wrangler@4.45.0 deploy 2>&1 | tee /tmp/deploy.txt
           printf '%s' "$FIREBASE_SA" | npx -y wrangler@4.45.0 secret put FIREBASE_SA
           echo "url=$(grep -o 'https://[a-z0-9.-]*\.workers\.dev' /tmp/deploy.txt | head -1)" >> "$GITHUB_OUTPUT"
