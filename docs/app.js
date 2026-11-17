@@ -629,7 +629,14 @@ function vScouting(){
       <button class="sec" data-act="scHalf">${d.half===1?'Passa al 2° tempo':'Torna al 1° tempo'}</button>
       ${secs||d.start?`<button class="lnk" data-act="scClockReset">Azzera cronometro</button>`:''}</div>`:''}
     ${lockBar}</section>`;
-  // formazione in campo (condivisa con la pagina Formazione)
+  // azioni solo nostre
+  h += `<section class="card"><span class="lab">${us.toUpperCase()}</span>${SC_US.map(([g,a])=>`<div class="sc-g"><span class="mute" style="font-size:13px;font-weight:600">${g}</span><div class="sc-acts">${a.map(([k,l,c])=>btn(k,l,c,'us')).join('')}</div></div>`).join('')}</section>`;
+  // azioni per noi e per loro, affiancate
+  h += `<section class="card"><div class="sc-vs"><span class="lab">${us.toUpperCase()}</span><span class="lab" style="text-align:right">${opp.toUpperCase()}</span></div>
+    ${SC_BOTH.map(([g,a])=>`<div class="sc-g"><span class="mute" style="font-size:13px;font-weight:600">${g}</span>${a.map(([k,l])=>`<div class="sc-acts">${btn(k,l,k==='goal'?'goal':'us','us')}${btn(k,l,k==='goal'?'goalthem':'them','them')}</div>`).join('')}</div>`).join('')}
+    <div class="btns"><button class="sec" data-act="scUndo" ${A.length&&mine?'':'disabled'}>↶ Annulla ultima</button></div>
+    ${A.length?`<div class="sc-log">${A.slice(-5).reverse().map(a=>`<div><b>${a.h}T ${scMin(a.s)}'</b> ${a.k==='sub' ? `🔁 Esce ${esc(nameOf(a.o))}, entra ${esc(nameOf(a.p))}` : a.k==='mod' ? `Modulo ${esc(a.m||'')}` : `${a.t==='us'?esc(TEAM()):opp} · ${esc(SC_LAB[a.k]||a.k)}${a.p?' · '+esc(nameOf(a.p)):''}`}${a.k==='goal'&&scGoalNote(a)?' ('+esc(scGoalNote(a))+')':''}</div>`).join('')}</div>`:''}</section>`;
+  // formazione in campo (condivisa con la pagina Formazione): sotto i tasti delle azioni, che devono restare a portata di dito
   { const li = scLiveIdx(e), L = li >= 0 ? getLus(e)[li] : null, locked = luLocked(e);
     const chip = id => `<span class="chip">${esc(S.players[id]?.number ? S.players[id].number+' ' : '')}${esc(short(nameOf(id)))}</span>`;
     h += `<section class="card"><div class="row sp"><span class="lab">FORMAZIONE IN CAMPO</span>${L?`<span class="chip">${esc(L.module||'')}</span>`:''}</div>`;
@@ -640,13 +647,6 @@ function vScouting(){
       <button class="${L?'lnk':'pri'}" data-act="scEditLu" data-e="${esc(e.id)}">${L?'✏️ Modifica formazione':'✏️ Inserisci formazione'}</button></div>`;
     if (locked && L) h += `<span class="mute" style="font-size:13px">🔒 Formazione bloccata (5 ore dopo l'inizio).</span>`;
     h += `</section>`; }
-  // azioni solo nostre
-  h += `<section class="card"><span class="lab">${us.toUpperCase()}</span>${SC_US.map(([g,a])=>`<div class="sc-g"><span class="mute" style="font-size:13px;font-weight:600">${g}</span><div class="sc-acts">${a.map(([k,l,c])=>btn(k,l,c,'us')).join('')}</div></div>`).join('')}</section>`;
-  // azioni per noi e per loro, affiancate
-  h += `<section class="card"><div class="sc-vs"><span class="lab">${us.toUpperCase()}</span><span class="lab" style="text-align:right">${opp.toUpperCase()}</span></div>
-    ${SC_BOTH.map(([g,a])=>`<div class="sc-g"><span class="mute" style="font-size:13px;font-weight:600">${g}</span>${a.map(([k,l])=>`<div class="sc-acts">${btn(k,l,k==='goal'?'goal':'us','us')}${btn(k,l,k==='goal'?'goalthem':'them','them')}</div>`).join('')}</div>`).join('')}
-    <div class="btns"><button class="sec" data-act="scUndo" ${A.length&&mine?'':'disabled'}>↶ Annulla ultima</button></div>
-    ${A.length?`<div class="sc-log">${A.slice(-5).reverse().map(a=>`<div><b>${a.h}T ${scMin(a.s)}'</b> ${a.k==='sub' ? `🔁 Esce ${esc(nameOf(a.o))}, entra ${esc(nameOf(a.p))}` : a.k==='mod' ? `Modulo ${esc(a.m||'')}` : `${a.t==='us'?esc(TEAM()):opp} · ${esc(SC_LAB[a.k]||a.k)}${a.p?' · '+esc(nameOf(a.p)):''}`}${a.k==='goal'&&scGoalNote(a)?' ('+esc(scGoalNote(a))+')':''}</div>`).join('')}</div>`:''}</section>`;
   // riepilogo per tempo
   const pct = (a,b) => a+b ? Math.round(a/(a+b)*100)+'%' : '–';
   const cols = [1,2,0];   // 1T, 2T, totale
