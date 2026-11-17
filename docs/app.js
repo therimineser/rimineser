@@ -435,7 +435,6 @@ function vRosa(){
 }
 
 function vImpostazioni(){
-  if (S.admin && !S.robot) getDoc(D('private/robot')).then(d=>{ S.robot = d.exists() ? d.data() : {}; draw(); }).catch(()=>{ S.robot = {}; });
   const me = S.players[actId()] || {}, pe = pendingP();
   let h = `<div class="row sp"><h2>Impostazioni</h2></div>`;
   h += `<section class="card"><span class="lab">IL MIO PROFILO</span><div class="row" style="padding:2px 0"><span class="num">${esc(me.number||'–')}</span><div style="flex:1"><b>${esc(me.name||S.authName)}</b><div class="mute" style="font-size:13px">${esc((CATS.find(c=>c[0]===(me.cat||'giocatore'))||[])[2]||'')}</div></div></div>
@@ -444,8 +443,6 @@ function vImpostazioni(){
   h += vPushCard(true) || `<section class="card"><span class="lab">NOTIFICHE</span><span class="mute">Su questo dispositivo le notifiche non sono disponibili.</span></section>`;
   if (asAdmin()) h += `<section class="card"><span class="lab">AMMINISTRATORE</span><span class="mute">Aggiungi in rosa chi non usa l'app: potrai segnare tu le sue presenze.</span><button class="pri" data-act="addP">+ Aggiungi nuovo iscritto</button></section>`;
   h += `<section class="card"><span class="lab">SQUADRA</span><form data-form="team"><label>Profilo Instagram<input name="ig" value="${esc(S.config.instagram||'')}" placeholder="@nomeprofilo"></label>
-    ${S.admin?`<label>Gettone GitHub (riserva per le notifiche)<input name="ghtok" type="password" autocomplete="off" value="${esc((S.robot||{}).token||'')}" placeholder="github_pat_…"></label>
-    <p class="mute" style="margin:0">Visibile solo all'amministratore. Serve solo se il robot veloce delle notifiche non risponde.</p>`:''}
     <div class="btns"><button class="pri" type="submit">Salva</button>${S.admin?'<button class="sec" type="button" data-act="pushTest">Invia notifica di prova</button>':''}</div></form></section>`;
   return h;
 }
@@ -609,8 +606,7 @@ const FORMS = {
   editp: async f => { const data={name:val(f,'nome'), cat:val(f,'cat'), number:val(f,'numero')}; if (data.name && await write(()=>updateDoc(D('players/'+f.dataset.id), data), 'Salvato')) closeSheet(); },
   addp: async f => { const data={name:val(f,'nome'), number:val(f,'numero'), cat:val(f,'cat')||'giocatore', approved:true, manual:true};
     if (data.name && await write(()=>setDoc(D('players/m_'+Date.now().toString(36)), data), 'Giocatore aggiunto')) closeSheet(); },
-  team: async f => { const tok = val(f,'ghtok');
-    if (S.admin && f.elements.ghtok && tok !== (S.robot||{}).token) { if (await write(()=>setDoc(D('private/robot'), {token:tok}, {merge:true}))) S.robot = {...(S.robot||{}), token:tok}; }
+  team: async f => {
     if (await write(()=>updateDoc(D('config/team'), {instagram:val(f,'ig').replace(/^@/,'')}), 'Salvato')) closeSheet(); }
 };
 document.addEventListener('click', e=>{ const b=e.target.closest('[data-act]'); if (b && ACT[b.dataset.act]) { e.preventDefault(); ACT[b.dataset.act](b.dataset, b); } });
