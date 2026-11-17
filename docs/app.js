@@ -179,7 +179,7 @@ const onlineCount = () => typeof S.online === 'number' ? Math.max(1, S.online) :
 const romeDate = (d=new Date()) => new Intl.DateTimeFormat('en-CA', {timeZone:'Europe/Rome', year:'numeric', month:'2-digit', day:'2-digit'}).format(d);
 let viewCounted = false;
 function countView(){
-  if (DEMO || S.phase!=='app') return;
+  if (DEMO || S.phase!=='app' || S.admin) return;   // l'amministratore non conta, né da Amministratore né dal suo profilo giocatore
   try { if (sessionStorage.getItem('rim-view')) return; sessionStorage.setItem('rim-view', '1'); } catch(_) {}
   const [y,m,d] = romeDate().split('-');
   setDoc(D(`stats/views-${y}-${m}`), { total: increment(1), ['d'+d]: increment(1), day: 'd'+d }, { merge:true }).catch(()=>{});
@@ -200,7 +200,7 @@ function vViews(){
   const cur = V.months[0].data, prevM = V.months[1].data, sameMonth = dy <= d;
   const today = cur['d'+d]||0, yest = sameMonth ? (cur['d'+dy]||0) : (prevM['d'+dy]||0);
   const days = Array.from({length:+d}, (_,i)=>cur['d'+String(i+1).padStart(2,'0')]||0), max = Math.max(1, ...days);
-  return `<section class="card"><span class="lab">VISUALIZZAZIONI</span><span class="mute">Quante volte è stata aperta l'app da tutti gli iscritti (te compreso). Solo numeri: nessun nome e nessun orario.</span>
+  return `<section class="card"><span class="lab">VISUALIZZAZIONI</span><span class="mute">Quante volte è stata aperta l'app dagli iscritti (le tue aperture non contano). Solo numeri: nessun nome e nessun orario.</span>
     <div class="row" style="gap:8px">${[['Oggi',today],['Ieri',yest],['Questo mese',cur.total||0]].map(([l,n])=>`<div class="vstat"><b>${n}</b><span>${l}</span></div>`).join('')}</div>
     <div class="vbars" role="img" aria-label="Aperture per giorno di questo mese">${days.map((n,i)=>`<i style="height:${Math.round(n/max*100)}%" title="${i+1}: ${n}"></i>`).join('')}</div></section>`;
 }
