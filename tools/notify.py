@@ -226,7 +226,7 @@ def main():
         st.patch('outbox/' + oid, {'sent': True, 'sentAt': int(dt.datetime.now().timestamp() * 1000)})
 
     # 2) promemoria
-    #    - partite: 24, 12 e 2 ore prima, a tutti (messaggio diverso per Presente/Forse, Assente, senza risposta)
+    #    - partite: 24, 12 e 2 ore prima, a chi ha detto Presente/Forse e a chi non ha risposto; mai a chi è Assente
     #    - allenamenti: il giorno prima, dalle 12, solo a chi non ha risposto
     now = now_rome()
     tomorrow = (now + dt.timedelta(days=1)).date().isoformat()
@@ -266,8 +266,6 @@ def main():
             none = [u for u in everyone if not answer(u, eid)]
             n = sender.send(yes, {'title': title, 'body': 'Ore %s%s. Ci vediamo in campo!' % (e.get('time', ''), where), 'url': '#home', 'tag': 'match-' + eid}, 'remind')
             n += sender.send(none, {'title': title, 'body': 'Ore %s%s. Non hai ancora risposto: ci sei?' % (e.get('time', ''), where), 'url': '#presenze', 'tag': 'match-' + eid}, 'remind')
-            nos = [u for u in everyone if answer(u, eid) == 'no']
-            n += sender.send(nos, {'title': title, 'body': 'Ore %s%s. Hai risposto Assente: se cambi idea aggiorna la presenza.' % (e.get('time', ''), where), 'url': '#presenze', 'tag': 'match-' + eid}, 'remind')
             log('Promemoria partita %s (%d ore prima) → %d telefoni' % (eid, h, n))
         elif e.get('date') == tomorrow and now.hour >= REMIND_FROM_HOUR and not reminded.get(eid):
             targets = [u for u in everyone if not answer(u, eid)]
