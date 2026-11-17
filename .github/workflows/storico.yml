@@ -1,0 +1,59 @@
+name: Storico scouting
+
+# Ogni notte copia scouting, formazioni, sostituzioni e presenze nel ramo "storico" (cartella partite/),
+# SENZA NOMI: il repository è pubblico, nei file ci sono solo gli id Firebase. Si può lanciare anche a mano.
+# Le versioni precedenti restano nella storia del ramo; le partite tolte da Firebase non vengono cancellate.
+on:
+  schedule:
+    - cron: '17 2 * * *'   # circa le 3 di notte in Italia
+  workflow_dispatch: {}
+
+permissions:
+  contents: write   # solo per il ramo "storico"
+
+concurrency:
+  group: storico
+  cancel-in-progress: false
+
+jobs:
+  copia:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            tools
+            tests/test_storico.py
+      - name: Prova con dati finti (nessun nome nei file)
+        run: python3 tests/test_storico.py
+      - name: Scarica da Firebase
+        env:
+          FIREBASE_SA: ${{ secrets.FIREBASE_SA }}
+        run: |
+          python3 -m pip install -q --disable-pip-version-check --user --break-system-packages google-auth requests 2>/dev/null \
+            || python3 -m pip install -q --disable-pip-version-check --user google-auth requests
+          GH="https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git"
+          rm -rf /tmp/st && mkdir /tmp/st && cd /tmp/st && git init -q
+          if git fetch -q "$GH" storico 2>/dev/null; then git checkout -q -b storico FETCH_HEAD; else git checkout -q --orphan storico; fi
+          cd "$GITHUB_WORKSPACE" && python3 tools/storico.py /tmp/st
+      - name: Salva nel ramo storico
+        run: |
+          cd /tmp/st
+          cat > LEGGIMI.md <<'TXT'
+          # Storico The Rimineser F.P. (senza nomi)
+          Copiato ogni notte da `.github/workflows/storico.yml`. Un file per evento in `partite/` (eventi già iniziati o con scouting).
+          I giocatori sono indicati solo con l'id Firebase: il nome si trova in Firebase `players/{id}` (leggibile solo dagli iscritti).
+          - `evento`: tipo, data, ora, avversario, campo, risultato.
+          - `formazioni`: modulo, titolari, panchina, pubblicata.
+          - `presenze`: id → si | forse | no | si-dirigenza.
+          - `scouting.azioni`: k = azione, t = us (noi) | them (avversari), h = tempo, s = secondi di gioco,
+            p = giocatore (gol, cartellini, chi entra), a = assist, g = com'è nato il gol, o = chi esce, m/pm = modulo nuovo/precedente.
+          - `rosa.json`: id → categoria.
+          TXT
+          sed -i 's/^          //' LEGGIMI.md
+          git add -A
+          if git diff --cached --quiet; then echo "Nessuna novità"; exit 0; fi
+          git -c user.name="Robot storico" -c user.email="actions@users.noreply.github.com" commit -qm "Storico $(TZ=Europe/Rome date '+%Y-%m-%d')"
+          git push -q "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" HEAD:storico
+          git show --stat --oneline HEAD | tail -3
