@@ -215,14 +215,17 @@ function bar(eid){ const c=counts(eid), n=Math.max(1,c.si+c.forse+c.no+c.none);
   <div class="mute">Giocatori: ${c.si} presenti · ${c.forse} forse · ${c.no} assenti · ${c.none} senza risposta${(()=>{ const o=roster().filter(id=>!isPl(id)&&ans(id,eid)==='si').length; return o?` · +${o} tra staff e pubblico`:''; })()}</div>`; }
 function attendees(e, live){
   const chip = (id,cls) => live && S.coach ? `<button class="chip ${cls}" data-act="cyc" data-id="${esc(id)}" data-e="${esc(e.id)}" aria-label="Cambia risposta di ${esc(nameOf(id))}">${esc(nameOf(id))}</button>` : `<span class="chip ${cls}">${esc(nameOf(id))}</span>`;
-  const h = CATS.map(([k,pl])=>{ const ids=roster().filter(id=>catOf(id)===k); if (!ids.length) return '';
-    const g={si:[],forse:[],no:[],'':[]}; ids.forEach(id=>g[ans(id,e.id)].push(id));
-    const nr = g[''].length;
-    return `<div><div class="row sp"><b>${pl}</b><span class="mute">${g.si.length} present${g.si.length===1?'e':'i'}${g.forse.length?' · '+g.forse.length+' forse':''}${g.no.length?' · '+g.no.length+' assent'+(g.no.length===1?'e':'i'):''}${nr?' · '+nr+' senza risposta':''}</span></div>
-      <div class="names">${g.si.map(id=>chip(id,'si')).join('')}${g.forse.map(id=>chip(id,'forse')).join('')||(g.si.length?'':'<span class="mute">Nessuno ancora</span>')}</div>
-      ${g.no.length?`<details><summary>Assenti (${g.no.length})</summary><div class="names">${g.no.map(id=>chip(id,'no')).join('')}</div></details>`:''}
-      ${nr?`<details><summary>Non hanno ancora risposto (${nr})</summary><div class="names">${g[''].map(id=>chip(id,'')).join('')}</div></details>`:''}</div>`; }).join('');
-  return h || '<p class="mute">Nessuno in rosa.</p>';
+  const r = roster(); if (!r.length) return '<p class="mute">Nessuno in rosa.</p>';
+  const no = [], none = [];
+  // prima i presenti (e forse) di tutte le categorie; "Preparatori atletici" sempre visibile, anche se vuota
+  const top = CATS.map(([k,pl])=>{ const ids=r.filter(id=>catOf(id)===k); if (!ids.length && k!=='preparatore') return '';
+    const si=[], fo=[]; ids.forEach(id=>{ const a=ans(id,e.id); (a==='si'?si:a==='forse'?fo:a==='no'?no:none).push(id); });
+    return `<div><div class="row sp"><b>${pl}</b><span class="mute">${ids.length?`${si.length} present${si.length===1?'e':'i'}${fo.length?' · '+fo.length+' forse':''}`:''}</span></div>
+      <div class="names">${si.map(id=>chip(id,'si')).join('')}${fo.map(id=>chip(id,'forse')).join('')}${si.length||fo.length?'':`<span class="mute">${ids.length?'Nessuno ancora':'Nessuno in questa categoria'}</span>`}</div></div>`; }).join('');
+  // poi, in fondo, tutti gli assenti e tutti quelli che non hanno ancora risposto
+  return top
+    + (no.length?`<details><summary>Assenti (${no.length})</summary><div class="names">${no.map(id=>chip(id,'no')).join('')}</div></details>`:'')
+    + (none.length?`<details><summary>Non hanno ancora risposto (${none.length})</summary><div class="names">${none.map(id=>chip(id,'')).join('')}</div></details>`:'');
 }
 function pitch(lu, sm){
   const pos = MODS[lu.module] || MODS['2-3-1'];
