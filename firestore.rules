@@ -64,6 +64,12 @@ service cloud.firestore {
                        && (!(outKind() in ['test', 'remind']) || isAdmin());
       allow read, update, delete: if false;
     }
+    match /presence/{uid} {
+      // "chi è online": ognuno scrive solo il proprio battito (solo l'ora del server), gli iscritti lo leggono
+      allow read: if isMember();
+      allow create, update: if isMember() && request.auth.uid == uid && request.resource.data.keys().hasOnly(['at']) && request.resource.data.at == request.time;
+      allow delete: if signedIn() && request.auth.uid == uid;
+    }
     match /private/{id} {
       // gettone GitHub: solo l'amministratore
       allow read: if isAdmin();

@@ -1,7 +1,7 @@
 // The Rimineser F.P. – app della squadra (PWA + Firebase)
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, signOut, updateProfile, GoogleAuthProvider, signInWithPopup } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, collection, onSnapshot, setDoc, updateDoc, deleteDoc, deleteField, addDoc, getDoc, query, orderBy, limit } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, collection, onSnapshot, setDoc, updateDoc, deleteDoc, deleteField, addDoc, getDoc, query, orderBy, limit, serverTimestamp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 import * as CFG from './firebase-config.js';
 const firebaseConfig = CFG.firebaseConfig;
 const DEMO = firebaseConfig.apiKey === 'demo';
@@ -105,6 +105,7 @@ function mergeEvents(){
 const toMap = s => Object.fromEntries(s.docs.map(d=>[d.id, d.data()]));
 function startMember(){
   if (memberOn) return; memberOn = true;
+  presenceOn(true);
   let tokChecked = false;
   watch(memberSubs, 'mytok', D('tokens/'+S.uid), s=>{ S.myTok = s.exists() ? s.data() : null; if (!tokChecked) { tokChecked = true; refreshPush(); } });
   watch(memberSubs, 'posts', query(C('posts'), orderBy('createdAt','desc'), limit(60)), s=>{ S.posts = s.docs.map(d=>({id:d.id, ...d.data()})); });
@@ -125,7 +126,7 @@ function ensureAdminPlayer(){
   const pg = S.players[g]; if (pg && /amministratore/i.test(pg.name||'')) write(()=>updateDoc(D('players/'+g), {name:'Giacomo Lucidi'}));
   const r = S.rsvp[S.uid]; if (r && r.answers && Object.keys(r.answers).length && !S.rsvp[g]) write(()=>setDoc(D('rsvp/'+g), {answers:{...r.answers}}));
 }
-function stopMember(){ stop(memberSubs); memberOn = false; S.loaded = new Set(['team']); }
+function stopMember(){ stop(memberSubs); memberOn = false; presenceOn(false); watchPresence(false); S.loaded = new Set(['team']); }
 function watchMe(){
   if (meOn) return; meOn = true;
   watch(baseSubs, 'me', D('players/'+S.uid), async s=>{
@@ -149,6 +150,31 @@ onAuthStateChanged(auth, u=>{
     if (S.admin) { S.phase = 'app'; startMember(); } else watchMe();
   });
 });
+
+/* ---------- chi è online ---------- */
+// Ogni app aperta (e visibile) scrive presence/<uid> = ora del server ogni minuto; chiudendo o nascondendo l'app lo toglie.
+// La Rosa legge presence solo mentre è aperta (poche letture) e mostra un pallino verde a chi ha battuto negli ultimi 3 minuti.
+const ONLINE_MS = 3*60*1000;
+let beatTimer = null, presSub = null;
+const beat = () => { if (S.phase==='app' && S.uid && document.visibilityState==='visible') setDoc(D('presence/'+S.uid), {at: serverTimestamp()}).catch(()=>{}); };
+function presenceOn(on){
+  if (on && !beatTimer) { beat(); beatTimer = setInterval(beat, 60*1000); }
+  if (!on && beatTimer) { clearInterval(beatTimer); beatTimer = null; }
+}
+function presenceOff(){ presenceOn(false); if (S.uid) return deleteDoc(D('presence/'+S.uid)).catch(()=>{}); }
+document.addEventListener('visibilitychange', ()=>{ if (S.phase!=='app') return; if (document.visibilityState==='visible') presenceOn(true); else presenceOff(); });
+addEventListener('pagehide', ()=>{ if (S.phase==='app') presenceOff(); });
+function watchPresence(on){
+  if (on && !presSub) presSub = onSnapshot(C('presence'), s=>{ S.presence = Object.fromEntries(s.docs.map(d=>[d.id, d.data().at])); if (S.tab==='rosa') draw(); }, ()=>{});
+  if (!on && presSub) { presSub(); presSub = null; }
+}
+setInterval(()=>{ if (S.phase==='app' && S.tab==='rosa') draw(); }, 30*1000);
+const atMs = v => !v ? 0 : typeof v.toMillis === 'function' ? v.toMillis() : +new Date(v);
+function isOnline(id){
+  const pr = S.presence || {}, owner = (S.players[id]||{}).owner;
+  if (id === actId() || (owner && owner === S.uid)) return document.visibilityState === 'visible';   // io sono online
+  return [id, owner].some(k => k && Date.now() - atMs(pr[k]) < ONLINE_MS);
+}
 
 /* ---------- pezzi di interfaccia ---------- */
 const icoPlus = '<svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
@@ -427,10 +453,10 @@ function vArchivio(){
     ${e.notes?`<p class="txt mute">${esc(e.notes)}</p>`:''}</details>`; }).join('');
 }
 function vRosa(){
-  const r = roster();
-  let h = `<div class="row sp"><h2>Rosa</h2></div>`;
+  const r = roster(), on = r.filter(isOnline).length;
+  let h = `<div class="row sp"><h2>Rosa</h2><span class="chip online-n"><i class="dot-on"></i>Online ora: ${on}</span></div>`;
   h += r.length ? CATS.map(([k,pl])=>{ const ids=r.filter(id=>catOf(id)===k); if (!ids.length) return '';
-    return `<section class="card"><span class="lab">${pl.toUpperCase()} · ${ids.length}</span>${ids.map(id=>{ const p=S.players[id]||{}; return `<div class="row" style="padding:6px 0"><span class="num">${esc(isPl(id)?(p.number||'–'):pl[0])}</span><div style="flex:1"><b>${esc(nameOf(id))}</b>${mine(id)?' <span class="chip">Tu</span>':''}<div class="mute" style="font-size:13px">${esc(CATS.find(c=>c[0]===k)[2])}${p.manual?' · aggiunto dall\'amministratore':''}</div></div>${asAdmin()&&!mine(id)?`<button class="lnk" data-act="editP" data-id="${esc(id)}">Modifica</button>`:''}</div>`; }).join('')}</section>`; }).join('') : '<section class="card"><div class="empty">Nessuno ancora in rosa.</div></section>';
+    return `<section class="card"><span class="lab">${pl.toUpperCase()} · ${ids.length}</span>${ids.map(id=>{ const p=S.players[id]||{}; return `<div class="row" style="padding:6px 0"><span class="num">${esc(isPl(id)?(p.number||'–'):pl[0])}</span><div style="flex:1"><b>${esc(nameOf(id))}</b>${isOnline(id)?' <i class="dot-on" title="Online ora" aria-label="online"></i>':''}${mine(id)?' <span class="chip">Tu</span>':''}<div class="mute" style="font-size:13px">${esc(CATS.find(c=>c[0]===k)[2])}${p.manual?' · aggiunto dall\'amministratore':''}</div></div>${asAdmin()&&!mine(id)?`<button class="lnk" data-act="editP" data-id="${esc(id)}">Modifica</button>`:''}</div>`; }).join('')}</section>`; }).join('') : '<section class="card"><div class="empty">Nessuno ancora in rosa.</div></section>';
   return h;
 }
 
@@ -490,6 +516,7 @@ function draw(){
   $('#who').textContent = asAdmin() ? 'Amministratore · Calcio a 7' : S.admin ? nameOf(gid())+' · Giocatore' : 'Football Project · Calcio a 7';
   const mb = $('#modeBtn'); if (mb) { mb.hidden = !S.admin; mb.textContent = asAdmin() ? '⇄ Passa a Giocatore' : '⇄ Passa ad Amministratore'; }
   document.querySelectorAll('#tabs button, .top .ib').forEach(b=>b.classList.toggle('on', b.dataset.t===S.tab));
+  watchPresence(S.tab==='rosa');
   let h = '';
   if (!['posts','events','players','rsvp','votes'].every(k=>S.loaded.has(k)) && !S.slow) h = `<div class="empty">Caricamento…</div>`;
   else {
@@ -527,7 +554,7 @@ const ACT = {
   go: d => { S.tab = d.t; history.replaceState(null,'','#'+d.t); draw(); scrollTo(0,0); },
   close: () => closeSheet(),
   lmode: d => { S.login = d.m; draw(); },
-  logout: () => signOut(auth),
+  logout: async () => { await presenceOff(); signOut(auth); },
   google: async () => { const err=$('#authErr'); if (err) err.textContent='';
     try { await signInWithPopup(auth, new GoogleAuthProvider()); }
     catch(e){ if (e.code==='auth/popup-closed-by-user' || e.code==='auth/cancelled-popup-request') return;

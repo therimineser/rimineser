@@ -1,6 +1,6 @@
 // Test delle regole Firestore (eseguiti dal robot GitHub "Test regole" sull'emulatore ufficiale).
 import { initializeTestEnvironment, assertSucceeds, assertFails } from '@firebase/rules-unit-testing';
-import { doc, getDoc, setDoc, updateDoc, deleteDoc, addDoc, collection, deleteField } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, deleteDoc, addDoc, collection, deleteField, serverTimestamp } from 'firebase/firestore';
 import { readFileSync, writeFileSync } from 'node:fs';
 
 const env = await initializeTestEnvironment({
@@ -102,6 +102,18 @@ await t('rifiutato: legge le comunicazioni', false, () => getDoc(doc(db('rej'), 
 await t('non registrato: legge le comunicazioni', false, () => getDoc(doc(db(null), 'posts/x')));
 await t('non registrato: legge la rosa', false, () => getDoc(doc(db(null), 'players/m1')));
 await t('qualsiasi: crea squadra già esistente', false, () => setDoc(doc(db('nuovo'), 'config/team'), { coaches: ['nuovo'] }));
+// "chi è online"
+await t('membro: scrive il proprio battito online', true, () => setDoc(doc(db('p2'), 'presence/p2'), { at: serverTimestamp() }));
+await t('admin: scrive il proprio battito online', true, () => setDoc(doc(db('admin'), 'presence/admin'), { at: serverTimestamp() }));
+await t('membro: battito online di un altro', false, () => setDoc(doc(db('p2'), 'presence/m1'), { at: serverTimestamp() }));
+await t('membro: battito online con ora finta', false, () => setDoc(doc(db('p2'), 'presence/p2'), { at: new Date(2030, 0, 1) }));
+await t('membro: battito online con altri campi', false, () => setDoc(doc(db('p2'), 'presence/p2'), { at: serverTimestamp(), x: 1 }));
+await t('in attesa: scrive battito online', false, () => setDoc(doc(db('pend'), 'presence/pend'), { at: serverTimestamp() }));
+await t('membro: legge chi è online', true, () => getDoc(doc(db('p2'), 'presence/m1')));
+await t('in attesa: legge chi è online', false, () => getDoc(doc(db('pend'), 'presence/m1')));
+await t('non registrato: legge chi è online', false, () => getDoc(doc(db(null), 'presence/m1')));
+await t('membro: toglie il proprio battito', true, () => deleteDoc(doc(db('p2'), 'presence/p2')));
+await t('membro: toglie il battito di un altro', false, () => deleteDoc(doc(db('p2'), 'presence/m1')));
 await t('membro: legge la coda notifiche', false, () => getDoc(doc(db('p2'), 'outbox/qualcosa')));
 await t('membro: comunicazione troppo lunga (capitano)', false, () => addDoc(collection(db('c1'), 'posts'), { text: 'x'.repeat(6000) }));
 
