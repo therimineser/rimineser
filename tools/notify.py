@@ -276,6 +276,18 @@ def main():
     if reminded != (state.get('reminded') or {}):
         changed_state['reminded'] = dict(list(reminded.items())[-150:])
 
+    # notifica di esempio (file tools/esempio-notifica.json caricato da Claude): solo all'amministratore, una volta
+    try:
+        with open(os.path.join(ROOT, 'tools', 'esempio-notifica.json'), encoding='utf-8') as f:
+            ex = json.load(f)
+    except Exception:
+        ex = None
+    if ex and ex.get('id') and ex['id'] not in (state.get('esempi') or []):
+        admins_all = [u for u in (team.get('coaches') or []) if u in tokens]
+        n = sender.send(admins_all, {'title': ex.get('title', 'Prova'), 'body': ex.get('body', ''), 'url': ex.get('url', '#home'), 'tag': 'esempio-' + ex['id']}, None)
+        log('Notifica di esempio "%s" → %d telefoni' % (ex.get('title'), n))
+        changed_state['esempi'] = ((state.get('esempi') or []) + [ex['id']])[-20:]
+
     # 3) nuove richieste di iscrizione: avviso solo all'amministratore
     admins = [u for u in (team.get('coaches') or []) if u in tokens]
     seen = set(state.get('requests') or [])
