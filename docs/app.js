@@ -173,19 +173,17 @@ function watchPresence(on){
 const onlineCount = () => typeof S.online === 'number' ? Math.max(1, S.online) : null;
 
 /* ---------- visualizzazioni (solo conteggi, nessun nome né orario) ---------- */
-// Un'apertura = l'app parte, oppure torna in primo piano dopo almeno 30 minuti in secondo piano.
+// Un'apertura = l'app viene chiusa e poi riaperta. Ricaricare la pagina NON conta: sessionStorage resta finché l'app
+// (o la scheda) è aperta e si svuota solo quando viene chiusa.
 // stats/views-AAAA-MM = {total, dGG, day: ultimo giorno incrementato} (giorno di Roma); le regole permettono solo +1 e la lettura solo all'amministratore.
 const romeDate = (d=new Date()) => new Intl.DateTimeFormat('en-CA', {timeZone:'Europe/Rome', year:'numeric', month:'2-digit', day:'2-digit'}).format(d);
-let viewCounted = false, hiddenAt = 0;
+let viewCounted = false;
 function countView(){
   if (DEMO || S.phase!=='app') return;
+  try { if (sessionStorage.getItem('rim-view')) return; sessionStorage.setItem('rim-view', '1'); } catch(_) {}
   const [y,m,d] = romeDate().split('-');
   setDoc(D(`stats/views-${y}-${m}`), { total: increment(1), ['d'+d]: increment(1), day: 'd'+d }, { merge:true }).catch(()=>{});
 }
-document.addEventListener('visibilitychange', ()=>{
-  if (document.visibilityState==='hidden') hiddenAt = Date.now();
-  else if (hiddenAt && Date.now()-hiddenAt >= 30*60*1000) { hiddenAt = 0; countView(); }
-});
 async function loadViews(){
   const now = new Date(), out = [];
   for (let i = 0; i < 2; i++) {   // mese corrente + precedente (per "Ieri" il primo del mese)
