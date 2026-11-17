@@ -2,7 +2,7 @@ rules_version = '2';
 // Regole di sicurezza del database della squadra The Rimineser F.P.
 // - Il primo che preme "Sono l'amministratore" diventa amministratore (solo se la squadra non è ancora configurata).
 // - Chi si registra non vede nulla finché l'amministratore non lo approva.
-// - Tutti gli iscritti approvati hanno gli stessi diritti: comunicazioni, sondaggi, eventi, formazioni, presenze.
+// - Iscritti approvati: presenze, eventi, sondaggi (voto). Comunicazioni: Mister, Capitano, amministratore. Formazioni: Capitano, amministratore.
 // - Solo l'amministratore approva/rifiuta/modifica gli iscritti e gestisce il gettone delle notifiche.
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -12,6 +12,9 @@ service cloud.firestore {
     function myPlayer() { return /databases/$(database)/documents/players/$(request.auth.uid); }
     function isMember() { return isAdmin() || (signedIn() && exists(myPlayer()) && get(myPlayer()).data.approved == true); }
     function changes() { return request.resource.data.diff(resource.data).affectedKeys(); }
+    function myTag() { return exists(myPlayer()) ? get(myPlayer()).data.get('tag', '') : ''; }
+    function canPost() { return isAdmin() || (isMember() && myTag() in ['mister', 'capitano']); }   // comunicazioni
+    function canLineup() { return isAdmin() || (isMember() && myTag() == 'capitano'); }            // formazioni
 
     match /config/team {
       allow read: if signedIn();
@@ -21,11 +24,14 @@ service cloud.firestore {
       allow delete: if false;
     }
     match /posts/{id} {
-      allow read, delete: if isMember();
-      allow create, update: if isMember() && request.resource.data.text is string && request.resource.data.text.size() < 5000;
+      allow read: if isMember();
+      allow delete: if canPost();
+      allow create, update: if canPost() && request.resource.data.text is string && request.resource.data.text.size() < 5000;
     }
     match /events/{id} {
-      allow read, write: if isMember();
+      allow read, delete: if isMember();
+      allow create: if isMember() && (!request.resource.data.keys().hasAny(['lineups', 'lineup']) || canLineup());
+      allow update: if isMember() && (!changes().hasAny(['lineups', 'lineup']) || canLineup());
     }
     match /players/{uid} {
       allow read: if isMember() || (signedIn() && request.auth.uid == uid);

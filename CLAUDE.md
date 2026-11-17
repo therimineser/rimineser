@@ -7,7 +7,7 @@ App web installabile (PWA) per la squadra di calcio a 7 **The Rimineser F.P.** (
 - Online: https://therimineser.github.io/rimineser/
 - Amministratore: Giacomo (account GitHub `therimineser`). Unico ruolo speciale: approva/modifica/toglie gli iscritti.
 - L'amministratore ha due profili: "Amministratore" (non compare mai tra i giocatori) e il suo profilo giocatore `players/<uid>_g`; pulsante nell'intestazione per passare dall'uno all'altro (modalità salvata in localStorage `rim-mode`). Presenze del giocatore in `rsvp/<uid>_g`.
-- Tutti gli iscritti approvati hanno gli stessi diritti (comunicazioni, sondaggi, eventi, formazioni, presenze, Instagram).
+- Etichette (campo `tag` in players, le assegna solo l'admin): `mister` e `capitano`. Comunicazioni/sondaggi: Mister, Capitano, admin. Formazioni: Capitano, admin. Presenze, eventi, voti, Instagram: tutti gli iscritti. Vincoli anche in firestore.rules.
 - Lingua dell'app e delle risposte: italiano. Colori: rosso #E30613, bianco, nero; tema sempre chiaro.
 
 ## Funzioni

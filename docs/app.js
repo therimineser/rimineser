@@ -62,6 +62,13 @@ let mode = 'admin'; try { mode = localStorage.getItem('rim-mode') || 'admin'; } 
 const asAdmin = () => S.admin && mode !== 'player';
 const actId = () => S.admin ? gid() : S.uid;   // chi risponde alle presenze / profilo giocatore
 const mine = id => id === S.uid || (S.admin && id === gid());
+// Etichette: "mister" e "capitano" (assegnate dall'amministratore). Comunicazioni: mister, capitano, admin. Formazioni: capitano, admin.
+const TAGS = {mister:'Mister', capitano:'Capitano'};
+const tagOf = id => S.players[id]?.tag || '';
+const canPost = () => S.admin || ['mister','capitano'].includes(tagOf(S.uid));
+const canLineup = () => S.admin || tagOf(S.uid) === 'capitano';
+const tagSel = v => `<select name="tag"><option value="">Nessuna</option>${Object.entries(TAGS).map(([k,l])=>`<option value="${k}" ${v===k?'selected':''}>${l}</option>`).join('')}</select>`;
+const tagLabel = id => TAGS[tagOf(id)] ? ` <span class="chip tag">${TAGS[tagOf(id)]}</span>` : '';
 const standalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent);
 
@@ -299,7 +306,7 @@ function vHome(){
   const nx = upcoming()[0]; let h = vInstall() + vPushCard(false);
   if (asAdmin() && pendingP().length) h += `<section class="card install"><b>${pendingP().length} giocator${pendingP().length>1?'i aspettano':'e aspetta'} la tua approvazione</b><button class="sec" data-act="go" data-t="rosa">Vai alla Rosa</button></section>`;
   // Un solo riquadro: il prossimo evento, partita o allenamento.
-  if (nx) { const isM = nx.type==='partita', pres = roster().filter(id=>ans(id,nx.id)==='si').length, nLu = isM ? getLus(nx).filter(l=>S.coach||l.published).length : 0;
+  if (nx) { const isM = nx.type==='partita', pres = roster().filter(id=>ans(id,nx.id)==='si').length, nLu = isM ? getLus(nx).filter(l=>canLineup()||l.published).length : 0;
     h += `<section class="card"><div class="row sp"><span class="lab">PROSSIMO APPUNTAMENTO</span><span class="row" style="gap:6px"><span class="chip ${isM?'partita':''}">${isM?'Partita':'Allenamento'}</span></span></div>
     <h2>${isM?'The Rimineser F.P. <span style="color:var(--red)">vs</span> '+esc(nx.opponent||'Avversario'):'Allenamento'}</h2>
     <div class="row" style="gap:14px"><span class="res" style="white-space:nowrap">${esc(nx.time||'--:--')}</span><span class="mute" style="text-transform:capitalize">${esc(fmtD(nx,{weekday:'long',day:'numeric',month:'long'}))}</span></div>
@@ -311,7 +318,7 @@ function vHome(){
   h += `<div class="row sp"><h2>Comunicazioni</h2><span class="mute">della squadra</span></div>`;
   h += S.posts.length ? S.posts.map(vPost).join('') : `<div class="empty">Ancora nessuna comunicazione.</div>`;
   if (S.config.instagram) { const u=String(S.config.instagram).replace(/^@/,''); h += `<a class="card" style="flex-direction:row;align-items:center;text-decoration:none;color:inherit" href="https://www.instagram.com/${encodeURIComponent(u)}/" target="_blank" rel="noopener"><svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="var(--red)"/></svg><span style="flex:1"><b>Seguici su Instagram</b><br><span class="mute">@${esc(u)}</span></span>›</a>`; }
-  if (S.coach) h += `<button class="fab" data-act="newPost" aria-label="Nuova comunicazione o sondaggio">${icoPlus}</button>`;
+  if (canPost()) h += `<button class="fab" data-act="newPost" aria-label="Nuova comunicazione o sondaggio">${icoPlus}</button>`;
   return h;
 }
 function vPost(p){
@@ -323,7 +330,7 @@ function vPost(p){
     poll = p.options.map((o,i)=>{ const n=v.filter(x=>x[1]===i).length; return `<button class="opt ${my===i?'me':''}" aria-pressed="${my===i}" data-act="vote" data-p="${esc(p.id)}" data-i="${i}"><i style="width:${tot?n/tot*100:0}%"></i><span><span>${esc(o)}</span><span>${n}</span></span></button>`; }).join('')
       + `<details><summary>Chi ha votato (${tot})</summary>${p.options.map((o,i)=>`<div class="mute">${esc(o)}</div><div class="names">${v.filter(x=>x[1]===i).map(x=>`<span class="chip">${esc(nameOf(x[0]))}</span>`).join('')||'<span class="mute">—</span>'}</div>`).join('')}</details>`;
   }
-  return `<article class="card"><div class="row"><img class="crestimg" src="icons/logo-256.png" alt="" width="36" height="36" style="width:36px;height:36px"><div style="flex:1"><b>${esc(!p.author ? 'The Rimineser F.P.' : (S.config.coaches||[]).includes(p.author) ? 'Amministratore' : nameOf(p.author))}</b><div class="mute" style="font-size:13px">${esc(d)}</div></div>${p.important?'<span class="chip partita">Importante</span>':''}${S.coach?`<button class="lnk" data-act="delPost" data-id="${esc(p.id)}">Elimina</button>`:''}</div>
+  return `<article class="card"><div class="row"><img class="crestimg" src="icons/logo-256.png" alt="" width="36" height="36" style="width:36px;height:36px"><div style="flex:1"><b>${esc(!p.author ? 'The Rimineser F.P.' : (S.config.coaches||[]).includes(p.author) ? 'Amministratore' : nameOf(p.author))}</b>${p.author && !(S.config.coaches||[]).includes(p.author) ? tagLabel(p.author) : ''}<div class="mute" style="font-size:13px">${esc(d)}</div></div>${p.important?'<span class="chip partita">Importante</span>':''}${canPost()?`<button class="lnk" data-act="delPost" data-id="${esc(p.id)}">Elimina</button>`:''}</div>
   <p class="txt">${esc(p.text)}</p>${poll}</article>`;
 }
 function vPresenze(){
@@ -347,7 +354,7 @@ function vFormazione(){
   if (!ms.find(e=>e.id===S.fe)) S.fe = ms[0].id;
   const e = ms.find(x=>x.id===S.fe);
   let h = `<h2>Formazione</h2><label>Partita<select data-ch="fe">${ms.map(x=>`<option value="${esc(x.id)}" ${x.id===S.fe?'selected':''}>${esc(fmtD(x))} – ${esc(evName(x))}</option>`).join('')}</select></label>`;
-  if (!S.coach){
+  if (!canLineup()){
     const pub = getLus(e).filter(l=>l.published);
     if (!pub.length) return h + `<div class="card"><p class="txt mute">Nessuna formazione ancora pubblicata per questa partita.</p></div>`;
     if (pub.length>1) h += `<p class="mute" style="margin:0">Ci sono ${pub.length} formazioni possibili.</p>`;
@@ -395,7 +402,7 @@ function vArchivio(){
   const w = done.filter(e=>+e.result.us>+e.result.them).length, d = done.filter(e=>+e.result.us===+e.result.them).length, l = done.length-w-d;
   let h = `<h2>Archivio partite</h2><section class="card dark"><div class="score"><div><b>${w}</b>Vinte</div><div><b>${d}</b>Pareggi</div><div><b>${l}</b>Perse</div></div></section>`;
   if (!ms.length) return h + `<div class="empty">Le partite giocate, con formazione e tattica, compariranno qui.</div>`;
-  return h + ms.map(e=>{ const lus=getLus(e).filter(l=>l.published||S.coach), lu=lus[0], res=e.result&&e.result.us!=null&&e.result.them!=null;
+  return h + ms.map(e=>{ const lus=getLus(e).filter(l=>l.published||canLineup()), lu=lus[0], res=e.result&&e.result.us!=null&&e.result.them!=null;
     const out = res ? (+e.result.us>+e.result.them?['V','si']:+e.result.us===+e.result.them?['N','forse']:['P','no']) : null;
     return `<details class="card"><summary style="color:inherit;justify-content:space-between;gap:10px"><span><span class="mute" style="font-size:13px">${esc(fmtD(e))}</span><br><b class="cond" style="font-size:21px">${esc(evName(e))}</b></span><span class="row" style="gap:6px">${lu?`<span class="chip">${esc(lu.module)}${lus.length>1?' +'+(lus.length-1):''}</span>`:''}${res?`<span class="res">${esc(e.result.us)}–${esc(e.result.them)}</span><span class="chip ${out[1]}">${out[0]}</span>`:'<span class="chip forse">Risultato in aggiornamento</span>'}</span></summary>
     ${lus.length ? lus.map(l=>`<div class="row sp"><b>${esc(l.name||'Formazione')}</b><span class="chip">${esc(l.module)}</span></div>${pitch(l,true)}${luCard(l)}`).join('') : '<p class="mute">Nessuna formazione salvata.</p>'}
@@ -407,7 +414,7 @@ function vRosa(){
   if (asAdmin() && pe.length) h += `<section class="card install"><b>Da approvare</b>${pe.map(id=>`<div class="row sp"><span>${esc(nameOf(id))} <span class="mute">· ${esc(CATS.find(c=>c[0]===catOf(id))[2])}</span></span><span class="row" style="gap:4px"><button class="lnk" data-act="rejP" data-id="${esc(id)}">Rifiuta</button><button class="pri" data-act="okP" data-id="${esc(id)}">Approva</button></span></div>`).join('')}</section>`;
   h += `<div class="btns"><button class="pri" data-act="me">Il mio profilo</button><button class="sec" data-act="logout">Esci</button></div>` + vPushCard(true);
   h += r.length ? CATS.map(([k,pl])=>{ const ids=r.filter(id=>catOf(id)===k); if (!ids.length) return '';
-    return `<section class="card"><span class="lab">${pl.toUpperCase()} · ${ids.length}</span>${ids.map(id=>{ const p=S.players[id]||{}; return `<div class="row" style="padding:6px 0"><span class="num">${esc(k==='giocatore'?(p.number||'–'):pl[0])}</span><div style="flex:1"><b>${esc(nameOf(id))}</b>${mine(id)?' <span class="chip">Tu</span>':''}<div class="mute" style="font-size:13px">${k==='giocatore'?esc(p.role||'Ruolo non indicato'):esc(CATS.find(c=>c[0]===k)[2])}${p.manual?' · aggiunto dall\'amministratore':''}</div></div>${asAdmin()&&!mine(id)?`<button class="lnk" data-act="editP" data-id="${esc(id)}">Modifica</button>`:''}</div>`; }).join('')}</section>`; }).join('') : '<section class="card"><div class="empty">Nessuno ancora in rosa.</div></section>';
+    return `<section class="card"><span class="lab">${pl.toUpperCase()} · ${ids.length}</span>${ids.map(id=>{ const p=S.players[id]||{}; return `<div class="row" style="padding:6px 0"><span class="num">${esc(k==='giocatore'?(p.number||'–'):pl[0])}</span><div style="flex:1"><b>${esc(nameOf(id))}</b>${tagLabel(id)}${mine(id)?' <span class="chip">Tu</span>':''}<div class="mute" style="font-size:13px">${k==='giocatore'?esc(p.role||'Ruolo non indicato'):esc(CATS.find(c=>c[0]===k)[2])}${p.manual?' · aggiunto dall\'amministratore':''}</div></div>${asAdmin()&&!mine(id)?`<button class="lnk" data-act="editP" data-id="${esc(id)}">Modifica</button>`:''}</div>`; }).join('')}</section>`; }).join('') : '<section class="card"><div class="empty">Nessuno ancora in rosa.</div></section>';
   return h;
 }
 
@@ -525,7 +532,7 @@ const ACT = {
     await write(()=>setDoc(D('events/'+Dr.eid), {lineups:Dr.items}, {merge:true}), 'Formazione eliminata'); draw(); },
   who: d => { const e=S.events.find(x=>x.id===d.e); if (!e) return; openSheet(`${head('Presenti')}<p class="mute" style="margin:0">${esc(evName(e))} · ${esc(fmtD(e))} · ${esc(e.time||'')}</p>${attendees(e,false)}`); },
   openLu: d => { S.fe = d.e; S.draft = null; ACT.go({t:'formazione'}); },
-  editP: d => { const p=S.players[d.id]||{}; openSheet(`${head('Modifica')}<form data-form="editp" data-id="${esc(d.id)}"><label>Nome<input name="nome" required value="${esc(p.name||'')}"></label><label>Categoria${catSel(p.cat)}</label><label>Numero di maglia<input type="number" min="1" max="99" name="numero" value="${esc(p.number||'')}"></label><label>Ruolo${roleSel(p.role)}</label><button class="pri" type="submit">Salva</button><button class="sec" type="button" data-act="delP" data-id="${esc(d.id)}">Rimuovi dalla rosa</button></form>`); },
+  editP: d => { const p=S.players[d.id]||{}; openSheet(`${head('Modifica')}<form data-form="editp" data-id="${esc(d.id)}"><label>Nome<input name="nome" required value="${esc(p.name||'')}"></label><label>Categoria${catSel(p.cat)}</label><label>Etichetta${tagSel(p.tag)}</label><p class="mute" style="margin:0">Mister: può pubblicare comunicazioni. Capitano: comunicazioni e formazioni.</p><label>Numero di maglia<input type="number" min="1" max="99" name="numero" value="${esc(p.number||'')}"></label><label>Ruolo${roleSel(p.role)}</label><button class="pri" type="submit">Salva</button><button class="sec" type="button" data-act="delP" data-id="${esc(d.id)}">Rimuovi dalla rosa</button></form>`); },
   copyLu: () => { const src = past().concat(upcoming()).find(e=>e.type==='partita' && e.id!==S.draft.eid && getLus(e).length); if (!src) return toast('Nessuna formazione precedente da copiare.');
     const l = getLus(src).find(x=>x.published) || getLus(src)[0], cur = S.draft.items[S.draft.idx];
     Object.assign(cur, {module:l.module, slots:[...(l.slots||[])].concat(Array(7).fill('')).slice(0,7), bench:[...(l.bench||[])], tactic:l.tactic||''}); draw(); toast('Copiata da '+evName(src)+' ('+fmtD(src)+')'); },
@@ -535,7 +542,7 @@ const ACT = {
       if (pub && !was) notifyTeam('lineup', '⚽ Formazione pubblicata', `${L.name} per ${evName(e)} (${fmtD(e)}): modulo ${L.module}`, '#formazione');
       if (pub && !was) await write(()=>addDoc(C('posts'), {text:`Pubblicata la formazione "${L.name}" per ${evName(e)} di ${fmtD(e,{weekday:'long',day:'numeric',month:'long'})}: modulo ${L.module}. La trovate nella sezione Formazione.`, createdAt:Date.now(), author:asAdmin()?S.uid:actId()}));
       draw(); } else L.published = was; },
-  me: () => { const p=S.players[actId()]||{}; openSheet(`${head('Il mio profilo')}<form data-form="me"><label>Nome in squadra<input name="nome" required value="${esc(p.name||S.authName)}"></label><label>Numero di maglia<input type="number" min="1" max="99" name="numero" value="${esc(p.number||'')}"></label><label>Ruolo${roleSel(p.role)}</label><label>Categoria${catSel(p.cat||'giocatore')}</label><button class="pri" type="submit">Salva</button></form>`); },
+  me: () => { const p=S.players[actId()]||{}; openSheet(`${head('Il mio profilo')}<form data-form="me"><label>Nome in squadra<input name="nome" required value="${esc(p.name||S.authName)}"></label><label>Numero di maglia<input type="number" min="1" max="99" name="numero" value="${esc(p.number||'')}"></label><label>Ruolo${roleSel(p.role)}</label><label>Categoria${catSel(p.cat||'giocatore')}</label>${S.admin?`<label>Etichetta${tagSel(p.tag)}</label>`:''}<button class="pri" type="submit">Salva</button></form>`); },
   addP: () => openSheet(`${head('Aggiungi giocatore')}<p class="mute" style="margin:0">Per chi non usa l'app: potrai segnare tu le sue presenze.</p><form data-form="addp"><label>Nome e cognome<input name="nome" required></label><label>Categoria${catSel('giocatore')}</label><label>Numero di maglia<input type="number" min="1" max="99" name="numero"></label><label>Ruolo${roleSel('')}</label><button class="pri" type="submit">Aggiungi</button></form>`),
   okP: d => write(()=>updateDoc(D('players/'+d.id), {approved:true, rejected:false}), 'Giocatore approvato'),
   rejP: (d,b) => { if (confirm2(b)) write(()=>updateDoc(D('players/'+d.id), {rejected:true}), 'Richiesta rifiutata'); },
@@ -569,10 +576,10 @@ const FORMS = {
     if (await write(()=>setDoc(ref, data, {merge:true}), 'Evento salvato')) closeSheet(); },
   me: async f => { if (S.admin && /amministratore/i.test(val(f,'nome'))) return toast('Come giocatore usa il tuo nome, non "Amministratore".');
     const data={name:val(f,'nome'), number:val(f,'numero'), role:val(f,'ruolo'), cat:val(f,'cat')||'giocatore'}; if (!data.name) return;
-    const ok = S.admin ? await write(()=>setDoc(D('players/'+gid()), {...data, approved:true, owner:S.uid}, {merge:true}), 'Profilo giocatore salvato')
+    const ok = S.admin ? await write(()=>setDoc(D('players/'+gid()), {...data, tag:val(f,'tag'), approved:true, owner:S.uid}, {merge:true}), 'Profilo giocatore salvato')
                        : await write(()=>updateDoc(D('players/'+S.uid), data), 'Profilo salvato');
     if (ok) { closeSheet(); if (auth.currentUser) updateProfile(auth.currentUser, {displayName:data.name}).catch(()=>{}); } },
-  editp: async f => { const data={name:val(f,'nome'), cat:val(f,'cat'), number:val(f,'numero'), role:val(f,'ruolo')}; if (data.name && await write(()=>updateDoc(D('players/'+f.dataset.id), data), 'Salvato')) closeSheet(); },
+  editp: async f => { const data={name:val(f,'nome'), cat:val(f,'cat'), tag:val(f,'tag'), number:val(f,'numero'), role:val(f,'ruolo')}; if (data.name && await write(()=>updateDoc(D('players/'+f.dataset.id), data), 'Salvato')) closeSheet(); },
   addp: async f => { const data={name:val(f,'nome'), number:val(f,'numero'), role:val(f,'ruolo'), cat:val(f,'cat')||'giocatore', approved:true, manual:true};
     if (data.name && await write(()=>setDoc(D('players/m_'+Date.now().toString(36)), data), 'Giocatore aggiunto')) closeSheet(); },
   team: async f => { const tok = val(f,'ghtok');
