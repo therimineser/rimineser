@@ -1,0 +1,6 @@
+Test regole Firestore: 281/284 superati
+Eseguito: 17/11/2026 14:35 · commit 0b29df3
+
+FALLITO BLOCCATO  m1: si promuove Mister da solo Expected request to fail, but it succeeded.
+FALLITO BLOCCATO  c1: si promuove Capitano da solo Expected request to fail, but it succeeded.
+FALLITO BLOCCATO  s1: si promuove Social da solo Expected request to fail, but it succeeded.
