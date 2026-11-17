@@ -442,8 +442,8 @@ function vImpostazioni(){
   if (asAdmin() && pe.length) h += `<section class="card install"><b>Da approvare</b>${pe.map(id=>`<div class="row sp"><span>${esc(nameOf(id))} <span class="mute">· ${esc(CATS.find(c=>c[0]===catOf(id))[2])}</span></span><span class="row" style="gap:4px"><button class="lnk" data-act="rejP" data-id="${esc(id)}">Rifiuta</button><button class="pri" data-act="okP" data-id="${esc(id)}">Approva</button></span></div>`).join('')}</section>`;
   h += vPushCard(true) || `<section class="card"><span class="lab">NOTIFICHE</span><span class="mute">Su questo dispositivo le notifiche non sono disponibili.</span></section>`;
   if (asAdmin()) h += `<section class="card"><span class="lab">AMMINISTRATORE</span><span class="mute">Aggiungi in rosa chi non usa l'app: potrai segnare tu le sue presenze.</span><button class="pri" data-act="addP">+ Aggiungi nuovo iscritto</button></section>`;
-  h += `<section class="card"><span class="lab">SQUADRA</span><form data-form="team"><label>Profilo Instagram<input name="ig" value="${esc(S.config.instagram||'')}" placeholder="@nomeprofilo"></label>
-    <div class="btns"><button class="pri" type="submit">Salva</button>${S.admin?'<button class="sec" type="button" data-act="pushTest">Invia notifica di prova</button>':''}</div></form></section>`;
+  if (S.admin) h += `<section class="card"><span class="lab">SQUADRA</span><form data-form="team"><label>Profilo Instagram<input name="ig" value="${esc(S.config.instagram||'')}" placeholder="@nomeprofilo"></label>
+    <div class="btns"><button class="pri" type="submit">Salva</button><button class="sec" type="button" data-act="pushTest">Invia notifica di prova</button></div></form></section>`;
   return h;
 }
 
