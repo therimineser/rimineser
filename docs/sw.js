@@ -1,6 +1,6 @@
 // Service worker: rende l'app installabile e apribile anche con rete debole.
 // I dati della squadra li gestisce Firebase (con la sua cache offline).
-const CACHE = 'rimineser-v4';
+const CACHE = 'rimineser-v5';
 const SHELL = ['./', './index.html', './app.js', './firebase-config.js', './campionato.json', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/logo-256.png', './icons/favicon.png'];
 
@@ -27,7 +27,7 @@ self.addEventListener('push', e => {
   try { p = e.data ? e.data.json() : {}; } catch (_) { p = { data: { body: e.data && e.data.text() } }; }
   const d = p.data || p.notification || p;
   e.waitUntil(self.registration.showNotification(d.title || 'The Rimineser F.P.', {
-    body: d.body || '', icon: 'icons/icon-192.png', badge: 'icons/favicon.png',
+    body: d.body || '', icon: 'icons/icon-192.png', badge: 'icons/badge.png',
     tag: d.tag || undefined, data: { url: d.url || '#home' }
   }));
 });
