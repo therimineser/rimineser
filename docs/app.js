@@ -169,7 +169,7 @@ function pitch(lu, sm){
 }
 
 /* ---------- notifiche ---------- */
-const PREFS = [['posts','Comunicazioni e sondaggi'],['lineup','Formazione pubblicata'],['remind','Promemoria presenze'],['uisp','Risultati e classifica UISP']];
+const PREFS = [['posts','Comunicazioni e sondaggi'],['lineup','Formazione pubblicata'],['remind','Promemoria partite (24, 12 e 2 ore prima) e presenze'],['uisp','Risultati e classifica UISP']];
 const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
 const pushOn = () => pushSupported() && Notification.permission === 'granted' && S.myTok && Object.keys(S.myTok.tokens||{}).length > 0;
 async function pushToken(){

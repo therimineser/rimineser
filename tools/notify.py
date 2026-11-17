@@ -27,7 +27,8 @@ try:
     TZ = ZoneInfo('Europe/Rome')
 except Exception:
     pass
-REMIND_FROM_HOUR = 12      # il giorno prima, dalle 12 in poi
+REMIND_FROM_HOUR = 12      # allenamenti: il giorno prima, dalle 12 in poi
+MATCH_REMINDERS = (24, 12, 2)   # partite: ore prima dell'inizio
 PREF_OF = {'post': 'posts', 'poll': 'posts', 'lineup': 'lineup', 'remind': 'remind', 'uisp': 'uisp', 'test': None}
 
 
@@ -120,6 +121,14 @@ def all_events(fs_events, L):
                 ev[eid] = dict(base, id=eid, type='partita', date=m['date'], time=m.get('time', ''),
                                opponent=m['away'] if home else m['home'], location=('Campo ' + m['field']) if m.get('field') else base.get('location', ''))
     return ev
+
+
+def event_start(e):
+    try:
+        d = dt.datetime.strptime('%s %s' % (e['date'], e.get('time') or '00:00'), '%Y-%m-%d %H:%M')
+    except Exception:
+        return None
+    return d.replace(tzinfo=TZ) if TZ else d
 
 
 def ev_title(e):
@@ -216,24 +225,56 @@ def main():
         log('Coda: "%s" → %d telefoni' % (o.get('title', ''), n))
         st.patch('outbox/' + oid, {'sent': True, 'sentAt': int(dt.datetime.now().timestamp() * 1000)})
 
-    # 2) promemoria del giorno prima a chi non ha risposto
+    # 2) promemoria
+    #    - partite: 24, 12 e 2 ore prima (a chi ha detto Presente/Forse e a chi non ha risposto; non a chi è Assente)
+    #    - allenamenti: il giorno prima, dalle 12, solo a chi non ha risposto
     now = now_rome()
     tomorrow = (now + dt.timedelta(days=1)).date().isoformat()
     reminded = dict(state.get('reminded') or {})
-    if now.hour >= REMIND_FROM_HOUR:
-        L = league()
-        evs = all_events(st.list('events'), L)
-        for eid, e in evs.items():
-            if e.get('date') != tomorrow or reminded.get(eid):
+    L = league()
+    evs = all_events(st.list('events'), L)
+
+    def answer(u, eid):
+        r = rsvp_all()
+        for k in (u + '_g', u):
+            a = ((r.get(k) or {}).get('answers') or {}).get(eid)
+            if a:
+                return a
+        return ''
+
+    for eid, e in evs.items():
+        where = (' · ' + e['location']) if e.get('location') else ''
+        if e.get('type') == 'partita':
+            start = event_start(e)
+            if not start:
                 continue
-            targets = [u for u in everyone if not answered(u, eid)]
-            n = sender.send(targets, {'title': '⏰ Domani: ' + ev_title(e), 'body': 'Ore %s%s. Non hai ancora risposto: ci sei?' % (e.get('time', ''), (' · ' + e['location']) if e.get('location') else ''),
+            left = (start - now).total_seconds() / 3600
+            if left <= 0:
+                continue
+            due = [h for h in MATCH_REMINDERS if left <= h]
+            if not due:
+                continue
+            h = min(due)                      # il promemoria più vicino già "scaduto"
+            key = '%s:%d' % (eid, h)
+            if reminded.get(key):
+                continue
+            for x in due:                     # se il robot è in ritardo non manda quelli vecchi
+                reminded['%s:%d' % (eid, x)] = True
+            when = {24: 'Domani', 12: 'Tra 12 ore', 2: 'Tra 2 ore'}.get(h, 'Presto')
+            title = '⚽ %s: The Rimineser F.P. vs %s' % (when, e.get('opponent') or 'avversario')
+            yes = [u for u in everyone if answer(u, eid) in ('si', 'forse')]
+            none = [u for u in everyone if not answer(u, eid)]
+            n = sender.send(yes, {'title': title, 'body': 'Ore %s%s. Ci vediamo in campo!' % (e.get('time', ''), where), 'url': '#home', 'tag': 'match-' + eid}, 'remind')
+            n += sender.send(none, {'title': title, 'body': 'Ore %s%s. Non hai ancora risposto: ci sei?' % (e.get('time', ''), where), 'url': '#presenze', 'tag': 'match-' + eid}, 'remind')
+            log('Promemoria partita %s (%d ore prima) → %d telefoni' % (eid, h, n))
+        elif e.get('date') == tomorrow and now.hour >= REMIND_FROM_HOUR and not reminded.get(eid):
+            targets = [u for u in everyone if not answer(u, eid)]
+            n = sender.send(targets, {'title': '⏰ Domani: ' + ev_title(e), 'body': 'Ore %s%s. Non hai ancora risposto: ci sei?' % (e.get('time', ''), where),
                                       'url': '#presenze', 'tag': 'remind-' + eid}, 'remind')
-            log('Promemoria %s → %d telefoni' % (eid, n))
+            log('Promemoria allenamento %s → %d telefoni' % (eid, n))
             reminded[eid] = True
-        if reminded != (state.get('reminded') or {}):
-            # tengo solo gli ultimi 60 promemoria
-            changed_state['reminded'] = dict(list(reminded.items())[-60:])
+    if reminded != (state.get('reminded') or {}):
+        changed_state['reminded'] = dict(list(reminded.items())[-150:])
 
     # 3) nuove richieste di iscrizione: avviso solo all'amministratore
     admins = [u for u in (team.get('coaches') or []) if u in tokens]
