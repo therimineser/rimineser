@@ -94,8 +94,8 @@ document.addEventListener('visibilitychange', ()=>{ if (document.visibilityState
 function mergeEvents(){
   const L = S.leagueDef, virt = {};
   if (L) for (const r of L.rounds||[]) for (const m of r.matches||[]) {
-    const home = isUs(m.home); if (!home && !isUs(m.away)) continue; if (!m.date) continue;
-    virt['uisp-'+r.n] = {id:'uisp-'+r.n, uisp:r.n, type:'partita', date:m.date, time:m.time||'', opponent:home?m.away:m.home, location:m.field?'Campo '+m.field:'', home,
+    const home = isUs(m.home); if (!home && !isUs(m.away)) continue; if (!m.date && m.hg==null) continue;   // senza data solo se già giocata
+    virt['uisp-'+r.n] = {id:'uisp-'+r.n, uisp:r.n, type:'partita', date:m.date||'', time:m.time||'', opponent:home?m.away:m.home, location:m.field?'Campo '+m.field:'', home,
       result: m.hg!=null ? {us: home?m.hg:m.ag, them: home?m.ag:m.hg} : null, notes:`${r.n}ª giornata campionato UISP`};
   }
   const out = S.fsEvents.map(e=>{ const v = virt[e.id]; if (!v) return e; delete virt[e.id];
@@ -455,14 +455,14 @@ function vFormazione(){
 }
 function evRow(e){
   const my = ans(actId(),e.id), res = e.result && e.result.us!=null && e.result.them!=null;
-  return `<div class="ev"><div class="ed"><b>${esc(fmtD(e,{day:'numeric'}))}</b><small>${esc(fmtD(e,{weekday:'short'}))}</small></div>
+  return `<div class="ev"><div class="ed"><b>${esc(fmtD(e,{day:'numeric'})||'–')}</b><small>${esc(fmtD(e,{weekday:'short'}))}</small></div>
   <div class="eb"><div class="row" style="gap:6px"><span class="chip ${e.type==='partita'?'partita':''}">${e.type==='partita'?'Partita':'Allenamento'}</span>${e.uisp?`<span class="chip">UISP ${e.uisp}ª</span>`:''}${my?`<span class="chip ${my}">${LAB[my]}</span>`:''}</div>
   <h3>${esc(evName(e))}${res?` <span class="res">${esc(e.result.us)}–${esc(e.result.them)}</span>`:''}</h3>
   <span class="mute">${esc(e.time||'')}${e.location?' · '+esc(e.location):''}</span>${e.notes?`<span class="mute">${esc(e.notes)}</span>`:''}</div>
   ${S.coach?`<button class="lnk" data-act="editEv" data-id="${esc(e.id)}">Modifica</button>`:''}</div>`;
 }
 function byMonth(list){
-  const g = {}; list.forEach(e=>{ const k=fmtD(e,{month:'long',year:'numeric'}); (g[k]=g[k]||[]).push(e); });
+  const g = {}; list.forEach(e=>{ const k=fmtD(e,{month:'long',year:'numeric'}) || 'Data non comunicata'; (g[k]=g[k]||[]).push(e); });
   return Object.entries(g).map(([k,v])=>`<section class="card"><span class="lab" style="text-transform:capitalize">${esc(k)}</span>${v.map(evRow).join('')}</section>`).join('');
 }
 function vCalendario(){
@@ -479,7 +479,7 @@ function vArchivio(){
   if (!ms.length) return h + `<div class="empty">Le partite giocate, con formazione e tattica, compariranno qui.</div>`;
   return h + ms.map(e=>{ const lus=getLus(e).filter(l=>l.published||canLineup()), lu=lus[0], res=e.result&&e.result.us!=null&&e.result.them!=null;
     const out = res ? (+e.result.us>+e.result.them?['V','si']:+e.result.us===+e.result.them?['N','forse']:['P','no']) : null;
-    return `<details class="card"><summary style="color:inherit;justify-content:space-between;gap:10px"><span><span class="mute" style="font-size:13px">${esc(fmtD(e))}</span><br><b class="cond" style="font-size:21px">${esc(evName(e))}</b></span><span class="row" style="gap:6px">${lu?`<span class="chip">${esc(lu.module)}${lus.length>1?' +'+(lus.length-1):''}</span>`:''}${res?`<span class="res">${esc(e.result.us)}–${esc(e.result.them)}</span><span class="chip ${out[1]}">${out[0]}</span>`:'<span class="chip forse">Risultato in aggiornamento</span>'}</span></summary>
+    return `<details class="card"><summary style="color:inherit;justify-content:space-between;gap:10px"><span><span class="mute" style="font-size:13px">${esc(fmtD(e) || (e.uisp ? e.uisp+'ª giornata UISP' : ''))}</span><br><b class="cond" style="font-size:21px">${esc(evName(e))}</b></span><span class="row" style="gap:6px">${lu?`<span class="chip">${esc(lu.module)}${lus.length>1?' +'+(lus.length-1):''}</span>`:''}${res?`<span class="res">${esc(e.result.us)}–${esc(e.result.them)}</span><span class="chip ${out[1]}">${out[0]}</span>`:'<span class="chip forse">Risultato in aggiornamento</span>'}</span></summary>
     ${lus.length ? lus.map(l=>`<div class="row sp"><b>${esc(l.name||'Formazione')}</b><span class="chip">${esc(l.module)}</span></div>${pitch(l,true)}${luCard(l)}`).join('') : '<p class="mute">Nessuna formazione salvata.</p>'}
     ${e.notes?`<p class="txt mute">${esc(e.notes)}</p>`:''}</details>`; }).join('');
 }
