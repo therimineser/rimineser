@@ -153,7 +153,7 @@ onAuthStateChanged(auth, u=>{
 
 /* ---------- chi è online ---------- */
 // Ogni app aperta (e visibile) scrive presence/<uid> = ora del server ogni minuto; chiudendo o nascondendo l'app lo toglie.
-// La Rosa legge presence solo mentre è aperta (poche letture) e mostra un pallino verde a chi ha battuto negli ultimi 3 minuti.
+// La Rosa legge presence solo mentre è aperta (poche letture) e mostra solo QUANTI sono online (battito negli ultimi 3 minuti), non chi.
 const ONLINE_MS = 3*60*1000;
 let beatTimer = null, presSub = null;
 const beat = () => { if (S.phase==='app' && S.uid && document.visibilityState==='visible') setDoc(D('presence/'+S.uid), {at: serverTimestamp()}).catch(()=>{}); };
@@ -456,7 +456,7 @@ function vRosa(){
   const r = roster(), on = r.filter(isOnline).length;
   let h = `<div class="row sp"><h2>Rosa</h2><span class="chip online-n"><i class="dot-on"></i>Online ora: ${on}</span></div>`;
   h += r.length ? CATS.map(([k,pl])=>{ const ids=r.filter(id=>catOf(id)===k); if (!ids.length) return '';
-    return `<section class="card"><span class="lab">${pl.toUpperCase()} · ${ids.length}</span>${ids.map(id=>{ const p=S.players[id]||{}; return `<div class="row" style="padding:6px 0"><span class="num">${esc(isPl(id)?(p.number||'–'):pl[0])}</span><div style="flex:1"><b>${esc(nameOf(id))}</b>${isOnline(id)?' <i class="dot-on" title="Online ora" aria-label="online"></i>':''}${mine(id)?' <span class="chip">Tu</span>':''}<div class="mute" style="font-size:13px">${esc(CATS.find(c=>c[0]===k)[2])}${p.manual?' · aggiunto dall\'amministratore':''}</div></div>${asAdmin()&&!mine(id)?`<button class="lnk" data-act="editP" data-id="${esc(id)}">Modifica</button>`:''}</div>`; }).join('')}</section>`; }).join('') : '<section class="card"><div class="empty">Nessuno ancora in rosa.</div></section>';
+    return `<section class="card"><span class="lab">${pl.toUpperCase()} · ${ids.length}</span>${ids.map(id=>{ const p=S.players[id]||{}; return `<div class="row" style="padding:6px 0"><span class="num">${esc(isPl(id)?(p.number||'–'):pl[0])}</span><div style="flex:1"><b>${esc(nameOf(id))}</b>${mine(id)?' <span class="chip">Tu</span>':''}<div class="mute" style="font-size:13px">${esc(CATS.find(c=>c[0]===k)[2])}${p.manual?' · aggiunto dall\'amministratore':''}</div></div>${asAdmin()&&!mine(id)?`<button class="lnk" data-act="editP" data-id="${esc(id)}">Modifica</button>`:''}</div>`; }).join('')}</section>`; }).join('') : '<section class="card"><div class="empty">Nessuno ancora in rosa.</div></section>';
   return h;
 }
 
