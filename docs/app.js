@@ -533,8 +533,8 @@ function vImpostazioni(){
    Ogni tocco = {k: azione, t: 'us'|'them', s: secondi, h: tempo, p?: giocatore, a?: assist}.
    Salvati online in scout/{evento}; può usarlo qualunque iscritto approvato. */
 const SC_US = [   // solo per noi
-  ['Passaggi', [['pass_ok','✓ Passaggio','ok'],['pass_ko','✗ Passaggio','ko'],['key','Passaggio chiave',''],['cross_ok','✓ Cross','ok'],['cross_ko','✗ Cross','ko']]],
-  ['Possesso', [['recov','Palla recuperata','ok'],['lost','Palla persa','ko'],['offside','Fuorigioco','ko']]]
+  ['Passaggi', [['pass_ok','✓ Passaggio','ok'],['pass_ko','✗ Passaggio','ko'],['cross_ok','✓ Cross','ok'],['cross_ko','✗ Cross','ko']]],
+  ['Possesso', [['recov','Palla recuperata','ok'],['lost','Palla persa','ko']]]
 ];
 const SC_BOTH = [ // noi | loro
   ['Tiri', [['on_in','In porta · area'],['on_out','In porta · fuori area'],['off_in','Fuori · area'],['off_out','Fuori · fuori area'],['blk','Tiro respinto'],['goal','⚽ Gol']]],
@@ -595,7 +595,7 @@ function vScouting(){
   h += `<section class="card"><div class="sc-vs"><span class="lab">${us.toUpperCase()}</span><span class="lab" style="text-align:right">${opp.toUpperCase()}</span></div>
     ${SC_BOTH.map(([g,a])=>`<div class="sc-g"><span class="mute" style="font-size:13px;font-weight:600">${g}</span>${a.map(([k,l])=>`<div class="sc-acts">${btn(k,l,k==='goal'?'goal':'us','us')}${btn(k,l,k==='goal'?'goalthem':'them','them')}</div>`).join('')}</div>`).join('')}
     <div class="btns"><button class="sec" data-act="scUndo" ${A.length&&mine?'':'disabled'}>↶ Annulla ultima</button></div>
-    ${A.length?`<div class="sc-log">${A.slice(-5).reverse().map(a=>`<div><b>${a.h}T ${scMin(a.s)}'</b> ${a.t==='us'?esc(TEAM()):opp} · ${esc(SC_LAB[a.k]||a.k)}${a.p?' · '+esc(nameOf(a.p)):''}${a.a?' (assist '+esc(short(nameOf(a.a)))+')':''}</div>`).join('')}</div>`:''}</section>`;
+    ${A.length?`<div class="sc-log">${A.slice(-5).reverse().map(a=>`<div><b>${a.h}T ${scMin(a.s)}'</b> ${a.t==='us'?esc(TEAM()):opp} · ${esc(SC_LAB[a.k]||a.k)}${a.p?' · '+esc(nameOf(a.p)):''}${a.k==='goal'&&scGoalNote(a)?' ('+esc(scGoalNote(a))+')':''}</div>`).join('')}</div>`:''}</section>`;
   // riepilogo per tempo
   const pct = (a,b) => a+b ? Math.round(a/(a+b)*100)+'%' : '–';
   const cols = [1,2,0];   // 1T, 2T, totale
@@ -614,9 +614,17 @@ function vScouting(){
   const scorers = A.filter(a=>a.k==='goal' && a.t==='us');
   h += `<section class="card"><span class="lab">RIEPILOGO</span><span class="mute" style="font-size:13px">Dove ci sono due numeri: ${esc(TEAM())} · ${opp}</span>
     <div style="overflow-x:auto"><table class="sc-tab"><thead><tr><th></th><th>1° tempo</th><th>2° tempo</th><th>Totale</th></tr></thead><tbody>${rows.map(([l,f])=>`<tr><td>${l}</td>${val(f)}</tr>`).join('')}</tbody></table></div>
-    ${scorers.length?`<div><b>Marcatori</b><div class="sc-log">${scorers.map(a=>`<div><b>${a.h}T ${scMin(a.s)}'</b> ${a.p?esc(nameOf(a.p)):'gol'}${a.a?' (assist '+esc(nameOf(a.a))+')':''}</div>`).join('')}</div></div>`:''}
+    ${scorers.length?`<div><b>Marcatori</b><div class="sc-log">${scorers.map(a=>`<div><b>${a.h}T ${scMin(a.s)}'</b> ${a.p?esc(nameOf(a.p)):'gol'}${a.k==='goal'&&scGoalNote(a)?' ('+esc(scGoalNote(a))+')':''}</div>`).join('')}</div></div>`:''}
     ${A.length&&mine?`<button class="lnk" data-act="scReset">Azzera i dati di questa partita</button>`:''}</section>`;
   return h;
+}
+// come è nato un nostro gol: g = 'assist' | 'rig' | 'pun' | 'ang' (calcio d'angolo diretto) | 'pers' (nessun assist)
+const SC_HOW = [['assist','👟 Su assist'],['rig','Su rigore'],['pun','Su calcio di punizione'],['ang','Da calcio d\'angolo diretto'],['pers','Senza assist']];
+const scGoalNote = a => a.g==='assist' || (!a.g && a.a) ? (a.a ? 'assist '+nameOf(a.a) : 'su assist') : a.g==='rig' ? 'rigore' : a.g==='pun' ? 'punizione' : a.g==='ang' ? 'calcio d\'angolo diretto' : '';
+function scAskHow(i){
+  const a = S.scout.acts[i]; if (!a) return;
+  openSheet(`${head('Com\'è nato il gol?')}${a.p?`<p class="mute" style="margin:0">⚽ ${esc(nameOf(a.p))}</p>`:''}<div class="sc-how">${SC_HOW.map(([v,l])=>`<button class="sec" data-act="scHow" data-i="${i}" data-v="${v}">${l}</button>`).join('')}</div>
+    <button class="lnk" data-act="scHow" data-i="${i}" data-v="">Salta</button>`);
 }
 // dopo gol/cartellino nostro: chi è stato? (facoltativo)
 function scAsk(i, field){
@@ -729,9 +737,14 @@ const ACT = {
     if (navigator.vibrate) navigator.vibrate(30); draw();
     if (d.t==='us' && SC_WHO.includes(d.k)) scAsk(x.acts.length-1, 'p'); else toast(`${d.t==='us'?TEAM():'Avversari'}: ${SC_LAB[d.k]}`); },
   scPick: async d => { const x = S.scout, a = x.acts[+d.i]; closeSheet(); if (!a) return;
+    let id = a.id;
     if (d.id) { const b = {...a, [d.f]: d.id}; x.acts[+d.i] = b; draw();
-      await write(()=>updateDoc(D('scout/'+x.eid), {acts: arrayRemove(a)})); await write(()=>updateDoc(D('scout/'+x.eid), {acts: arrayUnion(b)}));
-      if (d.f==='p' && a.k==='goal') scAsk(x.acts.findIndex(z=>z.id===b.id), 'a'); } },
+      await write(()=>updateDoc(D('scout/'+x.eid), {acts: arrayRemove(a)})); await write(()=>updateDoc(D('scout/'+x.eid), {acts: arrayUnion(b)})); id = b.id; }
+    if (d.f==='p' && a.k==='goal') scAskHow(x.acts.findIndex(z=>z.id===id)); },
+  scHow: async d => { const x = S.scout, i = +d.i, a = x.acts[i]; closeSheet(); if (!a || !d.v) return;
+    const b = {...a, g: d.v}; x.acts[i] = b; draw();
+    await write(()=>updateDoc(D('scout/'+x.eid), {acts: arrayRemove(a)})); await write(()=>updateDoc(D('scout/'+x.eid), {acts: arrayUnion(b)}));
+    if (d.v==='assist') scAsk(x.acts.findIndex(z=>z.id===b.id), 'a'); },
   scUndo: () => { const x = S.scout; if (!scMine(x)) return; const a = x.acts.pop(); draw(); if (!a) return;
     write(()=>updateDoc(D('scout/'+x.eid), {acts: arrayRemove(a)})); toast('Annullato: '+SC_LAB[a.k]); },
   scClock: () => { const x = S.scout; if (!scMine(x)) return; if (x.start) { x.base = scSecs(x); x.start = null; } else x.start = Date.now(); scWrite(x.eid, {base:x.base, start:x.start, half:x.half}); draw(); },
