@@ -4,7 +4,7 @@ Scheda del progetto per chi (persona o Claude) riprende il lavoro. Nessun segret
 
 ## Cos'è
 App web installabile (PWA) per la squadra di calcio a 7 **The Rimineser F.P.** (Rimini, campionato UISP).
-- Online: https://therimineser.github.io/rimineser/
+- Online: indirizzo dell'app noto all'amministratore (non pubblicarlo; pagina con noindex)
 - Amministratore: Giacomo (account GitHub `therimineser`). Unico ruolo speciale: approva/modifica/toglie gli iscritti.
 - L'amministratore ha due profili: "Amministratore" (non compare mai tra i giocatori) e il suo profilo giocatore `players/<uid>_g`; pulsante nell'intestazione per passare dall'uno all'altro (modalità salvata in localStorage `rim-mode`). Presenze del giocatore in `rsvp/<uid>_g`.
 - Categorie speciali `mister` e `capitano` (campo `cat` in players, le assegna/toglie solo l'admin; il Capitano conta come giocatore). Comunicazioni/sondaggi: Mister, Capitano, admin. Formazioni: Capitano, admin. Presenze, eventi, voti, Instagram: tutti gli iscritti. Vincoli anche in firestore.rules.
