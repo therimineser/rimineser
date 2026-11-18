@@ -800,18 +800,23 @@ function radar2(rows, title, sub, us, opp, opts={}){
   const big = !!opts.big, W = big ? 320 : 340, H = big ? 300 : 270, cx = W/2, cy = big ? 150 : 140, R = big ? 100 : 88, n = rows.length;
   const pt = (i, r) => { const ang = -Math.PI/2 + i*2*Math.PI/n; return [cx + r*Math.cos(ang), cy + r*Math.sin(ang)]; };
   const data = rows.map(d=>{ const m = Math.max(d.u, d.t, 1); return {...d, m: opts.ticks ? 4*Math.ceil(m/4) : m}; });
-  // numeri della scala: mai sotto un pallino. Per ogni numero si prova di lato all'asse (+, poi −, poi più lontano) e si tiene
+  // numeri della scala: mai sotto un pallino o una linea colorata. Per ogni numero si prova di lato all'asse (+, poi −, poi più lontano) e si tiene
   // il primo posto in cui il riquadro del testo non tocca nessun pallino; vengono disegnati sopra a tutto, con un bordo del colore di fondo.
   const labAt = i => { const [x,y] = pt(i, R+12), up = y < cy - 1, top = Math.abs(x-cx) < 6; return [x, y + (top ? (up ? -4 : 14) : (up ? -8 : 18))]; };
   const boxes = !(opts.ticks && big) ? [] : data.map((d,i)=>{ const [x,y] = labAt(i), w = d.l.length*13*0.58; return [x - w/2, y - 11, x + w/2, y + 3]; });   // riquadri dei nomi
+  const segs = !opts.ticks ? [] : ['u','t'].flatMap(k=>data.map((d,i)=>{ const a = pt(i, R*d[k]/d.m), j = (i+1) % n, b = pt(j, R*data[j][k]/data[j].m); return [...a, ...b]; }));
   const dotR = big ? 5 : 4, fs = big ? 10.5 : 8.5, dotPts = !opts.ticks ? [] : data.flatMap((d,i)=>['u','t'].map(k=>pt(i, R*d[k]/d.m)));
   const hits = (cx0, cy0, w, h) => dotPts.some(([px,py])=>{ const dx = Math.max(Math.abs(px-cx0) - w/2, 0), dy = Math.max(Math.abs(py-cy0) - h/2, 0); return dx*dx + dy*dy < (dotR+2.5)**2; })
-    || boxes.some(([x1,y1,x2,y2])=>cx0 - w/2 - 1.5 < x2 && cx0 + w/2 + 1.5 > x1 && cy0 - h/2 - 1.5 < y2 && cy0 + h/2 + 1.5 > y1);   // pallini, nomi e numeri già messi
+    || boxes.some(([x1,y1,x2,y2])=>cx0 - w/2 - 1.5 < x2 && cx0 + w/2 + 1.5 > x1 && cy0 - h/2 - 1.5 < y2 && cy0 + h/2 + 1.5 > y1)   // pallini, nomi e numeri già messi
+    || segs.some(([x1,y1,x2,y2])=>{ for (let k = 0; k <= 24; k++) { const px = x1 + (x2-x1)*k/24, py = y1 + (y2-y1)*k/24;   // linee colorate delle due squadre
+        if (Math.abs(px-cx0) < w/2 + 2.5 && Math.abs(py-cy0) < h/2 + 2.5) return true; } return false; });
   const ticks = !opts.ticks ? '' : data.map((d,i)=>{ const ang = -Math.PI/2 + i*2*Math.PI/n, tx = -Math.sin(ang), ty = Math.cos(ang);
     return [1,2,3,4].map(k=>{ const [x,y] = pt(i, R*k/4), txt = String(d.m*k/4), w = txt.length*fs*0.6, h = fs*0.8;
       // centro del testo per ogni posto possibile: di lato all'asse, alla distanza giusta perché il testo non tocchi l'asse
-      const at = (sg, far) => { const off = (big?9:5) + far; return [x + sg*tx*(off + w/2*Math.abs(tx)), y + sg*ty*(off + h/2*Math.abs(ty))]; };
-      const cand = [[1,0],[-1,0],[1,7],[-1,7],[1,14],[-1,14],[1,22],[-1,22]].map(([sg,far])=>at(sg,far));
+      // rad = spostamento lungo l'asse (verso fuori +, verso il centro −), sempre di lato all'asse
+      const rx = Math.cos(-Math.PI/2 + i*2*Math.PI/n), ry = Math.sin(-Math.PI/2 + i*2*Math.PI/n);
+      const at = (sg, far, rad) => { const off = (big?9:5) + far; return [x + rad*rx + sg*tx*(off + w/2*Math.abs(tx)), y + rad*ry + sg*ty*(off + h/2*Math.abs(ty))]; };
+      const cand = [0,4,8,12,16,20,25,30,36].flatMap(far=>[0,-6,6,-11,11].flatMap(rad=>[[1,far,rad],[-1,far,rad]])).map(c=>at(...c));
       const [mx,my] = cand.find(([px,py])=>!hits(px,py,w,h)) || cand[0]; boxes.push([mx - w/2, my - h/2, mx + w/2, my + h/2]);
       return `<text x="${mx.toFixed(1)}" y="${(my + h/2).toFixed(1)}" text-anchor="middle" class="sc-tick${big?' big':''}">${txt}</text>`; }).join(''); }).join('');
   const poly = key => data.map((d,i)=>pt(i, R*d[key]/d.m).map(v=>v.toFixed(1)).join(',')).join(' ');
