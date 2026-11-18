@@ -810,6 +810,9 @@ function vLive(){
   const pOk = c('pass_ok','us'), pKo = c('pass_ko','us'), xOk = c('cross_ok','us'), xKo = c('cross_ko','us');
   h += `<section class="card"><span class="lab">STATISTICHE</span><div class="sc-legend"><span><i class="us"></i>${us}</span><span><i class="them"></i>${opp}</span></div>
     ${colBars([['Tiri',[sum(SH,'us'),sum(SH,'them')]],['In porta',[sum(ON,'us'),sum(ON,'them')]],['Angoli',[c('corner','us'),c('corner','them')]],['Falli',[c('foul','us'),c('foul','them')]],['Parate',[c('save','us'),c('save','them')]]], [L.us||TEAM(), L.opp||'Avversari'], 90)}
+    <span class="lv-sub">TIRI</span>
+    ${colBars([['Da area',[c('on_in','us')+c('off_in','us'),c('on_in','them')+c('off_in','them')]],['Fuori\narea',[c('on_out','us')+c('off_out','us'),c('on_out','them')+c('off_out','them')]],['Fuori\nporta',[c('off_in','us')+c('off_out','us'),c('off_in','them')+c('off_out','them')]],['Respinti',[c('blk','us'),c('blk','them')]],['Gol',[c('goal','us'),c('goal','them')]]], [L.us||TEAM(), L.opp||'Avversari'], 90)}
+    <div class="lv-us">${[['us',us],['them',opp]].map(([t,n])=>{ const tot = sum(SH,t), on = sum(ON,t); return `<span>Precisione ${n}: <b>${tot ? Math.round(on/tot*100)+'%' : '–'}</b>${tot ? ` <span class="mute">(${on} in porta su ${tot})</span>` : ''}</span>`; }).join('')}</div>
     <div class="lv-us"><b>${us}</b><span>Passaggi riusciti <b>${pOk}</b> su ${pOk+pKo}${pOk+pKo?` (${Math.round(pOk/(pOk+pKo)*100)}%)`:''}</span><span>Cross riusciti <b>${xOk}</b> su ${xOk+xKo}</span><span>Palle recuperate <b>${c('recov','us')}</b> · perse <b>${c('lost','us')}</b></span></div></section>`;
   // formazione in campo
   if (L.lu && (L.lu.f||[]).length) { const chip = p => `<span class="chip">${esc(S.phase==='app' && S.players[p.id] ? (p.n?p.n+' ':'')+short(nameOf(p.id)) : p.n ? 'n. '+p.n : '—')}</span>`;
