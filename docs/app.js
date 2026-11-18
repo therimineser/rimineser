@@ -116,6 +116,7 @@ function mergeEvents(){
   const out = S.fsEvents.map(e=>{ const v = virt[e.id]; if (!v) return e; delete virt[e.id];
     return {...e, uisp:v.uisp, type:'partita', date:v.date, time:v.time, opponent:v.opponent, location:v.location||e.location, home:v.home, result:v.result||e.result||null, notes:e.notes||v.notes}; });
   S.events = out.concat(Object.values(virt));
+  if (S.scout && scMine(S.scout)) liveSync();   // formazione cambiata: la diretta si aggiorna
 }
 const toMap = s => Object.fromEntries(s.docs.map(d=>[d.id, d.data()]));
 function startMember(){
@@ -602,6 +603,7 @@ function scWatch(eid){
   scSubEid = eid; if (!eid) return;
   scSub = onSnapshot(D('scout/'+eid), s=>{ const d = s.exists() ? s.data() : {};
     S.scout = {eid, acts:[...(d.acts||[])].sort((a,b)=>(a.ts||0)-(b.ts||0)), half:d.half||1, base:d.base||0, start:d.start||null, lock:d.lock||null};
+    if (scMine(S.scout)) liveSync();
     if (S.tab==='scouting') draw(); }, e=>console.error('scout', e));
 }
 function scState(eid){ scWatch(eid); return S.scout && S.scout.eid===eid ? S.scout : (S.scout = {eid, acts:[], half:1, base:0, start:null}); }
@@ -751,6 +753,78 @@ function scEnd(x, h){
 }
 // come è nato un nostro gol: g = 'assist' | 'rig' | 'pun' | 'ang' (calcio d'angolo diretto) | 'pers' (nessun assist)
 const SC_HOW = [['assist','👟 Su assist'],['rig','Su rigore'],['pun','Su calcio di punizione'],['ang','Da calcio d\'angolo diretto'],['pers','Senza assist']];
+/* ---------- DIRETTA (pagina Live) ----------
+   Chi fa lo scouting copia lo stato della partita in live/{evento} (leggibile da chiunque, anche senza account: regole).
+   Dentro NON ci sono nomi: solo id dei giocatori e numero di maglia (pn/an/on). Gli iscritti vedono i nomi (da players),
+   chi non è registrato vede "n. 7". La diretta mostrata è l'ultima aggiornata (query su updatedAt). */
+let liveT = null;
+function liveSync(){ clearTimeout(liveT); liveT = setTimeout(()=>{ const b = liveBody(); if (b) setDoc(D('live/'+b.eid), b).catch(e=>console.error('live', e)); }, 500); }
+function liveBody(){
+  const x = S.scout, e = x && S.events.find(v=>v.id===x.eid); if (!e || !scMine(x)) return null;
+  const li = scLiveIdx(e), L = li >= 0 ? getLus(e)[li] : null, num = id => String(S.players[id]?.number || '');
+  const KEEP = ['id','k','t','s','h','ts','p','a','g','o','m','pm'];
+  const acts = x.acts.filter(a=>a.k!=='xi').map(a=>{ const o = {}; KEEP.forEach(k=>{ if (a[k]!=null && a[k]!=='') o[k] = a[k]; });
+    if (o.p) o.pn = num(o.p); if (o.a) o.an = num(o.a); if (o.o) o.on = num(o.o); return o; });
+  const pl = id => ({id, n:num(id)});
+  return { eid:x.eid, us:TEAM(), opp:e.opponent||'Avversari', date:e.date||'', time:e.time||'', field:e.location||'', half:x.half, base:x.base||0, start:x.start||null,
+    ended: x.acts.some(a=>a.k==='end' && a.h===2), gu: scCount(x.acts,'goal','us'), gt: scCount(x.acts,'goal','them'), acts,
+    lu: L ? {m:L.module||'', f:(L.slots||[]).filter(Boolean).map(pl), b:(L.bench||[]).filter(Boolean).map(pl)} : null, updatedAt: serverTimestamp() };
+}
+let liveSub = null;
+function liveWatch(on){
+  if (on && !liveSub) liveSub = onSnapshot(query(C('live'), orderBy('updatedAt','desc'), limit(1)), s=>{ S.live = s.docs[0] ? s.docs[0].data() : null; S.liveOk = true; draw(); },
+    e=>{ console.error('live', e); S.liveOk = true; draw(); });
+  if (!on && liveSub) { liveSub(); liveSub = null; }
+}
+const lvSecs = L => (L.base||0) + (L.start ? Math.max(0, Math.floor((Date.now()-L.start)/1000)) : 0);
+// iscritti: nome e cognome; chi non è registrato: solo il numero di maglia
+const lvWho = (id, n) => S.phase==='app' && S.players[id] ? nameOf(id) : n ? 'n. '+n : 'giocatore';
+function vLive(){
+  if (!S.liveOk) return `<div class="empty">Caricamento della diretta…</div>`;
+  const L = S.live;
+  if (!L) return `<h2>Diretta</h2><div class="empty">Nessuna partita in diretta al momento. Quando qualcuno fa lo scouting di una partita, qui la segui in tempo reale.</div>`;
+  const A = L.acts || [], us = esc(L.us||TEAM()), opp = esc(L.opp||'Avversari'), when = tsMs(L.updatedAt);
+  const end1 = A.some(a=>a.k==='end' && a.h===1), h2acts = A.some(a=>a.h===2 && a.k!=='end');
+  const st = L.ended ? ['fin','Finita'] : L.start ? ['on','● In diretta'] : (L.half===2 && end1 && !h2acts && !L.base) ? ['pau','Intervallo'] : (A.length || L.base) ? ['pau','In pausa'] : ['pre','Non ancora iniziata'];
+  const old = !L.ended && when && Date.now() - when > 6*3600*1000;
+  const day = L.date ? new Date(L.date+'T12:00').toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long'}) : '';
+  let h = `<div class="row sp"><h2>Diretta</h2><span class="lv-st ${st[0]}">${st[1]}</span></div>
+  <section class="card lv-score"><span class="mute" style="font-size:13px;text-transform:capitalize">${esc(day)}${L.time?' · ore '+esc(L.time):''}${L.field?' · '+esc(L.field):''}</span>
+    <div class="sc-score"><span>${us}</span><b>${L.gu||0} – ${L.gt||0}</b><span>${opp}</span></div>
+    <div class="sc-clock"><span class="sc-half">${L.ended?'Fine partita':L.half+'° tempo'}</span><span class="sc-time" id="lvTime" data-b="${L.base||0}" data-s="${L.start||''}">${mmss(lvSecs(L))}</span></div>
+    ${old?`<span class="mute" style="font-size:13px">Ultimo aggiornamento: ${esc(new Date(when).toLocaleString('it-IT',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}))}</span>`:''}</section>`;
+  // cronaca: i momenti importanti, dal più recente
+  const min = a => `${a.h}T ${scMin(a.s||0)}'`;
+  const how = a => a.g==='rig' ? 'su rigore' : a.g==='pun' ? 'su punizione' : a.g==='ang' ? 'da calcio d\'angolo diretto' : a.a ? 'assist '+lvWho(a.a, a.an) : '';
+  const line = a => a.k==='goal' ? (a.t==='us' ? `<b>⚽ GOL ${us}!</b> ${a.p?esc(lvWho(a.p, a.pn)):''}${how(a)?` <span class="mute">(${esc(how(a))})</span>`:''}` : `<b>⚽ Gol ${opp}</b>`)
+    : a.k==='yellow' ? `🟨 Giallo ${a.t==='us'?us+(a.p?' · '+esc(lvWho(a.p, a.pn)):''):opp}`
+    : a.k==='red' ? `🟥 Rosso ${a.t==='us'?us+(a.p?' · '+esc(lvWho(a.p, a.pn)):''):opp}`
+    : a.k==='sub' ? `🔁 Sostituzione: esce ${esc(lvWho(a.o, a.on))}, entra ${esc(lvWho(a.p, a.pn))}`
+    : a.k==='mod' ? `Cambio modulo: ${esc(a.m||'')}`
+    : a.k==='end' ? `<b>${a.h===1?'Fine 1° tempo':'🏁 Fine partita'}</b>` : '';
+  const key = A.filter(a=>['goal','yellow','red','sub','mod','end'].includes(a.k)).slice().reverse();
+  h += `<section class="card"><span class="lab">CRONACA</span>${key.length ? `<div class="lv-log">${key.map(a=>`<div><span class="lv-min">${min(a)}</span><span>${line(a)}</span></div>`).join('')}</div>` : '<span class="mute">Ancora niente da raccontare.</span>'}</section>`;
+  // statistiche dal vivo
+  const c = (k,t) => A.filter(a=>a.k===k && a.t===t).length, sum = (ks,t) => ks.reduce((n,k)=>n+c(k,t),0);
+  const SH = ['on_in','on_out','off_in','off_out','blk','goal'], ON = ['on_in','on_out','goal'];
+  const pOk = c('pass_ok','us'), pKo = c('pass_ko','us'), xOk = c('cross_ok','us'), xKo = c('cross_ko','us');
+  h += `<section class="card"><span class="lab">STATISTICHE</span><div class="sc-legend"><span><i class="us"></i>${us}</span><span><i class="them"></i>${opp}</span></div>
+    ${colBars([['Tiri',[sum(SH,'us'),sum(SH,'them')]],['In porta',[sum(ON,'us'),sum(ON,'them')]],['Angoli',[c('corner','us'),c('corner','them')]],['Falli',[c('foul','us'),c('foul','them')]],['Parate',[c('save','us'),c('save','them')]]], [L.us||TEAM(), L.opp||'Avversari'], 90)}
+    <div class="lv-us"><b>${us}</b><span>Passaggi riusciti <b>${pOk}</b> su ${pOk+pKo}${pOk+pKo?` (${Math.round(pOk/(pOk+pKo)*100)}%)`:''}</span><span>Cross riusciti <b>${xOk}</b> su ${xOk+xKo}</span><span>Palle recuperate <b>${c('recov','us')}</b> · perse <b>${c('lost','us')}</b></span></div></section>`;
+  // formazione in campo
+  if (L.lu && (L.lu.f||[]).length) { const chip = p => `<span class="chip">${esc(S.phase==='app' && S.players[p.id] ? (p.n?p.n+' ':'')+short(nameOf(p.id)) : p.n ? 'n. '+p.n : '—')}</span>`;
+    h += `<section class="card"><div class="row sp"><span class="lab">FORMAZIONE IN CAMPO</span>${L.lu.m?`<span class="chip">${esc(L.lu.m)}</span>`:''}</div>
+      <div class="names">${L.lu.f.map(chip).join('')}</div>${(L.lu.b||[]).length?`<div><span class="mute" style="font-size:13px;font-weight:600">Panchina</span><div class="names">${L.lu.b.map(chip).join('')}</div></div>`:''}</section>`; }
+  // ultime azioni (tutte, passaggi compresi)
+  const last = A.slice(-8).reverse();
+  if (last.length) h += `<section class="card"><span class="lab">ULTIME AZIONI</span><div class="lv-log">${last.map(a=>`<div><span class="lv-min">${min(a)}</span><span>${line(a) || `${a.t==='us'?us:opp} · ${esc(SC_LAB[a.k]||a.k)}`}</span></div>`).join('')}</div></section>`;
+  return h;
+}
+// chi non è registrato: solo la diretta, con il tasto per accedere
+function vGuest(){
+  return `<header class="top"><img class="crestimg" src="icons/logo-256.png" alt="" width="46" height="46"><div class="grow"><h1>THE RIMINESER F.P.</h1><small>Diretta · Calcio a 7</small></div>
+    <button class="modepill" data-act="guestOff">Accedi</button></header><main class="lv-main">${vLive()}</main>`;
+}
 const scGoalNote = a => a.g==='assist' || (!a.g && a.a) ? (a.a ? 'assist '+nameOf(a.a) : 'su assist') : a.g==='rig' ? 'rigore' : a.g==='pun' ? 'punizione' : a.g==='ang' ? 'calcio d\'angolo diretto' : '';
 function scAskHow(i){
   const a = S.scout.acts[i]; if (!a) return;
@@ -909,6 +983,7 @@ function scCharts(A, us, opp){
     <p class="sc-tip mute" id="scTip" aria-live="polite">Tocca un punto o una barra per vedere il valore.</p></section>`;
 }
 // il cronometro si aggiorna da solo senza ridisegnare la pagina
+setInterval(()=>{ const t = document.getElementById('lvTime'); if (t && t.dataset.s) t.textContent = mmss((+t.dataset.b||0) + Math.max(0, Math.floor((Date.now() - +t.dataset.s)/1000))); }, 500);
 setInterval(()=>{ const el = document.getElementById('scTime'); if (el && S.scout) el.textContent = mmss(scSecs(S.scout)); }, 250);
 
 /* ---------- disegno ---------- */
@@ -923,6 +998,7 @@ const TABS = [
 function shell(){
   if ($('#app')) return;
   $('#root').innerHTML = `<header class="top"><img class="crestimg" src="icons/logo-256.png" alt="" width="46" height="46"><div class="grow"><h1>THE RIMINESER F.P.</h1><small id="who">Football Project · Calcio a 7</small><button id="modeBtn" class="modepill" data-act="mode" hidden></button></div>
+  <button class="ib" data-act="go" data-t="live" aria-label="Diretta della partita"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"/><path d="M16.2 7.8a6 6 0 0 1 0 8.4M7.8 16.2a6 6 0 0 1 0-8.4M19 5a10 10 0 0 1 0 14M5 19A10 10 0 0 1 5 5"/></svg></button>
   <button class="ib" data-act="go" data-t="impostazioni" aria-label="Impostazioni"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
   <button class="ib" data-act="go" data-t="rosa" aria-label="Rosa della squadra"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18.5 14.8c1.6.8 2.7 2.5 3 5.2"/></svg></button></header>
   <main id="app"></main>
@@ -931,6 +1007,7 @@ function shell(){
 function vLogin(){
   const m = S.login;
   return `<div class="login"><img src="icons/logo-256.png" alt="Logo The Rimineser F.P." width="220" height="220"><h1>${m==='up'?'Entra in squadra':m==='reset'?'Recupera password':'Bentornato'}</h1>
+  <button class="lvbtn" data-act="guestOn">📡 Segui la partita in diretta<small>senza registrarti</small></button>
   <form data-form="auth" novalidate>
     ${m==='up'?`<label>Nome e cognome<input name="nome" autocomplete="name" required></label><label>Entro in squadra come${catSel('giocatore', false)}</label>`:''}
     <label>Email<input type="email" name="email" autocomplete="email" required></label>
@@ -942,6 +1019,8 @@ function vLogin(){
   ${m==='in'?'<button class="lnk" data-act="lmode" data-m="up">Prima volta? Registrati</button><button class="lnk" data-act="lmode" data-m="reset">Password dimenticata?</button>':'<button class="lnk" data-act="lmode" data-m="in">Ho già un account: accedi</button>'}</div>`;
 }
 function draw(){
+  liveWatch((S.phase==='login' && S.guest) || (S.phase==='app' && S.tab==='live'));
+  if (S.phase==='login' && S.guest) { $('#root').innerHTML = vGuest(); return; }
   if (S.phase==='login') { $('#root').innerHTML = vLogin(); return; }
   if (S.phase==='loading') { $('#root').innerHTML = `<div class="login"><img src="icons/logo-256.png" alt="Logo The Rimineser F.P." width="220" height="220"><p>Caricamento…</p></div>`; return; }
   if (S.phase==='setup') { $('#root').innerHTML = `<div class="login"><img src="icons/logo-256.png" alt="Logo The Rimineser F.P." width="220" height="220"><h1>Squadra da configurare</h1><p style="max-width:380px;text-align:center">L'app non ha ancora un amministratore. Se sei tu a gestire l'app, premi il pulsante: potrai approvare gli iscritti.</p><button class="pri" data-act="beCoach">Sono l'amministratore</button><button class="lnk" data-act="logout">Esci</button></div>`; return; }
@@ -962,7 +1041,7 @@ function draw(){
   if (!['posts','events','players','rsvp','votes'].every(k=>S.loaded.has(k)) && !S.slow) h = `<div class="empty">Caricamento…</div>`;
   else {
     if (S.slow) h += `<div class="card" role="status" style="background:var(--maybg)">Connessione lenta o assente: i dati potrebbero non essere aggiornati.</div>`;
-    h += ({home:vHome,presenze:vPresenze,formazione:vFormazione,calendario:vCalendario,campionato:vCampionato,archivio:vArchivio,rosa:vRosa,impostazioni:vImpostazioni,scouting:vScouting}[S.tab]||vHome)();
+    h += ({home:vHome,presenze:vPresenze,formazione:vFormazione,calendario:vCalendario,campionato:vCampionato,archivio:vArchivio,rosa:vRosa,impostazioni:vImpostazioni,scouting:vScouting,live:vLive}[S.tab]||vHome)();
   }
   $('#app').innerHTML = h;
 }
@@ -997,7 +1076,9 @@ const ACT = {
   go: d => { S.tab = d.t; history.replaceState(null,'','#'+d.t); draw(); scrollTo(0,0); },
   close: () => closeSheet(),
   lmode: d => { S.login = d.m; draw(); },
-  logout: async () => { await presenceOff(); signOut(auth); },
+  guestOn: () => { S.guest = true; history.replaceState(null,'','#live'); draw(); scrollTo(0,0); },
+  guestOff: () => { S.guest = false; history.replaceState(null,'','#'); draw(); scrollTo(0,0); },
+  logout: async () => { await presenceOff(); S.guest = false; signOut(auth); },
   google: async () => { const err=$('#authErr'); if (err) err.textContent='';
     try { await signInWithPopup(auth, new GoogleAuthProvider()); }
     catch(e){ if (e.code==='auth/popup-closed-by-user' || e.code==='auth/cancelled-popup-request') return;
@@ -1147,5 +1228,6 @@ document.addEventListener('change', e=>{ const t=e.target, c=t.dataset.ch; if (!
 });
 document.addEventListener('input', e=>{ const k=e.target.dataset.in, L=S.draft&&S.draft.items[S.draft.idx]; if (!L) return; if (k==='tac') L.tactic = e.target.value; if (k==='luname') L.name = e.target.value; if (k==='tac'||k==='luname') S.draft.dirty = true; });
 addEventListener('beforeinstallprompt', e=>{ e.preventDefault(); installEvt = e; if (S.phase==='app') draw(); });
-const fromHash = () => { const h=location.hash.slice(1); if (['home','presenze','formazione','calendario','campionato','archivio','rosa','impostazioni','scouting'].includes(h)) { S.tab=h; if (S.phase==='app') draw(); } };
+const fromHash = () => { const h=location.hash.slice(1); if (h==='live' && S.phase!=='app') { S.guest = true; draw(); }   // link #live: diretta anche senza account
+  if (['home','presenze','formazione','calendario','campionato','archivio','rosa','impostazioni','scouting','live'].includes(h)) { S.tab=h; if (S.phase==='app') draw(); } };
 addEventListener('hashchange', fromHash); fromHash();

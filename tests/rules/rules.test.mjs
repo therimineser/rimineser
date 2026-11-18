@@ -1,6 +1,6 @@
 // Test delle regole Firestore (eseguiti dal robot GitHub "Test regole" sull'emulatore ufficiale).
 import { initializeTestEnvironment, assertSucceeds, assertFails } from '@firebase/rules-unit-testing';
-import { doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, addDoc, collection, deleteField, serverTimestamp, increment } from 'firebase/firestore';
+import { doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, addDoc, collection, deleteField, serverTimestamp, increment, query, orderBy, limit } from 'firebase/firestore';
 import { readFileSync, writeFileSync } from 'node:fs';
 
 const env = await initializeTestEnvironment({
@@ -220,6 +220,27 @@ await t('in attesa: conta un\'apertura', false, () => setDoc(doc(db('pend'), 'st
 await t('membro: cancella le visualizzazioni', false, () => deleteDoc(doc(db('p2'), 'stats/views-2026-11')));
 await t('membro: legge la coda notifiche', false, () => getDoc(doc(db('p2'), 'outbox/qualcosa')));
 await t('membro: comunicazione troppo lunga (capitano)', false, () => addDoc(collection(db('c1'), 'posts'), { text: 'x'.repeat(6000) }));
+
+// diretta (live/{evento}): la legge chiunque, anche senza account; la scrive solo chi ha il lock dello scouting di quella partita
+const LV = () => ({ eid: 'ev', us: 'The Rimineser F.P.', opp: 'Oasi del Mare', half: 1, base: 0, start: null, ended: false, gu: 0, gt: 0, acts: ACTS, lu: { m: '2-3-1', f: [{ id: 'm1', n: '7' }], b: [] }, updatedAt: serverTimestamp() });
+const seedLv = () => env.withSecurityRulesDisabled(c => setDoc(doc(c.firestore(), 'live/ev'), { ...LV(), updatedAt: new Date() }));
+await t('non registrato: legge la diretta', true, async () => { await seedLv(); return getDoc(doc(db(null), 'live/ev')); });
+await t('non registrato: cerca la diretta più recente', true, async () => { await seedLv(); return getDocs(query(collection(db(null), 'live'), orderBy('updatedAt', 'desc'), limit(1))); });
+await t('in attesa: legge la diretta', true, async () => { await seedLv(); return getDoc(doc(db('pend'), 'live/ev')); });
+await t('membro: legge la diretta', true, async () => { await seedLv(); return getDoc(doc(db('p2'), 'live/ev')); });
+await t('non registrato: scrive la diretta', false, async () => { await seedSc(LK('p2')); return setDoc(doc(db(null), 'live/ev'), LV()); });
+for (const u of ['admin', 'p2', 'd1']) {
+  await t(`${u}: scrive la diretta con il proprio lock dello scouting`, true, async () => { await seedSc(LK(u)); return setDoc(doc(db(u), 'live/ev'), LV()); });
+  await t(`${u}: scrive la diretta senza lock`, false, async () => { await seedSc(null); return setDoc(doc(db(u), 'live/ev'), LV()); });
+  await t(`${u}: scrive la diretta mentre lo scouting lo fa un altro`, false, async () => { await seedSc(LK('altro', 5000)); return setDoc(doc(db(u), 'live/ev'), LV()); });
+  await t(`${u}: scrive la diretta con il lock scaduto`, false, async () => { await seedSc(LK(u, 3 * 60000)); return setDoc(doc(db(u), 'live/ev'), LV()); });
+}
+await t('membro: diretta con campi inventati (es. nomi)', false, async () => { await seedSc(LK('p2')); return setDoc(doc(db('p2'), 'live/ev'), { ...LV(), nomi: ['Mario Rossi'] }); });
+await t('membro: diretta di un\'altra partita nel documento', false, async () => { await seedSc(LK('p2')); return setDoc(doc(db('p2'), 'live/ev'), { ...LV(), eid: 'altra' }); });
+await t('membro: diretta con ora finta', false, async () => { await seedSc(LK('p2')); return setDoc(doc(db('p2'), 'live/ev'), { ...LV(), updatedAt: new Date(2030, 0, 1) }); });
+await t('in attesa: scrive la diretta', false, async () => { await seedSc(LK('pend')); return setDoc(doc(db('pend'), 'live/ev'), LV()); });
+await t('membro: cancella la diretta', false, async () => { await seedLv(); return deleteDoc(doc(db('p2'), 'live/ev')); });
+await t('admin: cancella la diretta', true, async () => { await seedLv(); return deleteDoc(doc(db('admin'), 'live/ev')); });
 
 await env.cleanup();
 const bad = results.filter(r => !r.ok);

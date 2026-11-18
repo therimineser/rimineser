@@ -117,6 +117,16 @@ service cloud.firestore {
     function scLockOk(l) { return l != null && l.keys().hasOnly(['uid', 'name', 'at']) && l.uid == request.auth.uid && l.at == request.time && l.name is string && l.name.size() < 60; }
     function scFields() { return request.resource.data.keys().hasOnly(['acts', 'half', 'base', 'start', 'lock', 'updatedAt'])
                                   && request.resource.data.get('acts', []) is list && request.resource.data.get('acts', []).size() <= 3000; }
+    // Diretta (pagina "Live"): chiunque la legge, anche senza account (dentro solo id e numeri di maglia, mai nomi);
+    // la scrive solo chi ha in mano lo scouting di quella partita. updatedAt = ora del server (serve per trovare la diretta più recente).
+    function liveOk(eid) { let d = request.resource.data;
+      return d.keys().hasOnly(['eid', 'us', 'opp', 'date', 'time', 'field', 'half', 'base', 'start', 'ended', 'gu', 'gt', 'acts', 'lu', 'updatedAt'])
+             && d.eid == eid && d.updatedAt == request.time && d.get('acts', []) is list && d.get('acts', []).size() <= 3000; }
+    match /live/{eid} {
+      allow read: if true;
+      allow create, update: if scoutHolder(eid) && liveOk(eid);
+      allow delete: if isAdmin();
+    }
     match /scout/{eid} {
       allow read: if canScout();
       allow create: if canScout() && scFields() && (scLockOf(request.resource.data) == null || scLockOk(scLockOf(request.resource.data)));
