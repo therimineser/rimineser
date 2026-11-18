@@ -351,12 +351,13 @@ function vsStatsSheet(eid){
   const usN = TEAM(), opN = e.opponent || 'Avversario', U = teamRow(L.team), O = teamRow(opN); if (!U || !O) return toast('Statistiche non disponibili per questa squadra');
   const avg = (x, g) => g ? Math.round(x/g*10)/10 : 0;   // media a partita, 1 decimale
   const rows = [['Punti', U.pt, O.pt], ['Vittorie', U.v, O.v], ['Pareggi', U.n, O.n], ['Sconfitte', U.p, O.p], ['Gol fatti\na partita', avg(U.gf, U.g), avg(O.gf, O.g)], ['Gol subiti\na partita', avg(U.gs, U.g), avg(O.gs, O.g)]];
-  // istogramma (scelta dell'amministratore, al posto del radar): per ogni voce due barre orizzontali, rossa The Rimineser e blu avversario,
-  // lunghe in proporzione al più alto dei due (ogni voce ha la sua scala), con il valore scritto accanto
+  // istogramma a barre VERTICALI (scelta dell'amministratore, al posto del radar): per ogni voce due barre affiancate, rossa The Rimineser
+  // e blu avversario, alte in proporzione al più alto dei due (ogni voce ha la sua scala; la più alta = 150 px), con il valore sopra e il nome sotto
   const nf = v => Number.isInteger(v) ? String(v) : v.toLocaleString('it-IT', {maximumFractionDigits:1});
-  const bar = (cls, v, m, who) => `<div class="vs-b"><i class="${cls}" style="width:${v && m ? `max(3px, calc((100% - 44px) * ${(v/m).toFixed(4)}))` : '0'}"></i><b>${nf(v)}</b><span class="sr">${esc(who)}</span></div>`;
-  openSheet(`${head('Statistiche')}<div class="sc-legend"><span><i class="us"></i>${esc(usN)}</span><span><i class="them"></i>${esc(opN)}</span></div><div class="vs-bars" role="list">${rows.map(([l,u,t])=>{ const m = Math.max(u, t);
-      return `<div class="vs-r" role="listitem" aria-label="${esc(l.replace('\n',' '))}: ${esc(usN)} ${nf(u)}, ${esc(opN)} ${nf(t)}"><span class="vs-l">${esc(l.replace('\n',' '))}</span>${bar('us', u, m, usN)}${bar('them', t, m, opN)}</div>`; }).join('')}</div>`);
+  const bar = (cls, v, m, who) => `<div class="vs-c"><b>${nf(v)}</b><i class="${cls}" style="height:${v && m ? Math.max(3, v/m*150).toFixed(1) : 0}px"></i><span class="sr">${esc(who)}</span></div>`;
+  openSheet(`${head('Statistiche')}<div class="sc-legend"><span><i class="us"></i>${esc(usN)}</span><span><i class="them"></i>${esc(opN)}</span></div>
+    <div class="vs-bars" role="list">${rows.map(([l,u,t])=>{ const m = Math.max(u, t);
+      return `<div class="vs-g" role="listitem" aria-label="${esc(l.replace('\n',' '))}: ${esc(usN)} ${nf(u)}, ${esc(opN)} ${nf(t)}"><div class="vs-p">${bar('us', u, m, usN)}${bar('them', t, m, opN)}</div><span class="vs-l">${esc(l).replace('\n','<br>')}</span></div>`; }).join('')}</div>`);
 }
 function vStats(L){
   const teams = L.standings.map(r=>r.team);
