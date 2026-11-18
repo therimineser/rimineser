@@ -353,7 +353,7 @@ function vsStatsSheet(eid){
   const cu = teamCards(L.team), co = teamCards(opN), avg = (x, g) => g ? Math.round(x/g*10)/10 : 0;   // media a partita, 1 decimale
   const rows = [['Punti', U.pt, O.pt], ['Vittorie', U.v, O.v], ['Pareggi', U.n, O.n], ['Sconfitte', U.p, O.p], ['Gol fatti\na partita', avg(U.gf, U.g), avg(O.gf, O.g)], ['Gol subiti\na partita', avg(U.gs, U.g), avg(O.gs, O.g)], ['Ammonizioni', cu.amm||0, co.amm||0], ['Disciplina', U.cd||0, O.cd||0]];
   // solo il grafico (scelta dell'amministratore): ragnatele sovrapposte + legenda, valori sotto ogni voce
-  openSheet(`${head('Statistiche')}${radar2(rows.map(([l,u,t])=>({l,u,t})), '', '', usN, opN, {ticks:true, edge:true, noVals:true, big:true, rot:true})}`);
+  openSheet(`${head('Statistiche')}${radar2(rows.map(([l,u,t])=>({l,u,t})), '', '', usN, opN, {ticks:true, noVals:true, big:true, rot:true})}`);
 }
 function vStats(L){
   const teams = L.standings.map(r=>r.team);
@@ -803,14 +803,14 @@ function radar2(rows, title, sub, us, opp, opts={}){
   const pt = (i, r) => { const ang = A0 + i*2*Math.PI/n; return [cx + r*Math.cos(ang), cy + r*Math.sin(ang)]; };
   const nf = v => Number.isInteger(v) ? String(v) : v.toLocaleString('it-IT', {maximumFractionDigits:1});
   const data = rows.map(d=>{ const m = Math.max(d.u, d.t, 1), dec = !Number.isInteger(d.u) || !Number.isInteger(d.t);
-    return {...d, m: !opts.ticks ? m : dec ? Math.ceil(m) : opts.edge ? m : 4*Math.ceil(m/4)}; });
+    return {...d, m: !opts.ticks ? m : opts.edge ? (dec ? Math.ceil(m) : m) : 4*Math.ceil(m/4)}; });   // 4 tacche intere anche per le medie
   // numeri della scala: mai sotto un pallino o una linea colorata. Per ogni numero si prova di lato all'asse (+, poi −, poi più lontano) e si tiene
   // il primo posto in cui il riquadro del testo non tocca nessun pallino; vengono disegnati sopra a tutto, con un bordo del colore di fondo.
   const labAt = i => { const [x,y] = pt(i, R+28),   // nomi delle voci staccati dal grafico
     up = y < cy - 1, top = Math.abs(x-cx) < 6; return [x, y + (top ? (up ? -4 : 14) : (up ? -8 : 18))]; };
   const boxes = !(opts.ticks && big) ? [] : data.map((d,i)=>{ const [x,y] = labAt(i), ls = d.l.split('\n'), w = Math.max(...ls.map(l=>l.length))*13*0.58; return [x - w/2, y - 11, x + w/2, y + 3 + 15*(ls.length-1)]; });   // riquadri dei nomi
   const segs = !opts.ticks ? [] : ['u','t'].flatMap(k=>data.map((d,i)=>{ const a = pt(i, R*d[k]/d.m), j = (i+1) % n, b = pt(j, R*data[j][k]/data[j].m); return [...a, ...b]; }));
-  const dotR = big ? 5 : 4, fs = big ? 10.5 : 8.5, dotPts = !opts.ticks ? [] : data.flatMap((d,i)=>['u','t'].map(k=>pt(i, R*d[k]/d.m)));
+  const dotR = big ? 5 : 4, fs = big ? 12 : 8.5, dotPts = !opts.ticks ? [] : data.flatMap((d,i)=>['u','t'].map(k=>pt(i, R*d[k]/d.m)));
   const hits = (cx0, cy0, w, h) => dotPts.some(([px,py])=>{ const dx = Math.max(Math.abs(px-cx0) - w/2, 0), dy = Math.max(Math.abs(py-cy0) - h/2, 0); return dx*dx + dy*dy < (dotR+2.5)**2; })
     || boxes.some(([x1,y1,x2,y2])=>cx0 - w/2 - 1.5 < x2 && cx0 + w/2 + 1.5 > x1 && cy0 - h/2 - 1.5 < y2 && cy0 + h/2 + 1.5 > y1)   // pallini, nomi e numeri già messi
     || segs.some(([x1,y1,x2,y2])=>{ for (let k = 0; k <= 24; k++) { const px = x1 + (x2-x1)*k/24, py = y1 + (y2-y1)*k/24;   // linee colorate delle due squadre
