@@ -344,16 +344,15 @@ function hbars(rows, opts){
   const max = Math.max(1, ...rows.map(r=>r.v));
   return `<div class="hb" role="list">${rows.map(r=>`<div class="hbr ${r.sel?'sel':''}" role="listitem" title="${esc(r.name)}: ${r.v} ${opts.unit}"><span class="hbn">${esc(r.name)}</span><span class="hbt"><i style="width:${Math.max(r.v?3:0, r.v/max*100)}%;background:${r.sel?opts.on:opts.off}"></i></span><b class="hbv">${r.v}</b></div>`).join('')}</div>`;
 }
-// statistiche di campionato (UISP) di una squadra: riga di classifica + cartellini
+// statistiche di campionato (UISP) di una squadra: riga di classifica
 function teamRow(name){ const L = LG(); if (!L || !name) return null; const i = L.standings.findIndex(r=>norm(r.team)===norm(name)); return i < 0 ? null : {pos:i+1, ...L.standings[i]}; }
-function teamCards(name){ const L = LG(), c = L && L.cards ? Object.entries(L.cards).find(([t])=>norm(t)===norm(name)) : null; return c ? c[1] : {amm:0, esp:0}; }
 function vsStatsSheet(eid){
   const e = S.events.find(v=>v.id===eid), L = LG(); if (!e || !L) return;
   const usN = TEAM(), opN = e.opponent || 'Avversario', U = teamRow(L.team), O = teamRow(opN); if (!U || !O) return toast('Statistiche non disponibili per questa squadra');
-  const cu = teamCards(L.team), co = teamCards(opN), avg = (x, g) => g ? Math.round(x/g*10)/10 : 0;   // media a partita, 1 decimale
-  const rows = [['Punti', U.pt, O.pt], ['Vittorie', U.v, O.v], ['Pareggi', U.n, O.n], ['Sconfitte', U.p, O.p], ['Gol fatti\na partita', avg(U.gf, U.g), avg(O.gf, O.g)], ['Gol subiti\na partita', avg(U.gs, U.g), avg(O.gs, O.g)], ['Ammonizioni', cu.amm||0, co.amm||0], ['Disciplina', U.cd||0, O.cd||0]];
+  const avg = (x, g) => g ? Math.round(x/g*10)/10 : 0;   // media a partita, 1 decimale
+  const rows = [['Punti', U.pt, O.pt], ['Vittorie', U.v, O.v], ['Pareggi', U.n, O.n], ['Sconfitte', U.p, O.p], ['Gol fatti\na partita', avg(U.gf, U.g), avg(O.gf, O.g)], ['Gol subiti\na partita', avg(U.gs, U.g), avg(O.gs, O.g)]];
   // solo il grafico (scelta dell'amministratore): ragnatele sovrapposte + legenda, valori sotto ogni voce
-  openSheet(`${head('Statistiche')}${radar2(rows.map(([l,u,t])=>({l,u,t})), '', '', usN, opN, {ticks:true, noVals:true, big:true, rot:true})}`);
+  openSheet(`${head('Statistiche')}${radar2(rows.map(([l,u,t])=>({l,u,t})), '', '', usN, opN, {ticks:true, noVals:true, big:true})}`);
 }
 function vStats(L){
   const teams = L.standings.map(r=>r.team);
@@ -797,7 +796,7 @@ function scRadar(A, us, opp){
 // opts.noVals: sotto la voce solo il nome, senza i due valori. opts.ticks: ogni asse ha la sua scala con i numeri sulle tacche (4 cerchi, valori interi): il bordo = 4 × passo, passo = max dei due / 4 arrotondato in su
 function radar2(rows, title, sub, us, opp, opts={}){
   // opts.big: disegno più grande (viewBox più stretto = tutto più ingrandito sullo schermo), nomi delle voci centrati sopra/sotto la punta dell'asse
-  const big = !!opts.big, W = big ? 296 : 340, H = big ? 330 : 270, cx = W/2, cy = big ? 165 : 140, R = big ? 104 : 88, n = rows.length;
+  const big = !!opts.big, W = big ? 296 : 340, H = big ? 330 : 270, cx = W/2, cy = big ? 165 : 140, R = big ? 112 : 88, n = rows.length;
   // opts.rot: grafico girato di mezzo spicchio (con 8 voci nessun asse resta orizzontale e i nomi lunghi entrano nello schermo)
   const A0 = -Math.PI/2 + (opts.rot ? Math.PI/n : 0);
   const pt = (i, r) => { const ang = A0 + i*2*Math.PI/n; return [cx + r*Math.cos(ang), cy + r*Math.sin(ang)]; };
