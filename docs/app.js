@@ -719,7 +719,7 @@ function vScouting(){
     <div class="sc-legend"><span><i class="us"></i>${us}</span><span><i class="them"></i>${opp}</span></div>
     ${colBars(vsRows, [TEAM(), e.opponent||'Avversari'], 110)}
     <b style="margin-top:6px">${us}</b>${pOk+pKo?`<span class="mute" style="font-size:13px">Passaggi riusciti: ${Math.round(pOk/(pOk+pKo)*100)}%</span>`:''}
-    ${colBars(usRows, [TEAM()], 110, true)}
+    ${radar2(usRows.map(([l,vs])=>({l, u:vs[0], t:0})), '', '', TEAM(), '', {single:true, big:true, ticks:true})}
     ${scorers.length?`<div><b>Marcatori</b><div class="sc-log">${scorers.map(a=>`<div><b>${a.h}T ${scMin(a.s)}'</b> ${a.p?esc(nameOf(a.p)):'gol'}${a.k==='goal'&&scGoalNote(a)?' ('+esc(scGoalNote(a))+')':''}</div>`).join('')}</div></div>`:''}
     ${subs.length?`<div><b>Sostituzioni</b><div class="sc-log">${subs.map(a=>`<div><b>${a.h}T ${scMin(a.s)}'</b> esce ${esc(nameOf(a.o))} · entra ${esc(nameOf(a.p))}</div>`).join('')}</div></div>`:''}
     ${A.length&&mine?`<button class="lnk" data-act="scReset">Azzera i dati di questa partita</button>`:''}</section>`;
@@ -809,21 +809,25 @@ function radar2(rows, title, sub, us, opp, opts={}){
   const A0 = -Math.PI/2 + (opts.rot ? Math.PI/n : 0);
   const pt = (i, r) => { const ang = A0 + i*2*Math.PI/n; return [cx + r*Math.cos(ang), cy + r*Math.sin(ang)]; };
   const nf = v => Number.isInteger(v) ? String(v) : v.toLocaleString('it-IT', {maximumFractionDigits:1});
-  const data = rows.map(d=>{ const m = Math.max(d.u, d.t, 1), dec = !Number.isInteger(d.u) || !Number.isInteger(d.t);
+  // opts.single: una serie sola (The Rimineser), tutte le voci sulla STESSA scala (bordo = il più alto di tutte), numeri della scala solo sul primo asse, niente legenda
+  const single = !!opts.single, keys = single ? ['u'] : ['u','t'], M = Math.max(1, ...rows.map(d=>d.u));
+  const data = rows.map(d=>{ const m = single ? M : Math.max(d.u, d.t, 1), dec = !Number.isInteger(d.u) || !Number.isInteger(d.t ?? 0);
     return {...d, m: !opts.ticks ? m : opts.edge ? (dec ? Math.ceil(m) : m) : 4*Math.ceil(m/4)}; });   // 4 tacche intere anche per le medie
+  const nl = d => d.l.split('\n').length + (opts.noVals ? 0 : 1);   // righe del nome (+ riga del valore)   // 4 tacche intere anche per le medie
   // numeri della scala: mai sotto un pallino o una linea colorata. Per ogni numero si prova di lato all'asse (+, poi −, poi più lontano) e si tiene
   // il primo posto in cui il riquadro del testo non tocca nessun pallino; vengono disegnati sopra a tutto, con un bordo del colore di fondo.
   const labAt = i => { const [x,y] = pt(i, R+24),   // nomi delle voci staccati dal grafico
-    up = y < cy - 1, top = Math.abs(x-cx) < 6; return [x, y + (top ? (up ? -4 : 14) : (up ? -8 : 18))]; };
-  const boxes = !(opts.ticks && big) ? [] : data.map((d,i)=>{ const [x,y] = labAt(i), ls = d.l.split('\n'), w = Math.max(...ls.map(l=>l.length))*13*0.58; return [x - w/2, y - 11, x + w/2, y + 3 + 15*(ls.length-1)]; });   // riquadri dei nomi
-  const segs = !opts.ticks ? [] : ['u','t'].flatMap(k=>data.map((d,i)=>{ const a = pt(i, R*d[k]/d.m), j = (i+1) % n, b = pt(j, R*data[j][k]/data[j].m); return [...a, ...b]; }));
-  const dotR = big ? 5 : 4, fs = big ? 12 : 8.5, dotPts = !opts.ticks ? [] : data.flatMap((d,i)=>['u','t'].map(k=>pt(i, R*d[k]/d.m)));
+    up = y < cy - 1, top = Math.abs(x-cx) < 6, extra = up ? 15*(nl(data[i])-1) : 0;   // sopra il grafico: i nomi su più righe salgono, così non scendono sul disegno
+    return [x, y - extra + (top ? (up ? -4 : 14) : (up ? -8 : 18))]; };
+  const boxes = !(opts.ticks && big) ? [] : data.map((d,i)=>{ const [x,y] = labAt(i), ls = d.l.split('\n'), w = Math.max(...ls.map(l=>l.length))*13*0.58; return [x - w/2, y - 11, x + w/2, y + 3 + 15*(nl(d)-1)]; });   // riquadri dei nomi
+  const segs = !opts.ticks ? [] : keys.flatMap(k=>data.map((d,i)=>{ const a = pt(i, R*d[k]/d.m), j = (i+1) % n, b = pt(j, R*data[j][k]/data[j].m); return [...a, ...b]; }));
+  const dotR = big ? 5 : 4, fs = big ? 12 : 8.5, dotPts = !opts.ticks ? [] : data.flatMap((d,i)=>keys.map(k=>pt(i, R*d[k]/d.m)));
   const hits = (cx0, cy0, w, h) => dotPts.some(([px,py])=>{ const dx = Math.max(Math.abs(px-cx0) - w/2, 0), dy = Math.max(Math.abs(py-cy0) - h/2, 0); return dx*dx + dy*dy < (dotR+2.5)**2; })
     || boxes.some(([x1,y1,x2,y2])=>cx0 - w/2 - 1.5 < x2 && cx0 + w/2 + 1.5 > x1 && cy0 - h/2 - 1.5 < y2 && cy0 + h/2 + 1.5 > y1)   // pallini, nomi e numeri già messi
     || segs.some(([x1,y1,x2,y2])=>{ for (let k = 0; k <= 24; k++) { const px = x1 + (x2-x1)*k/24, py = y1 + (y2-y1)*k/24;   // linee colorate delle due squadre
         if (Math.abs(px-cx0) < w/2 + 2.5 && Math.abs(py-cy0) < h/2 + 2.5) return true; } return false; });
   const ticks = !opts.ticks ? '' : data.map((d,i)=>{ const ang = A0 + i*2*Math.PI/n, tx = -Math.sin(ang), ty = Math.cos(ang);
-    return (opts.edge ? [4] : [1,2,3,4]).map(k=>{ const [x,y] = pt(i, R*k/4), txt = nf(d.m*k/4), w = txt.length*fs*0.6, h = fs*0.8;
+    return (single && i ? [] : opts.edge ? [4] : [1,2,3,4]).map(k=>{ const [x,y] = pt(i, R*k/4), txt = nf(d.m*k/4), w = txt.length*fs*0.6, h = fs*0.8;
       // centro del testo per ogni posto possibile: di lato all'asse, alla distanza giusta perché il testo non tocchi l'asse
       // rad = spostamento lungo l'asse (verso fuori +, verso il centro −), sempre di lato all'asse
       const rx = Math.cos(A0 + i*2*Math.PI/n), ry = Math.sin(A0 + i*2*Math.PI/n);
@@ -835,17 +839,17 @@ function radar2(rows, title, sub, us, opp, opts={}){
   const grid = [0.25,0.5,0.75,1].map(f=>`<polygon points="${data.map((_,i)=>pt(i,R*f).map(v=>v.toFixed(1)).join(',')).join(' ')}" class="sc-grid"/>`).join('')
     + data.map((_,i)=>{ const [x,y]=pt(i,R); return `<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" class="sc-grid"/>`; }).join('');
   const lab = data.map((d,i)=>{ if (big) { const [x,y] = labAt(i);
-      return `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="middle" class="sc-ax big">${d.l.split('\n').map((l,k)=>`<tspan x="${x.toFixed(1)}"${k?' dy="15"':''} font-weight="700">${l}</tspan>`).join('')}</text>`; }
+      return `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="middle" class="sc-ax big">${d.l.split('\n').map((l,k)=>`<tspan x="${x.toFixed(1)}"${k?' dy="15"':''} font-weight="700">${l}</tspan>`).join('')}${opts.noVals?'':`<tspan x="${x.toFixed(1)}" dy="15" class="v">${single ? nf(d.u) : nf(d.u)+' · '+nf(d.t)}</tspan>`}</text>`; }
     const [x,y]=pt(i,R+22); const anc = Math.abs(x-cx)<6 ? 'middle' : x>cx ? 'start' : 'end';
     return `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="${anc}" class="sc-ax"><tspan font-weight="700">${d.l}</tspan>${opts.noVals?'':`<tspan x="${x.toFixed(1)}" dy="13">${d.u} · ${d.t}</tspan>`}</text>`; }).join('');
   const dots = key => data.map((d,i)=>{ const [x,y]=pt(i, R*d[key]/d.m); return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${big?5:4}" class="sc-dot ${key==='u'?'us':'them'}"/><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="14" fill="transparent" data-act="scTip" data-tip="${esc(d.l.replace('\n',' '))}: ${key==='u'?esc(us)+' '+d.u:esc(opp)+' '+d.t}"/>`; }).join('');
   // big: altezza del disegno tagliata sui nomi delle voci (niente spazio vuoto sopra e sotto); i nomi ai lati possono entrare nel margine della finestra
-  const vb = !big ? `0 0 ${W} ${H}` : (()=>{ const ys = data.flatMap((d,i)=>{ const y = labAt(i)[1]; return [y - 12, y + 4 + 15*(d.l.split('\n').length-1)]; });
+  const vb = !big ? `0 0 ${W} ${H}` : (()=>{ const ys = data.flatMap((d,i)=>{ const y = labAt(i)[1]; return [y - 12, y + 4 + 15*(nl(d)-1)]; });
     const y0 = Math.floor(Math.min(...ys, cy - R - 12)), y1 = Math.ceil(Math.max(...ys, cy + R + 12)); return `0 ${y0} ${W} ${y1 - y0}`; })();
   return `<figure class="sc-fig">${title||sub?`<figcaption><b>${title}</b><span class="mute">${sub}</span></figcaption>`:''}
-    <svg viewBox="${vb}" role="img" aria-label="Radar: ${data.map(d=>`${d.l.replace('\n',' ')} ${nf(d.u)} a ${nf(d.t)}`).join(', ')}">${grid}
-      <polygon points="${poly('t')}" class="sc-area them"/><polygon points="${poly('u')}" class="sc-area us"/>${dots('t')}${dots('u')}${ticks}${lab}</svg>
-    <div class="sc-legend"><span><i class="us"></i>${esc(us)}</span><span><i class="them"></i>${esc(opp)}</span></div></figure>`;
+    <svg viewBox="${vb}" role="img" aria-label="Radar: ${data.map(d=>`${d.l.replace('\n',' ')} ${single ? nf(d.u) : nf(d.u)+' a '+nf(d.t)}`).join(', ')}">${grid}
+      ${single?'':`<polygon points="${poly('t')}" class="sc-area them"/>`}<polygon points="${poly('u')}" class="sc-area us"/>${single?'':dots('t')}${dots('u')}${ticks}${lab}</svg>
+    ${single?'':`<div class="sc-legend"><span><i class="us"></i>${esc(us)}</span><span><i class="them"></i>${esc(opp)}</span></div>`}</figure>`;
 }
 // istogramma ogni 5 minuti, 1° e 2° tempo affiancati; series = [[classe, nome, fn(azioni del gruppo) -> numero]]
 function scHist(A, title, sub, series, fmt){
