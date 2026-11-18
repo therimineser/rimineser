@@ -351,9 +351,9 @@ function vsStatsSheet(eid){
   const e = S.events.find(v=>v.id===eid), L = LG(); if (!e || !L) return;
   const usN = TEAM(), opN = e.opponent || 'Avversario', U = teamRow(L.team), O = teamRow(opN); if (!U || !O) return toast('Statistiche non disponibili per questa squadra');
   const cu = teamCards(L.team), co = teamCards(opN);
-  const rows = [['Punti', U.pt, O.pt], ['Vittorie', U.v, O.v], ['Gol fatti', U.gf, O.gf], ['Gol subiti', U.gs, O.gs], ['Ammonizioni', cu.amm||0, co.amm||0], ['Disciplina', U.cd||0, O.cd||0]];
+  const rows = [['Punti', U.pt, O.pt], ['Vittorie', U.v, O.v], ['Pareggi', U.n, O.n], ['Sconfitte', U.p, O.p], ['Gol fatti', U.gf, O.gf], ['Gol subiti', U.gs, O.gs], ['Ammonizioni', cu.amm||0, co.amm||0], ['Disciplina', U.cd||0, O.cd||0]];
   // solo il grafico (scelta dell'amministratore): ragnatele sovrapposte + legenda, valori sotto ogni voce
-  openSheet(`${head('Statistiche')}${radar2(rows.map(([l,u,t])=>({l,u,t})), '', '', usN, opN, {ticks:true, noVals:true, big:true})}`);
+  openSheet(`${head('Statistiche')}${radar2(rows.map(([l,u,t])=>({l,u,t})), '', '', usN, opN, {ticks:true, noVals:true, big:true, rot:true})}`);
 }
 function vStats(L){
   const teams = L.standings.map(r=>r.team);
@@ -798,7 +798,9 @@ function scRadar(A, us, opp){
 function radar2(rows, title, sub, us, opp, opts={}){
   // opts.big: disegno più grande (viewBox più stretto = tutto più ingrandito sullo schermo), nomi delle voci centrati sopra/sotto la punta dell'asse
   const big = !!opts.big, W = big ? 320 : 340, H = big ? 330 : 270, cx = W/2, cy = big ? 165 : 140, R = big ? 100 : 88, n = rows.length;
-  const pt = (i, r) => { const ang = -Math.PI/2 + i*2*Math.PI/n; return [cx + r*Math.cos(ang), cy + r*Math.sin(ang)]; };
+  // opts.rot: grafico girato di mezzo spicchio (con 8 voci nessun asse resta orizzontale e i nomi lunghi entrano nello schermo)
+  const A0 = -Math.PI/2 + (opts.rot ? Math.PI/n : 0);
+  const pt = (i, r) => { const ang = A0 + i*2*Math.PI/n; return [cx + r*Math.cos(ang), cy + r*Math.sin(ang)]; };
   const data = rows.map(d=>{ const m = Math.max(d.u, d.t, 1); return {...d, m: opts.ticks ? 4*Math.ceil(m/4) : m}; });
   // numeri della scala: mai sotto un pallino o una linea colorata. Per ogni numero si prova di lato all'asse (+, poi −, poi più lontano) e si tiene
   // il primo posto in cui il riquadro del testo non tocca nessun pallino; vengono disegnati sopra a tutto, con un bordo del colore di fondo.
@@ -811,11 +813,11 @@ function radar2(rows, title, sub, us, opp, opts={}){
     || boxes.some(([x1,y1,x2,y2])=>cx0 - w/2 - 1.5 < x2 && cx0 + w/2 + 1.5 > x1 && cy0 - h/2 - 1.5 < y2 && cy0 + h/2 + 1.5 > y1)   // pallini, nomi e numeri già messi
     || segs.some(([x1,y1,x2,y2])=>{ for (let k = 0; k <= 24; k++) { const px = x1 + (x2-x1)*k/24, py = y1 + (y2-y1)*k/24;   // linee colorate delle due squadre
         if (Math.abs(px-cx0) < w/2 + 2.5 && Math.abs(py-cy0) < h/2 + 2.5) return true; } return false; });
-  const ticks = !opts.ticks ? '' : data.map((d,i)=>{ const ang = -Math.PI/2 + i*2*Math.PI/n, tx = -Math.sin(ang), ty = Math.cos(ang);
+  const ticks = !opts.ticks ? '' : data.map((d,i)=>{ const ang = A0 + i*2*Math.PI/n, tx = -Math.sin(ang), ty = Math.cos(ang);
     return [1,2,3,4].map(k=>{ const [x,y] = pt(i, R*k/4), txt = String(d.m*k/4), w = txt.length*fs*0.6, h = fs*0.8;
       // centro del testo per ogni posto possibile: di lato all'asse, alla distanza giusta perché il testo non tocchi l'asse
       // rad = spostamento lungo l'asse (verso fuori +, verso il centro −), sempre di lato all'asse
-      const rx = Math.cos(-Math.PI/2 + i*2*Math.PI/n), ry = Math.sin(-Math.PI/2 + i*2*Math.PI/n);
+      const rx = Math.cos(A0 + i*2*Math.PI/n), ry = Math.sin(A0 + i*2*Math.PI/n);
       const at = (sg, far, rad) => { const off = (big?9:5) + far; return [x + rad*rx + sg*tx*(off + w/2*Math.abs(tx)), y + rad*ry + sg*ty*(off + h/2*Math.abs(ty))]; };
       const cand = [0,4,8,12,16,20,25,30,36].flatMap(far=>[0,-6,6,-11,11].flatMap(rad=>[[1,far,rad],[-1,far,rad]])).map(c=>at(...c));
       const [mx,my] = cand.find(([px,py])=>!hits(px,py,w,h)) || cand[0]; boxes.push([mx - w/2, my - h/2, mx + w/2, my + h/2]);
