@@ -797,7 +797,7 @@ function scRadar(A, us, opp){
 // opts.noVals: sotto la voce solo il nome, senza i due valori. opts.ticks: ogni asse ha la sua scala con i numeri sulle tacche (4 cerchi, valori interi): il bordo = 4 × passo, passo = max dei due / 4 arrotondato in su
 function radar2(rows, title, sub, us, opp, opts={}){
   // opts.big: disegno più grande (viewBox più stretto = tutto più ingrandito sullo schermo), nomi delle voci centrati sopra/sotto la punta dell'asse
-  const big = !!opts.big, W = big ? 320 : 340, H = big ? 330 : 270, cx = W/2, cy = big ? 165 : 140, R = big ? 100 : 88, n = rows.length;
+  const big = !!opts.big, W = big ? 296 : 340, H = big ? 330 : 270, cx = W/2, cy = big ? 165 : 140, R = big ? 104 : 88, n = rows.length;
   // opts.rot: grafico girato di mezzo spicchio (con 8 voci nessun asse resta orizzontale e i nomi lunghi entrano nello schermo)
   const A0 = -Math.PI/2 + (opts.rot ? Math.PI/n : 0);
   const pt = (i, r) => { const ang = A0 + i*2*Math.PI/n; return [cx + r*Math.cos(ang), cy + r*Math.sin(ang)]; };
@@ -806,7 +806,7 @@ function radar2(rows, title, sub, us, opp, opts={}){
     return {...d, m: !opts.ticks ? m : opts.edge ? (dec ? Math.ceil(m) : m) : 4*Math.ceil(m/4)}; });   // 4 tacche intere anche per le medie
   // numeri della scala: mai sotto un pallino o una linea colorata. Per ogni numero si prova di lato all'asse (+, poi −, poi più lontano) e si tiene
   // il primo posto in cui il riquadro del testo non tocca nessun pallino; vengono disegnati sopra a tutto, con un bordo del colore di fondo.
-  const labAt = i => { const [x,y] = pt(i, R+28),   // nomi delle voci staccati dal grafico
+  const labAt = i => { const [x,y] = pt(i, R+24),   // nomi delle voci staccati dal grafico
     up = y < cy - 1, top = Math.abs(x-cx) < 6; return [x, y + (top ? (up ? -4 : 14) : (up ? -8 : 18))]; };
   const boxes = !(opts.ticks && big) ? [] : data.map((d,i)=>{ const [x,y] = labAt(i), ls = d.l.split('\n'), w = Math.max(...ls.map(l=>l.length))*13*0.58; return [x - w/2, y - 11, x + w/2, y + 3 + 15*(ls.length-1)]; });   // riquadri dei nomi
   const segs = !opts.ticks ? [] : ['u','t'].flatMap(k=>data.map((d,i)=>{ const a = pt(i, R*d[k]/d.m), j = (i+1) % n, b = pt(j, R*data[j][k]/data[j].m); return [...a, ...b]; }));
@@ -832,8 +832,11 @@ function radar2(rows, title, sub, us, opp, opts={}){
     const [x,y]=pt(i,R+22); const anc = Math.abs(x-cx)<6 ? 'middle' : x>cx ? 'start' : 'end';
     return `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="${anc}" class="sc-ax"><tspan font-weight="700">${d.l}</tspan>${opts.noVals?'':`<tspan x="${x.toFixed(1)}" dy="13">${d.u} · ${d.t}</tspan>`}</text>`; }).join('');
   const dots = key => data.map((d,i)=>{ const [x,y]=pt(i, R*d[key]/d.m); return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${big?5:4}" class="sc-dot ${key==='u'?'us':'them'}"/><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="14" fill="transparent" data-act="scTip" data-tip="${esc(d.l.replace('\n',' '))}: ${key==='u'?esc(us)+' '+d.u:esc(opp)+' '+d.t}"/>`; }).join('');
+  // big: altezza del disegno tagliata sui nomi delle voci (niente spazio vuoto sopra e sotto); i nomi ai lati possono entrare nel margine della finestra
+  const vb = !big ? `0 0 ${W} ${H}` : (()=>{ const ys = data.flatMap((d,i)=>{ const y = labAt(i)[1]; return [y - 12, y + 4 + 15*(d.l.split('\n').length-1)]; });
+    const y0 = Math.floor(Math.min(...ys, cy - R - 12)), y1 = Math.ceil(Math.max(...ys, cy + R + 12)); return `0 ${y0} ${W} ${y1 - y0}`; })();
   return `<figure class="sc-fig">${title||sub?`<figcaption><b>${title}</b><span class="mute">${sub}</span></figcaption>`:''}
-    <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Radar: ${data.map(d=>`${d.l.replace('\n',' ')} ${nf(d.u)} a ${nf(d.t)}`).join(', ')}">${grid}
+    <svg viewBox="${vb}" role="img" aria-label="Radar: ${data.map(d=>`${d.l.replace('\n',' ')} ${nf(d.u)} a ${nf(d.t)}`).join(', ')}">${grid}
       <polygon points="${poly('t')}" class="sc-area them"/><polygon points="${poly('u')}" class="sc-area us"/>${dots('t')}${dots('u')}${ticks}${lab}</svg>
     <div class="sc-legend"><span><i class="us"></i>${esc(us)}</span><span><i class="them"></i>${esc(opp)}</span></div></figure>`;
 }
