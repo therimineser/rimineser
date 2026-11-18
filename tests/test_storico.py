@@ -44,5 +44,23 @@ check('azioni in ordine, con assist e sostituzione', [a['id'] for a in p['scouti
 check('orario e campo dal calendario UISP (Oasi del Mare 22:00, Riccione)', p['evento']['time'] == '22:00' and p['evento']['location'] == 'Campo Riccione' and p['evento']['opponent'] == 'Oasi del Mare')
 check('evento cancellato segnato', res['partite']['cancellata']['evento'] == {'cancellato': True})
 check('rosa solo id → categoria, senza chi è in attesa', res['rosa'] == {'u1': 'giocatore', 'u2': 'capitano', 'u3': 'mister'})
+# minutaggio: stessa partita della prova nel browser (2 tempi, cambi con rientro)
+from storico import minutaggio
+sub = lambda h, sec, o, p: {'k': 'sub', 't': 'us', 'h': h, 's': sec, 'ts': h * 10000 + sec, 'o': o, 'p': p}
+SUBS = [sub(1, 600, 'p7', 'p8'), sub(2, 300, 'p8', 'p7'), sub(2, 900, 'p3', 'p11')]
+XI = {'k': 'xi', 'h': 1, 's': 0, 'ts': 1, 'sl': ['p7', 'p1', 'p2', 'p3', 'p4', 'p5', 'p6', ''], 'b': ['p8']}
+ENDS = [{'k': 'end', 'h': 1, 's': 1500, 'ts': 2}, {'k': 'end', 'h': 2, 's': 1530, 'ts': 3}]
+FINAL = {'lineups': [{'published': True, 'slots': ['p7', 'p1', 'p2', 'p11', 'p4', 'p5', 'p6'], 'bench': ['p8', 'p3']}]}
+attesi = {'p1': 3030, 'p7': 600 + 1230, 'p8': 900 + 300, 'p3': 1500 + 900, 'p11': 630}
+m = minutaggio(FINAL, [XI] + SUBS + ENDS)
+check('minuti con partenza e fine tempi salvate', {k: m['giocatori'][k]['secondi'] for k in attesi} == attesi and m['fonte'].startswith('formazione di partenza'))
+check('Davide: esce 1T 10:00, rientra 2T 5:00', m['giocatori']['p7']['in_campo'] == [{'tempo': 1, 'da': 0, 'a': 600}, {'tempo': 2, 'da': 300, 'a': 1530}]
+      and m['giocatori']['p7']['uscito'] == [{'tempo': 1, 'secondo': 600}] and m['giocatori']['p7']['entrato'] == [{'tempo': 2, 'secondo': 300}])
+check('Ugo non titolare, Mario titolare', m['giocatori']['p11']['titolare'] is False and m['giocatori']['p1']['titolare'] is True)
+m2 = minutaggio(FINAL, SUBS + [{'k': 'pass_ok', 'h': 1, 's': 1500, 'ts': 5}, {'k': 'foul', 'h': 2, 's': 1530, 'ts': 6}])
+check('senza partenza né fine tempi: ricostruiti uguali', {k: m2['giocatori'][k]['secondi'] for k in attesi} == attesi and m2['fonte'].startswith('ricostruita') and not m2['fine_tempi'][1]['segnata'])
+check('nessuna formazione → nessun minutaggio', minutaggio({}, SUBS) is None)
+p5 = res['partite']['uisp-5']
+check('minutaggio salvato nella partita con scouting', 'minutaggio' in p5 and p5['minutaggio']['giocatori']['u1']['uscito'] == [{'tempo': 2, 'secondo': 1500}])
 print('Storico: %d/%d ok' % (sum(ok), len(ok)))
 sys.exit(0 if all(ok) else 1)

@@ -15,7 +15,7 @@ import os
 import sys
 
 # Campi delle azioni di scouting che si copiano (tutti senza nomi: p, a, o = id giocatore)
-ACT_KEYS = ('id', 'k', 't', 's', 'h', 'ts', 'p', 'a', 'g', 'o', 'm', 'pm')
+ACT_KEYS = ('id', 'k', 't', 's', 'h', 'ts', 'p', 'a', 'g', 'o', 'm', 'pm', 'li', 'sl', 'b')   # sl/b = titolari/panchina di partenza (k:'xi')
 EV_KEYS = ('type', 'date', 'time', 'meet', 'opponent', 'location', 'home', 'result', 'lockAt')  # mai notes
 
 
@@ -55,6 +55,68 @@ def uisp(L):
     return out
 
 
+def live_lineup(e):
+    """Formazione usata dallo Scouting: la prima pubblicata, altrimenti la prima salvata (come scLiveIdx nell'app)."""
+    lus = e.get('lineups') or []
+    for l in lus:
+        if l.get('published'):
+            return l
+    return lus[0] if lus else None
+
+
+def minutaggio(e, acts, sc=None):
+    """Minuti giocati da ogni giocatore (stessa logica di scMinutes in docs/app.js).
+    Partenza = azione k:'xi' (salvata al fischio d'inizio), altrimenti formazione attuale con i cambi rifatti all'indietro.
+    Fine di ogni tempo = azione k:'end', altrimenti ultima azione di quel tempo (o il cronometro salvato, se è il tempo in corso)."""
+    ordered = sorted(acts, key=lambda a: (a.get('h') or 1, a.get('s') or 0, a.get('ts') or 0))
+    subs = [a for a in ordered if a.get('k') == 'sub']
+    xi = [a for a in acts if a.get('k') == 'xi']
+    if xi:
+        field, fonte = [x for x in (xi[-1].get('sl') or []) if x], 'formazione di partenza salvata'
+    else:
+        l = live_lineup(e or {})
+        if not l:
+            return None
+        field, fonte = [x for x in (l.get('slots') or []) if x], 'ricostruita dalla formazione e dai cambi'
+        for a in reversed(subs):
+            if a.get('p') in field:
+                field[field.index(a['p'])] = a.get('o')
+    out, fine = {}, {}
+
+    def P(i):
+        return out.setdefault(i, {'titolare': False, 'secondi': 0, 'in_campo': [], 'entrato': [], 'uscito': []})
+    for i in field:
+        P(i)['titolare'] = True
+    for h in (1, 2):
+        ends = [a for a in acts if a.get('k') == 'end' and a.get('h') == h]
+        if ends:
+            end = ends[-1].get('s') or 0
+        else:
+            end = max([a.get('s') or 0 for a in acts if a.get('h') == h] or [0])
+            if sc and sc.get('half') == h:
+                end = max(end, sc.get('base') or 0)
+        fine[h] = {'secondi': end, 'segnata': bool(ends)}
+        if h == 2 and not end and not any(a.get('h') == 2 for a in subs):
+            del fine[2]
+            break
+        start = {i: 0 for i in field}
+        for a in (x for x in subs if x.get('h') == h):
+            t = min(a.get('s') or 0, end)
+            o, p = a.get('o'), a.get('p')
+            if o in start:
+                P(o)['in_campo'].append({'tempo': h, 'da': start.pop(o), 'a': t})
+            P(o)['uscito'].append({'tempo': h, 'secondo': a.get('s') or 0})
+            P(p)['entrato'].append({'tempo': h, 'secondo': a.get('s') or 0})
+            start[p] = t
+        for i, da in start.items():
+            P(i)['in_campo'].append({'tempo': h, 'da': da, 'a': end})
+        field = list(start)
+    for v in out.values():
+        v['secondi'] = sum(max(0, x['a'] - x['da']) for x in v['in_campo'])
+        v['minuti'] = round(v['secondi'] / 60, 1)
+    return {'fonte': fonte, 'fine_tempi': fine, 'giocatori': dict(sorted(out.items()))}
+
+
 def build(events, scout, rsvp, players, today, L=None):
     """Ritorna {'partite': {eid: dati}, 'rosa': {id: cat}}. Solo eventi già iniziati (data <= oggi), giocati o con scouting."""
     out, U = {}, uisp(L)
@@ -87,6 +149,9 @@ def build(events, scout, rsvp, players, today, L=None):
                 'tempo': sc.get('half'), 'aggiornato': sc.get('updatedAt'),
             }
             d['scouting']['azioni'].sort(key=lambda a: (a.get('ts') or 0, str(a.get('id'))))
+            m = minutaggio(e, d['scouting']['azioni'], sc)
+            if m and m['giocatori']:
+                d['minutaggio'] = m
         out[eid] = d
     rosa = {uid: (p.get('cat') or 'giocatore') for uid, p in sorted(players.items()) if p.get('approved')}
     return {'partite': out, 'rosa': rosa}

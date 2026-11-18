@@ -564,7 +564,7 @@ const SC_BOTH = [ // noi | loro
   ['Tiri', [['on_in','In porta · area'],['on_out','In porta · fuori area'],['off_in','Fuori · area'],['off_out','Fuori · fuori area'],['blk','Tiro respinto'],['goal','⚽ Gol']]],
   ['Altro', [['corner','Calcio d\'angolo'],['foul','Fallo'],['yellow','🟨 Giallo'],['red','🟥 Rosso'],['save','Parata del portiere']]]
 ];
-const SC_LAB = Object.assign(Object.fromEntries([...SC_US, ...SC_BOTH].flatMap(([,a])=>a.map(([k,l])=>[k,l]))), {sub:'🔁 Sostituzione', mod:'Cambio modulo'});
+const SC_LAB = Object.assign(Object.fromEntries([...SC_US, ...SC_BOTH].flatMap(([,a])=>a.map(([k,l])=>[k,l]))), {sub:'🔁 Sostituzione', mod:'Cambio modulo', xi:'Formazione di partenza', end:'Fine del tempo'});
 // Formazione in campo = la stessa di "Formazione" (events.lineups): la prima pubblicata, altrimenti la prima salvata.
 const scLiveIdx = e => { const lus = getLus(e); const i = lus.findIndex(l=>l.published); return i >= 0 ? i : (lus.length ? 0 : -1); };
 // Chi può entrare: solo giocatori presenti quel giorno (non assenti, non "presente come dirigenza", non altre categorie) o in panchina
@@ -598,6 +598,41 @@ const scSecs = d => d.base + (d.start ? Math.floor((Date.now()-d.start)/1000) : 
 const scMin = s => Math.floor(s/60)+1;
 const mmss = s => String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
 const scCount = (acts, k, t, h) => acts.filter(a=>a.k===k && a.t===t && (!h || a.h===h)).length;
+/* ---- minuti giocati. Servono: formazione di partenza (azione k:'xi', salvata al fischio d'inizio o prima del primo cambio)
+   e fine di ogni tempo (azione k:'end' con h e s). Se mancano: partenza = formazione attuale con i cambi rifatti all'indietro,
+   fine del tempo = cronometro (tempo in corso) o ultima azione segnata in quel tempo. Stessa logica in tools/storico.py. */
+const scOrd = A => [...A].sort((a,b)=>(a.h-b.h)||(a.s-b.s)||((a.ts||0)-(b.ts||0)));
+function scXi(e, A){
+  const xi = A.filter(a=>a.k==='xi').pop(); if (xi) return (xi.sl||[]).filter(Boolean);
+  const li = e ? scLiveIdx(e) : -1; if (li < 0) return [];
+  const f = (getLus(e)[li].slots||[]).filter(Boolean);
+  for (const a of scOrd(A).filter(a=>a.k==='sub').reverse()) { const k = f.indexOf(a.p); if (k >= 0) f[k] = a.o; }
+  return f;
+}
+function scHalfEnd(A, h, d){
+  const end = A.filter(a=>a.k==='end' && a.h===h).pop(); if (end) return end.s;
+  let m = Math.max(0, ...A.filter(a=>a.h===h).map(a=>a.s||0));
+  if (d && d.half===h) m = Math.max(m, scSecs(d));
+  return m;
+}
+function scMinutes(e, A, d){
+  const out = {}, P = id => out[id] || (out[id] = {sec:0, on:[], inn:[], out:[], xi:false});
+  let field = scXi(e, A); field.forEach(id=>P(id).xi = true);
+  const subs = scOrd(A).filter(a=>a.k==='sub');
+  for (const h of [1,2]) {
+    const end = scHalfEnd(A, h, d); if (h===2 && !end && !subs.some(a=>a.h===2)) break;
+    const from = {}; field.forEach(id=>from[id] = 0);
+    for (const a of subs.filter(a=>a.h===h)) {
+      const t = Math.min(a.s, end);
+      if (a.o in from) { P(a.o).on.push([h, from[a.o], t]); delete from[a.o]; }
+      P(a.o).out.push([h, a.s]); P(a.p).inn.push([h, a.s]); from[a.p] = t;
+    }
+    for (const id in from) P(id).on.push([h, from[id], end]);
+    field = Object.keys(from);
+  }
+  for (const id in out) out[id].sec = out[id].on.reduce((n,[,a,b])=>n+Math.max(0,b-a), 0);
+  return out;
+}
 // Chi può aver segnato/fatto assist: prima i giocatori della FORMAZIONE della partita (titolari + panchina, dalle formazioni
 // pubblicate; se nessuna è pubblicata, da quelle salvate). Se non c'è formazione: i presenti, poi tutta la rosa.
 function scGroups(eid){
@@ -627,6 +662,7 @@ function vScouting(){
     <div class="sc-clock"><span class="sc-half">${d.half}° tempo</span><span class="sc-time" id="scTime">${mmss(secs)}</span></div>
     ${mine?`<div class="sc-cbtn"><button class="${d.start?'sec':'pri'}" data-act="scClock">${d.start?'⏸ Pausa':(secs?'▶ Riprendi':'▶ Avvia')}</button>
       <button class="sec" data-act="scHalf">${d.half===1?'Passa al 2° tempo':'Torna al 1° tempo'}</button>
+      ${d.half===2?(A.some(a=>a.k==='end'&&a.h===2)?`<span class="chip">🏁 Partita finita</span>`:`<button class="sec" data-act="scFine">🏁 Fine partita</button>`):''}
       ${secs||d.start?`<button class="lnk" data-act="scClockReset">Azzera cronometro</button>`:''}</div>`:''}
     ${lockBar}</section>`;
   // azioni solo nostre
@@ -635,7 +671,7 @@ function vScouting(){
   h += `<section class="card"><div class="sc-vs"><span class="lab">${us.toUpperCase()}</span><span class="lab" style="text-align:right">${opp.toUpperCase()}</span></div>
     ${SC_BOTH.map(([g,a])=>`<div class="sc-g"><span class="mute" style="font-size:13px;font-weight:600">${g}</span>${a.map(([k,l])=>`<div class="sc-acts">${btn(k,l,k==='goal'?'goal':'us','us')}${btn(k,l,k==='goal'?'goalthem':'them','them')}</div>`).join('')}</div>`).join('')}
     <div class="btns"><button class="sec" data-act="scUndo" ${A.length&&mine?'':'disabled'}>↶ Annulla ultima</button></div>
-    ${A.length?`<div class="sc-log">${A.slice(-5).reverse().map(a=>`<div><b>${a.h}T ${scMin(a.s)}'</b> ${a.k==='sub' ? `🔁 Esce ${esc(nameOf(a.o))}, entra ${esc(nameOf(a.p))}` : a.k==='mod' ? `Modulo ${esc(a.m||'')}` : `${a.t==='us'?esc(TEAM()):opp} · ${esc(SC_LAB[a.k]||a.k)}${a.p?' · '+esc(nameOf(a.p)):''}`}${a.k==='goal'&&scGoalNote(a)?' ('+esc(scGoalNote(a))+')':''}</div>`).join('')}</div>`:''}</section>`;
+    ${A.length?`<div class="sc-log">${A.slice(-5).reverse().map(a=>`<div><b>${a.h}T ${scMin(a.s)}'</b> ${a.k==='xi' ? 'Fischio d\'inizio · formazione di partenza salvata' : a.k==='end' ? (a.h===1 ? 'Fine 1° tempo' : '🏁 Fine partita') : a.k==='sub' ? `🔁 Esce ${esc(nameOf(a.o))}, entra ${esc(nameOf(a.p))}` : a.k==='mod' ? `Modulo ${esc(a.m||'')}` : `${a.t==='us'?esc(TEAM()):opp} · ${esc(SC_LAB[a.k]||a.k)}${a.p?' · '+esc(nameOf(a.p)):''}`}${a.k==='goal'&&scGoalNote(a)?' ('+esc(scGoalNote(a))+')':''}</div>`).join('')}</div>`:''}</section>`;
   // formazione in campo (condivisa con la pagina Formazione): sotto i tasti delle azioni, che devono restare a portata di dito
   { const li = scLiveIdx(e), L = li >= 0 ? getLus(e)[li] : null, locked = luLocked(e);
     const chip = id => `<span class="chip">${esc(S.players[id]?.number ? S.players[id].number+' ' : '')}${esc(short(nameOf(id)))}</span>`;
@@ -668,8 +704,31 @@ function vScouting(){
     ${scorers.length?`<div><b>Marcatori</b><div class="sc-log">${scorers.map(a=>`<div><b>${a.h}T ${scMin(a.s)}'</b> ${a.p?esc(nameOf(a.p)):'gol'}${a.k==='goal'&&scGoalNote(a)?' ('+esc(scGoalNote(a))+')':''}</div>`).join('')}</div></div>`:''}
     ${subs.length?`<div><b>Sostituzioni</b><div class="sc-log">${subs.map(a=>`<div><b>${a.h}T ${scMin(a.s)}'</b> esce ${esc(nameOf(a.o))} · entra ${esc(nameOf(a.p))}</div>`).join('')}</div></div>`:''}
     ${A.length&&mine?`<button class="lnk" data-act="scReset">Azzera i dati di questa partita</button>`:''}</section>`;
+  h += scMinCard(e, A, d);
   h += scCharts(A, TEAM(), e.opponent || 'Avversari');
   return h;
+}
+// riquadro MINUTI GIOCATI: per ogni giocatore minuti totali, quando era in campo, quando è entrato/uscito
+const scM = s => Math.round(s/60);
+function scMinCard(e, A, d){
+  const M = scMinutes(e, A, d), ids = Object.keys(M).filter(id=>S.players[id] || M[id].sec);
+  if (!ids.length) return '';
+  ids.sort((a,b)=>(M[b].sec-M[a].sec) || nameOf(a).localeCompare(nameOf(b)));
+  const fin = A.some(a=>a.k==='end' && a.h===2), live = !fin && (d.start || d.base);
+  const row = id => { const m = M[id];
+    const per = m.on.map(([h,a,b])=>`${h}T ${scM(a)}'–${scM(b)}'`).join(' · ') || 'non è entrato';
+    const ev = [...m.inn.map(([h,s])=>[h,s,'entrato']), ...m.out.map(([h,s])=>[h,s,'uscito'])].sort((a,b)=>a[0]-b[0]||a[1]-b[1]).map(([h,s,w])=>`${w} ${h}T ${scM(s)}'`).join(' · ');
+    return `<tr><td>${esc(short(nameOf(id)))}${m.xi?'':' <span class="mute">(panch.)</span>'}<br><span class="mute">${per}${ev?' · '+ev:''}</span></td><td><b>${scM(m.sec)}'</b></td></tr>`; };
+  return `<section class="card"><span class="lab">MINUTI GIOCATI</span>
+    <span class="mute" style="font-size:13px">${fin ? 'Partita finita.' : live ? 'Partita in corso: i minuti crescono col cronometro.' : 'Dalla formazione di partenza e dalle sostituzioni.'}</span>
+    <table class="sc-tab sc-min"><tbody>${ids.map(row).join('')}</tbody></table></section>`;
+}
+// fine di un tempo: azione k:'end' {h, s} (serve per i minuti giocati); se c'è già, si aggiorna
+function scEnd(x, h){
+  const s = scSecs(x), old = x.acts.find(a=>a.k==='end' && a.h===h);
+  if (old) { x.acts = x.acts.filter(a=>a!==old); write(()=>updateDoc(D('scout/'+x.eid), {acts: arrayRemove(old)})); }
+  const a = {id:Math.random().toString(36).slice(2,9), k:'end', t:'us', s, h, ts:Date.now()};
+  x.acts.push(a); write(()=>setDoc(D('scout/'+x.eid), {acts: arrayUnion(a), updatedAt: Date.now()}, {merge:true}));
 }
 // come è nato un nostro gol: g = 'assist' | 'rig' | 'pun' | 'ang' (calcio d'angolo diretto) | 'pers' (nessun assist)
 const SC_HOW = [['assist','👟 Su assist'],['rig','Su rigore'],['pun','Su calcio di punizione'],['ang','Da calcio d\'angolo diretto'],['pers','Senza assist']];
@@ -701,7 +760,14 @@ function scModSheet(){
   openSheet(`${head('Cambia modulo')}<div class="sc-how">${Object.keys(MODS).map(m=>`<button class="${m===L.module?'pri':'sec'}" data-act="scModPick" data-m="${m}">${m}</button>`).join('')}</div>`);
 }
 // scrive la formazione aggiornata (stessa di "Formazione") e registra l'azione nello scouting
+// salva una volta sola la formazione di partenza (azione k:'xi'): al fischio d'inizio o prima del primo cambio
+function scEnsureXi(x, e){
+  if (!x || !e || x.acts.some(a=>a.k==='xi')) return; const li = scLiveIdx(e); if (li < 0) return;
+  const L = getLus(e)[li], a = {id:Math.random().toString(36).slice(2,9), k:'xi', t:'us', s:0, h:1, ts:Date.now(), li, m:L.module||'', sl:[...(L.slots||[])], b:[...(L.bench||[])]};
+  x.acts.unshift(a); write(()=>setDoc(D('scout/'+x.eid), {acts: arrayUnion(a), updatedAt: Date.now()}, {merge:true}));
+}
 async function scSaveLu(e, li, L, act){
+  scEnsureXi(S.scout, e);
   const lus = getLus(e).map((l,i)=>i===li ? L : l), x = S.scout;
   if (!(await write(()=>setDoc(D('events/'+e.id), {lineups:lus, lockAt:lockAtFor(e)}, {merge:true})))) return false;
   const a = {id:Math.random().toString(36).slice(2,9), t:'us', s:scSecs(x), h:x.half, ts:Date.now(), ...act};
@@ -910,7 +976,7 @@ const ACT = {
     const b = {...a, g: d.v}; x.acts[i] = b; draw();
     await write(()=>updateDoc(D('scout/'+x.eid), {acts: arrayRemove(a)})); await write(()=>updateDoc(D('scout/'+x.eid), {acts: arrayUnion(b)}));
     if (d.v==='assist') scAsk(x.acts.findIndex(z=>z.id===b.id), 'a'); },
-  scUndo: () => { const x = S.scout; if (!scMine(x)) return; const a = x.acts.pop(); draw(); if (!a) return;
+  scUndo: () => { const x = S.scout; if (!scMine(x)) return; const j = x.acts.findLastIndex(z=>z.k!=='xi'), a = j >= 0 ? x.acts.splice(j, 1)[0] : null; draw(); if (!a) return;   // la formazione di partenza (xi) non si annulla
     // annullare una sostituzione o un cambio di modulo rimette a posto anche la formazione
     if (a.k==='sub' || a.k==='mod') { const e = S.events.find(v=>v.id===x.eid), li = scLiveIdx(e);
       if (li >= 0 && !luLocked(e)) { const L = JSON.parse(JSON.stringify(getLus(e)[li]));
@@ -918,8 +984,9 @@ const ACT = {
         else if (a.pm) L.module = a.pm;
         write(()=>setDoc(D('events/'+e.id), {lineups:getLus(e).map((l,i)=>i===li?L:l), lockAt:lockAtFor(e)}, {merge:true})); } }
     write(()=>updateDoc(D('scout/'+x.eid), {acts: arrayRemove(a)})); toast('Annullato: '+SC_LAB[a.k]); },
-  scClock: () => { const x = S.scout; if (!scMine(x)) return; if (x.start) { x.base = scSecs(x); x.start = null; } else x.start = Date.now(); scWrite(x.eid, {base:x.base, start:x.start, half:x.half}); draw(); },
-  scHalf: () => { const x = S.scout; if (!scMine(x)) return; x.half = x.half===1 ? 2 : 1; x.base = 0; x.start = null; scWrite(x.eid, {base:0, start:null, half:x.half}); draw(); },
+  scClock: () => { const x = S.scout; if (!scMine(x)) return; if (!x.start && x.half===1) scEnsureXi(x, S.events.find(v=>v.id===x.eid)); if (x.start) { x.base = scSecs(x); x.start = null; } else x.start = Date.now(); scWrite(x.eid, {base:x.base, start:x.start, half:x.half}); draw(); },
+  scHalf: () => { const x = S.scout; if (!scMine(x)) return; if (x.half===1) scEnd(x, 1); x.half = x.half===1 ? 2 : 1; x.base = 0; x.start = null; scWrite(x.eid, {base:0, start:null, half:x.half}); draw(); },
+  scFine: (d,b) => { const x = S.scout; if (!scMine(x) || !confirm2(b)) return; scEnd(x, 2); if (x.start) { x.base = scSecs(x); x.start = null; scWrite(x.eid, {base:x.base, start:null}); } draw(); toast('🏁 Fine partita: minuti giocati salvati'); },
   scClockReset: (d,b) => { const x = S.scout; if (!scMine(x) || !confirm2(b)) return; x.base = 0; x.start = null; scWrite(x.eid, {base:0, start:null}); draw(); toast('Cronometro azzerato'); },
   scTake: async () => { const x = S.scout; try { await setDoc(D('scout/'+x.eid), {lock: scLockBody(), updatedAt: Date.now()}, {merge:true}); toast('Ora stai facendo tu lo scouting'); }
     catch(_) { toast('Qualcun altro ha appena iniziato lo scouting.'); } },
