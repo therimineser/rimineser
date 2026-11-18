@@ -803,21 +803,21 @@ function vLive(){
     : a.k==='mod' ? `Cambio modulo: ${esc(a.m||'')}`
     : a.k==='end' ? `<b>${a.h===1?'Fine 1° tempo':'🏁 Fine partita'}</b>` : '';
   const key = A.filter(a=>['goal','yellow','red','sub','mod','end'].includes(a.k)).slice().reverse();
-  h += `<section class="card"><span class="lab">CRONACA</span>${key.length ? `<div class="lv-log">${key.map(a=>`<div><span class="lv-min">${min(a)}</span><span>${line(a)}</span></div>`).join('')}</div>` : '<span class="mute">Ancora niente da raccontare.</span>'}</section>`;
+  h += `<section class="card"><span class="lab">CRONACA</span>${key.length ? `<div class="lv-log lv-scroll" tabindex="0" aria-label="Cronaca della partita">${key.map(a=>`<div><span class="lv-min">${min(a)}</span><span>${line(a)}</span></div>`).join('')}</div>` : '<span class="mute">Ancora niente da raccontare.</span>'}</section>`;
   // statistiche dal vivo
   const c = (k,t) => A.filter(a=>a.k===k && a.t===t).length, sum = (ks,t) => ks.reduce((n,k)=>n+c(k,t),0);
   const SH = ['on_in','on_out','off_in','off_out','blk','goal'], ON = ['on_in','on_out','goal'];
   const pOk = c('pass_ok','us'), pKo = c('pass_ko','us'), xOk = c('cross_ok','us'), xKo = c('cross_ko','us');
   h += `<section class="card"><span class="lab">STATISTICHE</span><div class="sc-legend"><span><i class="us"></i>${us}</span><span><i class="them"></i>${opp}</span></div>
     ${colBars([['Tiri',[sum(SH,'us'),sum(SH,'them')]],['In porta',[sum(ON,'us'),sum(ON,'them')]],['Angoli',[c('corner','us'),c('corner','them')]],['Falli',[c('foul','us'),c('foul','them')]],['Parate',[c('save','us'),c('save','them')]]], [L.us||TEAM(), L.opp||'Avversari'], 90)}
+    <span class="lv-sub">TIRI</span>
+    ${colBars([['Da area',[c('on_in','us')+c('off_in','us'),c('on_in','them')+c('off_in','them')]],['Fuori\narea',[c('on_out','us')+c('off_out','us'),c('on_out','them')+c('off_out','them')]],['Fuori\nporta',[c('off_in','us')+c('off_out','us'),c('off_in','them')+c('off_out','them')]],['Respinti',[c('blk','us'),c('blk','them')]],['Gol',[c('goal','us'),c('goal','them')]]], [L.us||TEAM(), L.opp||'Avversari'], 90)}
+    <div class="lv-us">${[['us',us],['them',opp]].map(([t,n])=>{ const tot = sum(SH,t), on = sum(ON,t); return `<span>Precisione ${n}: <b>${tot ? Math.round(on/tot*100)+'%' : '–'}</b>${tot ? ` <span class="mute">(${on} in porta su ${tot})</span>` : ''}</span>`; }).join('')}</div>
     <div class="lv-us"><b>${us}</b><span>Passaggi riusciti <b>${pOk}</b> su ${pOk+pKo}${pOk+pKo?` (${Math.round(pOk/(pOk+pKo)*100)}%)`:''}</span><span>Cross riusciti <b>${xOk}</b> su ${xOk+xKo}</span><span>Palle recuperate <b>${c('recov','us')}</b> · perse <b>${c('lost','us')}</b></span></div></section>`;
   // formazione in campo
   if (L.lu && (L.lu.f||[]).length) { const chip = p => `<span class="chip">${esc(S.phase==='app' && S.players[p.id] ? (p.n?p.n+' ':'')+short(nameOf(p.id)) : p.n ? 'n. '+p.n : '—')}</span>`;
     h += `<section class="card"><div class="row sp"><span class="lab">FORMAZIONE IN CAMPO</span>${L.lu.m?`<span class="chip">${esc(L.lu.m)}</span>`:''}</div>
       <div class="names">${L.lu.f.map(chip).join('')}</div>${(L.lu.b||[]).length?`<div><span class="mute" style="font-size:13px;font-weight:600">Panchina</span><div class="names">${L.lu.b.map(chip).join('')}</div></div>`:''}</section>`; }
-  // ultime azioni (tutte, passaggi compresi)
-  const last = A.slice(-8).reverse();
-  if (last.length) h += `<section class="card"><span class="lab">ULTIME AZIONI</span><div class="lv-log">${last.map(a=>`<div><span class="lv-min">${min(a)}</span><span>${line(a) || `${a.t==='us'?us:opp} · ${esc(SC_LAB[a.k]||a.k)}`}</span></div>`).join('')}</div></section>`;
   return h;
 }
 // chi non è registrato: solo la diretta, con il tasto per accedere
