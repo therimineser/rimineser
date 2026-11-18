@@ -353,7 +353,7 @@ function vsStatsSheet(eid){
   const cu = teamCards(L.team), co = teamCards(opN);
   const rows = [['Punti', U.pt, O.pt], ['Vittorie', U.v, O.v], ['Gol fatti', U.gf, O.gf], ['Gol subiti', U.gs, O.gs], ['Ammonizioni', cu.amm||0, co.amm||0], ['Disciplina', U.cd||0, O.cd||0]];
   // solo il grafico (scelta dell'amministratore): ragnatele sovrapposte + legenda, valori sotto ogni voce
-  openSheet(`${head('Statistiche')}${radar2(rows.map(([l,u,t])=>({l,u,t})), '', '', usN, opN, {ticks:true, noVals:true})}`);
+  openSheet(`${head('Statistiche')}${radar2(rows.map(([l,u,t])=>({l,u,t})), '', '', usN, opN, {ticks:true, noVals:true, big:true})}`);
 }
 function vStats(L){
   const teams = L.standings.map(r=>r.team);
@@ -796,17 +796,20 @@ function scRadar(A, us, opp){
 // radar con due squadre sovrapposte (rosso = The Rimineser, blu = avversario); data = [{l, u, t}], ogni raggio normalizzato sul più alto dei due
 // opts.noVals: sotto la voce solo il nome, senza i due valori. opts.ticks: ogni asse ha la sua scala con i numeri sulle tacche (4 cerchi, valori interi): il bordo = 4 × passo, passo = max dei due / 4 arrotondato in su
 function radar2(rows, title, sub, us, opp, opts={}){
-  const W = 340, H = 270, cx = 170, cy = 140, R = 88, n = rows.length;
+  // opts.big: disegno più grande (viewBox più stretto = tutto più ingrandito sullo schermo), nomi delle voci centrati sopra/sotto la punta dell'asse
+  const big = !!opts.big, W = big ? 320 : 340, H = big ? 300 : 270, cx = W/2, cy = big ? 150 : 140, R = big ? 100 : 88, n = rows.length;
   const pt = (i, r) => { const ang = -Math.PI/2 + i*2*Math.PI/n; return [cx + r*Math.cos(ang), cy + r*Math.sin(ang)]; };
   const data = rows.map(d=>{ const m = Math.max(d.u, d.t, 1); return {...d, m: opts.ticks ? 4*Math.ceil(m/4) : m}; });
-  const ticks = !opts.ticks ? '' : data.map((d,i)=>{ const ang = -Math.PI/2 + i*2*Math.PI/n, ox = -Math.sin(ang)*5, oy = Math.cos(ang)*5;
-    return [1,2,3,4].map(k=>{ const [x,y] = pt(i, R*k/4); return `<text x="${(x+ox).toFixed(1)}" y="${(y+oy+3).toFixed(1)}" text-anchor="${ox>1?'start':ox<-1?'end':'middle'}" class="sc-tick">${d.m*k/4}</text>`; }).join(''); }).join('');
+  const ticks = !opts.ticks ? '' : data.map((d,i)=>{ const ang = -Math.PI/2 + i*2*Math.PI/n, ox = -Math.sin(ang)*(big?9:5), oy = Math.cos(ang)*(big?9:5);
+    return [1,2,3,4].map(k=>{ const [x,y] = pt(i, R*k/4); return `<text x="${(x+ox).toFixed(1)}" y="${(y+oy+3).toFixed(1)}" text-anchor="${ox>1?'start':ox<-1?'end':'middle'}" class="sc-tick${big?' big':''}">${d.m*k/4}</text>`; }).join(''); }).join('');
   const poly = key => data.map((d,i)=>pt(i, R*d[key]/d.m).map(v=>v.toFixed(1)).join(',')).join(' ');
   const grid = [0.25,0.5,0.75,1].map(f=>`<polygon points="${data.map((_,i)=>pt(i,R*f).map(v=>v.toFixed(1)).join(',')).join(' ')}" class="sc-grid"/>`).join('')
     + data.map((_,i)=>{ const [x,y]=pt(i,R); return `<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" class="sc-grid"/>`; }).join('');
-  const lab = data.map((d,i)=>{ const [x,y]=pt(i,R+22); const anc = Math.abs(x-cx)<6 ? 'middle' : x>cx ? 'start' : 'end';
+  const lab = data.map((d,i)=>{ if (big) { const [x,y] = pt(i, R+12), up = y < cy - 1, top = Math.abs(x-cx) < 6;
+      return `<text x="${x.toFixed(1)}" y="${(y + (top ? (up ? -4 : 14) : (up ? -8 : 18))).toFixed(1)}" text-anchor="middle" class="sc-ax big"><tspan font-weight="700">${d.l}</tspan></text>`; }
+    const [x,y]=pt(i,R+22); const anc = Math.abs(x-cx)<6 ? 'middle' : x>cx ? 'start' : 'end';
     return `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="${anc}" class="sc-ax"><tspan font-weight="700">${d.l}</tspan>${opts.noVals?'':`<tspan x="${x.toFixed(1)}" dy="13">${d.u} · ${d.t}</tspan>`}</text>`; }).join('');
-  const dots = key => data.map((d,i)=>{ const [x,y]=pt(i, R*d[key]/d.m); return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4" class="sc-dot ${key==='u'?'us':'them'}"/><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="14" fill="transparent" data-act="scTip" data-tip="${esc(d.l)}: ${key==='u'?esc(us)+' '+d.u:esc(opp)+' '+d.t}"/>`; }).join('');
+  const dots = key => data.map((d,i)=>{ const [x,y]=pt(i, R*d[key]/d.m); return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${big?5:4}" class="sc-dot ${key==='u'?'us':'them'}"/><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="14" fill="transparent" data-act="scTip" data-tip="${esc(d.l)}: ${key==='u'?esc(us)+' '+d.u:esc(opp)+' '+d.t}"/>`; }).join('');
   return `<figure class="sc-fig">${title||sub?`<figcaption><b>${title}</b><span class="mute">${sub}</span></figcaption>`:''}
     <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Radar: ${data.map(d=>`${d.l} ${d.u} a ${d.t}`).join(', ')}">${grid}
       ${ticks}<polygon points="${poly('t')}" class="sc-area them"/><polygon points="${poly('u')}" class="sc-area us"/>${dots('t')}${dots('u')}${lab}</svg>
