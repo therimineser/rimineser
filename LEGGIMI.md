@@ -6,4 +6,7 @@ I giocatori sono indicati solo con l'id Firebase: il nome si trova in Firebase `
 - `presenze`: id → si | forse | no | si-dirigenza.
 - `scouting.azioni`: k = azione, t = us (noi) | them (avversari), h = tempo, s = secondi di gioco,
   p = giocatore (gol, cartellini, chi entra), a = assist, g = com'è nato il gol, o = chi esce, m/pm = modulo nuovo/precedente.
+- `minutaggio`: per ogni giocatore secondi e minuti giocati, `in_campo` (tempo, da, a in secondi), `entrato`, `uscito`, `titolare`;
+  `fonte` dice se la partenza è quella salvata al fischio d'inizio o ricostruita; `fine_tempi` se la fine è stata segnata.
+- azioni `xi` = formazione di partenza (sl titolari, b panchina), `end` = fine del tempo h al secondo s.
 - `rosa.json`: id → categoria.
