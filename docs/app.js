@@ -353,7 +353,7 @@ function vsStatsSheet(eid){
   const cu = teamCards(L.team), co = teamCards(opN);
   const rows = [['Punti', U.pt, O.pt], ['Vittorie', U.v, O.v], ['Gol fatti', U.gf, O.gf], ['Gol subiti', U.gs, O.gs], ['Ammonizioni', cu.amm||0, co.amm||0], ['Disciplina', U.cd||0, O.cd||0]];
   // solo il grafico (scelta dell'amministratore): ragnatele sovrapposte + legenda, valori sotto ogni voce
-  openSheet(`${head('Statistiche')}${radar2(rows.map(([l,u,t])=>({l,u,t})), '', '', usN, opN, {ticks:true})}`);
+  openSheet(`${head('Statistiche')}${radar2(rows.map(([l,u,t])=>({l,u,t})), '', '', usN, opN, {ticks:true, noVals:true})}`);
 }
 function vStats(L){
   const teams = L.standings.map(r=>r.team);
@@ -794,7 +794,7 @@ function scRadar(A, us, opp){
   return radar2(axes.map(([l,ks])=>({l, u:val('us',ks), t:val('them',ks)})), 'Confronto con l\'avversario', `Ogni raggio: il più alto dei due arriva al bordo. Sotto ogni voce: ${esc(us)} · ${esc(opp)}.`, us, opp);
 }
 // radar con due squadre sovrapposte (rosso = The Rimineser, blu = avversario); data = [{l, u, t}], ogni raggio normalizzato sul più alto dei due
-// opts.ticks: ogni asse ha la sua scala con i numeri sulle tacche (4 cerchi, valori interi): il bordo = 4 × passo, passo = max dei due / 4 arrotondato in su
+// opts.noVals: sotto la voce solo il nome, senza i due valori. opts.ticks: ogni asse ha la sua scala con i numeri sulle tacche (4 cerchi, valori interi): il bordo = 4 × passo, passo = max dei due / 4 arrotondato in su
 function radar2(rows, title, sub, us, opp, opts={}){
   const W = 340, H = 270, cx = 170, cy = 140, R = 88, n = rows.length;
   const pt = (i, r) => { const ang = -Math.PI/2 + i*2*Math.PI/n; return [cx + r*Math.cos(ang), cy + r*Math.sin(ang)]; };
@@ -805,7 +805,7 @@ function radar2(rows, title, sub, us, opp, opts={}){
   const grid = [0.25,0.5,0.75,1].map(f=>`<polygon points="${data.map((_,i)=>pt(i,R*f).map(v=>v.toFixed(1)).join(',')).join(' ')}" class="sc-grid"/>`).join('')
     + data.map((_,i)=>{ const [x,y]=pt(i,R); return `<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" class="sc-grid"/>`; }).join('');
   const lab = data.map((d,i)=>{ const [x,y]=pt(i,R+22); const anc = Math.abs(x-cx)<6 ? 'middle' : x>cx ? 'start' : 'end';
-    return `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="${anc}" class="sc-ax"><tspan font-weight="700">${d.l}</tspan><tspan x="${x.toFixed(1)}" dy="13">${d.u} · ${d.t}</tspan></text>`; }).join('');
+    return `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="${anc}" class="sc-ax"><tspan font-weight="700">${d.l}</tspan>${opts.noVals?'':`<tspan x="${x.toFixed(1)}" dy="13">${d.u} · ${d.t}</tspan>`}</text>`; }).join('');
   const dots = key => data.map((d,i)=>{ const [x,y]=pt(i, R*d[key]/d.m); return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4" class="sc-dot ${key==='u'?'us':'them'}"/><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="14" fill="transparent" data-act="scTip" data-tip="${esc(d.l)}: ${key==='u'?esc(us)+' '+d.u:esc(opp)+' '+d.t}"/>`; }).join('');
   return `<figure class="sc-fig">${title||sub?`<figcaption><b>${title}</b><span class="mute">${sub}</span></figcaption>`:''}
     <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Radar: ${data.map(d=>`${d.l} ${d.u} a ${d.t}`).join(', ')}">${grid}
