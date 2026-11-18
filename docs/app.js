@@ -718,7 +718,7 @@ function scMinCard(e, A, d){
   const row = id => { const m = M[id];
     const per = m.on.map(([h,a,b])=>`${h}T ${scM(a)}'–${scM(b)}'`).join(' · ') || 'non è entrato';
     const ev = [...m.inn.map(([h,s])=>[h,s,'entrato']), ...m.out.map(([h,s])=>[h,s,'uscito'])].sort((a,b)=>a[0]-b[0]||a[1]-b[1]).map(([h,s,w])=>`${w} ${h}T ${scM(s)}'`).join(' · ');
-    return `<tr><td>${esc(short(nameOf(id)))}${m.xi?'':' <span class="mute">(panch.)</span>'}<br><span class="mute">${per}${ev?' · '+ev:''}</span></td><td><b>${scM(m.sec)}'</b></td></tr>`; };
+    return `<tr><td>${esc(short(nameOf(id)))}${m.xi?'':' <span class="mute">(subentrato)</span>'}<br><span class="mute">${per}${ev?' · '+ev:''}</span></td><td><b>${scM(m.sec)}'</b></td></tr>`; };
   return `<section class="card"><span class="lab">MINUTI GIOCATI</span>
     <span class="mute" style="font-size:13px">${fin ? 'Partita finita.' : live ? 'Partita in corso: i minuti crescono col cronometro.' : 'Dalla formazione di partenza e dalle sostituzioni.'}</span>
     <table class="sc-tab sc-min"><tbody>${ids.map(row).join('')}</tbody></table></section>`;
