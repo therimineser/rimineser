@@ -1,6 +1,6 @@
 // Service worker: rende l'app installabile e apribile anche con rete debole.
 // I dati della squadra li gestisce Firebase (con la sua cache offline).
-const CACHE = 'rimineser-v59';
+const CACHE = 'rimineser-v60';
 const SHELL = ['./', './index.html', './app.js', './firebase-config.js', './campionato.json', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/logo-256.png', './icons/favicon.png'];
 
