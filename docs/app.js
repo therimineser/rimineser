@@ -803,7 +803,7 @@ function vLive(){
     : a.k==='mod' ? `Cambio modulo: ${esc(a.m||'')}`
     : a.k==='end' ? `<b>${a.h===1?'Fine 1° tempo':'🏁 Fine partita'}</b>` : '';
   const key = A.filter(a=>['goal','yellow','red','sub','mod','end'].includes(a.k)).slice().reverse();
-  h += `<section class="card"><span class="lab">CRONACA</span>${key.length ? `<div class="lv-log">${key.map(a=>`<div><span class="lv-min">${min(a)}</span><span>${line(a)}</span></div>`).join('')}</div>` : '<span class="mute">Ancora niente da raccontare.</span>'}</section>`;
+  h += `<section class="card"><span class="lab">CRONACA</span>${key.length ? `<div class="lv-log lv-scroll" tabindex="0" aria-label="Cronaca della partita">${key.map(a=>`<div><span class="lv-min">${min(a)}</span><span>${line(a)}</span></div>`).join('')}</div>` : '<span class="mute">Ancora niente da raccontare.</span>'}</section>`;
   // statistiche dal vivo
   const c = (k,t) => A.filter(a=>a.k===k && a.t===t).length, sum = (ks,t) => ks.reduce((n,k)=>n+c(k,t),0);
   const SH = ['on_in','on_out','off_in','off_out','blk','goal'], ON = ['on_in','on_out','goal'];
@@ -815,9 +815,6 @@ function vLive(){
   if (L.lu && (L.lu.f||[]).length) { const chip = p => `<span class="chip">${esc(S.phase==='app' && S.players[p.id] ? (p.n?p.n+' ':'')+short(nameOf(p.id)) : p.n ? 'n. '+p.n : '—')}</span>`;
     h += `<section class="card"><div class="row sp"><span class="lab">FORMAZIONE IN CAMPO</span>${L.lu.m?`<span class="chip">${esc(L.lu.m)}</span>`:''}</div>
       <div class="names">${L.lu.f.map(chip).join('')}</div>${(L.lu.b||[]).length?`<div><span class="mute" style="font-size:13px;font-weight:600">Panchina</span><div class="names">${L.lu.b.map(chip).join('')}</div></div>`:''}</section>`; }
-  // ultime azioni (tutte, passaggi compresi)
-  const last = A.slice(-8).reverse();
-  if (last.length) h += `<section class="card"><span class="lab">ULTIME AZIONI</span><div class="lv-log">${last.map(a=>`<div><span class="lv-min">${min(a)}</span><span>${line(a) || `${a.t==='us'?us:opp} · ${esc(SC_LAB[a.k]||a.k)}`}</span></div>`).join('')}</div></section>`;
   return h;
 }
 // chi non è registrato: solo la diretta, con il tasto per accedere
