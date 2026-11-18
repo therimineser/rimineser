@@ -350,10 +350,10 @@ function teamCards(name){ const L = LG(), c = L && L.cards ? Object.entries(L.ca
 function vsStatsSheet(eid){
   const e = S.events.find(v=>v.id===eid), L = LG(); if (!e || !L) return;
   const usN = TEAM(), opN = e.opponent || 'Avversario', U = teamRow(L.team), O = teamRow(opN); if (!U || !O) return toast('Statistiche non disponibili per questa squadra');
-  const cu = teamCards(L.team), co = teamCards(opN);
-  const rows = [['Punti', U.pt, O.pt], ['Vittorie', U.v, O.v], ['Pareggi', U.n, O.n], ['Sconfitte', U.p, O.p], ['Gol fatti', U.gf, O.gf], ['Gol subiti', U.gs, O.gs], ['Ammonizioni', cu.amm||0, co.amm||0], ['Disciplina', U.cd||0, O.cd||0]];
+  const cu = teamCards(L.team), co = teamCards(opN), avg = (x, g) => g ? Math.round(x/g*10)/10 : 0;   // media a partita, 1 decimale
+  const rows = [['Punti', U.pt, O.pt], ['Vittorie', U.v, O.v], ['Pareggi', U.n, O.n], ['Sconfitte', U.p, O.p], ['Gol fatti\na partita', avg(U.gf, U.g), avg(O.gf, O.g)], ['Gol subiti\na partita', avg(U.gs, U.g), avg(O.gs, O.g)], ['Ammonizioni', cu.amm||0, co.amm||0], ['Disciplina', U.cd||0, O.cd||0]];
   // solo il grafico (scelta dell'amministratore): ragnatele sovrapposte + legenda, valori sotto ogni voce
-  openSheet(`${head('Statistiche')}${radar2(rows.map(([l,u,t])=>({l,u,t})), '', '', usN, opN, {ticks:true, noVals:true, big:true, rot:true})}`);
+  openSheet(`${head('Statistiche')}${radar2(rows.map(([l,u,t])=>({l,u,t})), '', '', usN, opN, {ticks:true, edge:true, noVals:true, big:true, rot:true})}`);
 }
 function vStats(L){
   const teams = L.standings.map(r=>r.team);
@@ -801,12 +801,14 @@ function radar2(rows, title, sub, us, opp, opts={}){
   // opts.rot: grafico girato di mezzo spicchio (con 8 voci nessun asse resta orizzontale e i nomi lunghi entrano nello schermo)
   const A0 = -Math.PI/2 + (opts.rot ? Math.PI/n : 0);
   const pt = (i, r) => { const ang = A0 + i*2*Math.PI/n; return [cx + r*Math.cos(ang), cy + r*Math.sin(ang)]; };
-  const data = rows.map(d=>{ const m = Math.max(d.u, d.t, 1); return {...d, m: opts.ticks ? 4*Math.ceil(m/4) : m}; });
+  const nf = v => Number.isInteger(v) ? String(v) : v.toLocaleString('it-IT', {maximumFractionDigits:1});
+  const data = rows.map(d=>{ const m = Math.max(d.u, d.t, 1), dec = !Number.isInteger(d.u) || !Number.isInteger(d.t);
+    return {...d, m: !opts.ticks ? m : dec ? Math.ceil(m) : opts.edge ? m : 4*Math.ceil(m/4)}; });
   // numeri della scala: mai sotto un pallino o una linea colorata. Per ogni numero si prova di lato all'asse (+, poi −, poi più lontano) e si tiene
   // il primo posto in cui il riquadro del testo non tocca nessun pallino; vengono disegnati sopra a tutto, con un bordo del colore di fondo.
   const labAt = i => { const [x,y] = pt(i, R+28),   // nomi delle voci staccati dal grafico
     up = y < cy - 1, top = Math.abs(x-cx) < 6; return [x, y + (top ? (up ? -4 : 14) : (up ? -8 : 18))]; };
-  const boxes = !(opts.ticks && big) ? [] : data.map((d,i)=>{ const [x,y] = labAt(i), w = d.l.length*13*0.58; return [x - w/2, y - 11, x + w/2, y + 3]; });   // riquadri dei nomi
+  const boxes = !(opts.ticks && big) ? [] : data.map((d,i)=>{ const [x,y] = labAt(i), ls = d.l.split('\n'), w = Math.max(...ls.map(l=>l.length))*13*0.58; return [x - w/2, y - 11, x + w/2, y + 3 + 15*(ls.length-1)]; });   // riquadri dei nomi
   const segs = !opts.ticks ? [] : ['u','t'].flatMap(k=>data.map((d,i)=>{ const a = pt(i, R*d[k]/d.m), j = (i+1) % n, b = pt(j, R*data[j][k]/data[j].m); return [...a, ...b]; }));
   const dotR = big ? 5 : 4, fs = big ? 10.5 : 8.5, dotPts = !opts.ticks ? [] : data.flatMap((d,i)=>['u','t'].map(k=>pt(i, R*d[k]/d.m)));
   const hits = (cx0, cy0, w, h) => dotPts.some(([px,py])=>{ const dx = Math.max(Math.abs(px-cx0) - w/2, 0), dy = Math.max(Math.abs(py-cy0) - h/2, 0); return dx*dx + dy*dy < (dotR+2.5)**2; })
@@ -814,7 +816,7 @@ function radar2(rows, title, sub, us, opp, opts={}){
     || segs.some(([x1,y1,x2,y2])=>{ for (let k = 0; k <= 24; k++) { const px = x1 + (x2-x1)*k/24, py = y1 + (y2-y1)*k/24;   // linee colorate delle due squadre
         if (Math.abs(px-cx0) < w/2 + 2.5 && Math.abs(py-cy0) < h/2 + 2.5) return true; } return false; });
   const ticks = !opts.ticks ? '' : data.map((d,i)=>{ const ang = A0 + i*2*Math.PI/n, tx = -Math.sin(ang), ty = Math.cos(ang);
-    return [1,2,3,4].map(k=>{ const [x,y] = pt(i, R*k/4), txt = String(d.m*k/4), w = txt.length*fs*0.6, h = fs*0.8;
+    return (opts.edge ? [4] : [1,2,3,4]).map(k=>{ const [x,y] = pt(i, R*k/4), txt = nf(d.m*k/4), w = txt.length*fs*0.6, h = fs*0.8;
       // centro del testo per ogni posto possibile: di lato all'asse, alla distanza giusta perché il testo non tocchi l'asse
       // rad = spostamento lungo l'asse (verso fuori +, verso il centro −), sempre di lato all'asse
       const rx = Math.cos(A0 + i*2*Math.PI/n), ry = Math.sin(A0 + i*2*Math.PI/n);
@@ -826,12 +828,12 @@ function radar2(rows, title, sub, us, opp, opts={}){
   const grid = [0.25,0.5,0.75,1].map(f=>`<polygon points="${data.map((_,i)=>pt(i,R*f).map(v=>v.toFixed(1)).join(',')).join(' ')}" class="sc-grid"/>`).join('')
     + data.map((_,i)=>{ const [x,y]=pt(i,R); return `<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" class="sc-grid"/>`; }).join('');
   const lab = data.map((d,i)=>{ if (big) { const [x,y] = labAt(i);
-      return `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="middle" class="sc-ax big"><tspan font-weight="700">${d.l}</tspan></text>`; }
+      return `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="middle" class="sc-ax big">${d.l.split('\n').map((l,k)=>`<tspan x="${x.toFixed(1)}"${k?' dy="15"':''} font-weight="700">${l}</tspan>`).join('')}</text>`; }
     const [x,y]=pt(i,R+22); const anc = Math.abs(x-cx)<6 ? 'middle' : x>cx ? 'start' : 'end';
     return `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="${anc}" class="sc-ax"><tspan font-weight="700">${d.l}</tspan>${opts.noVals?'':`<tspan x="${x.toFixed(1)}" dy="13">${d.u} · ${d.t}</tspan>`}</text>`; }).join('');
-  const dots = key => data.map((d,i)=>{ const [x,y]=pt(i, R*d[key]/d.m); return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${big?5:4}" class="sc-dot ${key==='u'?'us':'them'}"/><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="14" fill="transparent" data-act="scTip" data-tip="${esc(d.l)}: ${key==='u'?esc(us)+' '+d.u:esc(opp)+' '+d.t}"/>`; }).join('');
+  const dots = key => data.map((d,i)=>{ const [x,y]=pt(i, R*d[key]/d.m); return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${big?5:4}" class="sc-dot ${key==='u'?'us':'them'}"/><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="14" fill="transparent" data-act="scTip" data-tip="${esc(d.l.replace('\n',' '))}: ${key==='u'?esc(us)+' '+d.u:esc(opp)+' '+d.t}"/>`; }).join('');
   return `<figure class="sc-fig">${title||sub?`<figcaption><b>${title}</b><span class="mute">${sub}</span></figcaption>`:''}
-    <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Radar: ${data.map(d=>`${d.l} ${d.u} a ${d.t}`).join(', ')}">${grid}
+    <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Radar: ${data.map(d=>`${d.l.replace('\n',' ')} ${nf(d.u)} a ${nf(d.t)}`).join(', ')}">${grid}
       <polygon points="${poly('t')}" class="sc-area them"/><polygon points="${poly('u')}" class="sc-area us"/>${dots('t')}${dots('u')}${ticks}${lab}</svg>
     <div class="sc-legend"><span><i class="us"></i>${esc(us)}</span><span><i class="them"></i>${esc(opp)}</span></div></figure>`;
 }
