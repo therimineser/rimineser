@@ -352,8 +352,8 @@ function vsStatsSheet(eid){
   const usN = TEAM(), opN = e.opponent || 'Avversario', U = teamRow(L.team), O = teamRow(opN); if (!U || !O) return toast('Statistiche non disponibili per questa squadra');
   const cu = teamCards(L.team), co = teamCards(opN);
   const rows = [['Punti', U.pt, O.pt], ['Vittorie', U.v, O.v], ['Gol fatti', U.gf, O.gf], ['Gol subiti', U.gs, O.gs], ['Ammonizioni', cu.amm||0, co.amm||0], ['Disciplina', U.cd||0, O.cd||0]];
-  // solo il grafico (scelta dell'amministratore): ragnatele sovrapposte + legenda, valori sotto ogni voce
-  openSheet(`${head('📊 Statistiche')}${radar2(rows.map(([l,u,t])=>({l,u,t})), '', '', usN, opN)}`);
+  // solo il grafico (scelta dell'amministratore): ragnatele sovrapposte + legenda, valori accanto a ogni pallino
+  openSheet(`${head('📊 Statistiche')}${radar2(rows.map(([l,u,t])=>({l,u,t})), '', '', usN, opN, {dotVals:true})}`);
 }
 function vStats(L){
   const teams = L.standings.map(r=>r.team);
@@ -794,19 +794,25 @@ function scRadar(A, us, opp){
   return radar2(axes.map(([l,ks])=>({l, u:val('us',ks), t:val('them',ks)})), 'Confronto con l\'avversario', `Ogni raggio: il più alto dei due arriva al bordo. Sotto ogni voce: ${esc(us)} · ${esc(opp)}.`, us, opp);
 }
 // radar con due squadre sovrapposte (rosso = The Rimineser, blu = avversario); data = [{l, u, t}], ogni raggio normalizzato sul più alto dei due
-function radar2(rows, title, sub, us, opp){
-  const W = 340, H = 270, cx = 170, cy = 140, R = 88, n = rows.length;
+// opts.dotVals: i valori stanno accanto a ogni pallino (The Rimineser da un lato del raggio, avversario dall'altro) e sotto la voce resta solo il nome
+function radar2(rows, title, sub, us, opp, opts={}){
+  const W = 340, H = 270, cx = 170, cy = 140, R = 88, n = rows.length, dv = !!opts.dotVals;
   const pt = (i, r) => { const ang = -Math.PI/2 + i*2*Math.PI/n; return [cx + r*Math.cos(ang), cy + r*Math.sin(ang)]; };
   const data = rows.map(d=>({...d, m:Math.max(d.u, d.t, 1)}));
   const poly = key => data.map((d,i)=>pt(i, R*d[key]/d.m).map(v=>v.toFixed(1)).join(',')).join(' ');
   const grid = [0.25,0.5,0.75,1].map(f=>`<polygon points="${data.map((_,i)=>pt(i,R*f).map(v=>v.toFixed(1)).join(',')).join(' ')}" class="sc-grid"/>`).join('')
     + data.map((_,i)=>{ const [x,y]=pt(i,R); return `<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" class="sc-grid"/>`; }).join('');
   const lab = data.map((d,i)=>{ const [x,y]=pt(i,R+22); const anc = Math.abs(x-cx)<6 ? 'middle' : x>cx ? 'start' : 'end';
-    return `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="${anc}" class="sc-ax"><tspan font-weight="700">${d.l}</tspan><tspan x="${x.toFixed(1)}" dy="13">${d.u} · ${d.t}</tspan></text>`; }).join('');
+    return `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="${anc}" class="sc-ax"><tspan font-weight="700">${d.l}</tspan>${dv?'':`<tspan x="${x.toFixed(1)}" dy="13">${d.u} · ${d.t}</tspan>`}</text>`; }).join('');
+  // valore accanto al pallino: spostato di lato rispetto al raggio (+ per noi, − per l'avversario), così i due numeri non si coprono mai
+  const vals = key => !dv ? '' : data.map((d,i)=>{ const ang = -Math.PI/2 + i*2*Math.PI/n, sg = key==='u' ? 1 : -1;
+    const [px,py] = pt(i, R*d[key]/d.m), tx = -Math.sin(ang)*sg, ty = Math.cos(ang)*sg, x = px + tx*9, y = py + ty*9;
+    const anc = tx > 0.35 ? 'start' : tx < -0.35 ? 'end' : 'middle', dy = ty > 0.35 ? 9 : ty < -0.35 ? -2 : 4;
+    return `<text x="${x.toFixed(1)}" y="${(y+dy).toFixed(1)}" text-anchor="${anc}" class="sc-val">${d[key]}</text>`; }).join('');
   const dots = key => data.map((d,i)=>{ const [x,y]=pt(i, R*d[key]/d.m); return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4" class="sc-dot ${key==='u'?'us':'them'}"/><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="14" fill="transparent" data-act="scTip" data-tip="${esc(d.l)}: ${key==='u'?esc(us)+' '+d.u:esc(opp)+' '+d.t}"/>`; }).join('');
   return `<figure class="sc-fig">${title||sub?`<figcaption><b>${title}</b><span class="mute">${sub}</span></figcaption>`:''}
     <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Radar: ${data.map(d=>`${d.l} ${d.u} a ${d.t}`).join(', ')}">${grid}
-      <polygon points="${poly('t')}" class="sc-area them"/><polygon points="${poly('u')}" class="sc-area us"/>${dots('t')}${dots('u')}${lab}</svg>
+      <polygon points="${poly('t')}" class="sc-area them"/><polygon points="${poly('u')}" class="sc-area us"/>${dots('t')}${dots('u')}${vals('t')}${vals('u')}${lab}</svg>
     <div class="sc-legend"><span><i class="us"></i>${esc(us)}</span><span><i class="them"></i>${esc(opp)}</span></div></figure>`;
 }
 // istogramma ogni 5 minuti, 1° e 2° tempo affiancati; series = [[classe, nome, fn(azioni del gruppo) -> numero]]
