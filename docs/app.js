@@ -797,12 +797,13 @@ function scRadar(A, us, opp){
 // opts.noVals: sotto la voce solo il nome, senza i due valori. opts.ticks: ogni asse ha la sua scala con i numeri sulle tacche (4 cerchi, valori interi): il bordo = 4 × passo, passo = max dei due / 4 arrotondato in su
 function radar2(rows, title, sub, us, opp, opts={}){
   // opts.big: disegno più grande (viewBox più stretto = tutto più ingrandito sullo schermo), nomi delle voci centrati sopra/sotto la punta dell'asse
-  const big = !!opts.big, W = big ? 320 : 340, H = big ? 300 : 270, cx = W/2, cy = big ? 150 : 140, R = big ? 100 : 88, n = rows.length;
+  const big = !!opts.big, W = big ? 320 : 340, H = big ? 330 : 270, cx = W/2, cy = big ? 165 : 140, R = big ? 100 : 88, n = rows.length;
   const pt = (i, r) => { const ang = -Math.PI/2 + i*2*Math.PI/n; return [cx + r*Math.cos(ang), cy + r*Math.sin(ang)]; };
   const data = rows.map(d=>{ const m = Math.max(d.u, d.t, 1); return {...d, m: opts.ticks ? 4*Math.ceil(m/4) : m}; });
   // numeri della scala: mai sotto un pallino o una linea colorata. Per ogni numero si prova di lato all'asse (+, poi −, poi più lontano) e si tiene
   // il primo posto in cui il riquadro del testo non tocca nessun pallino; vengono disegnati sopra a tutto, con un bordo del colore di fondo.
-  const labAt = i => { const [x,y] = pt(i, R+12), up = y < cy - 1, top = Math.abs(x-cx) < 6; return [x, y + (top ? (up ? -4 : 14) : (up ? -8 : 18))]; };
+  const labAt = i => { const [x,y] = pt(i, R+28),   // nomi delle voci staccati dal grafico
+    up = y < cy - 1, top = Math.abs(x-cx) < 6; return [x, y + (top ? (up ? -4 : 14) : (up ? -8 : 18))]; };
   const boxes = !(opts.ticks && big) ? [] : data.map((d,i)=>{ const [x,y] = labAt(i), w = d.l.length*13*0.58; return [x - w/2, y - 11, x + w/2, y + 3]; });   // riquadri dei nomi
   const segs = !opts.ticks ? [] : ['u','t'].flatMap(k=>data.map((d,i)=>{ const a = pt(i, R*d[k]/d.m), j = (i+1) % n, b = pt(j, R*data[j][k]/data[j].m); return [...a, ...b]; }));
   const dotR = big ? 5 : 4, fs = big ? 10.5 : 8.5, dotPts = !opts.ticks ? [] : data.flatMap((d,i)=>['u','t'].map(k=>pt(i, R*d[k]/d.m)));
