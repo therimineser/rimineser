@@ -353,7 +353,7 @@ function vsStatsSheet(eid){
   const cu = teamCards(L.team), co = teamCards(opN);
   const rows = [['Punti', U.pt, O.pt], ['Vittorie', U.v, O.v], ['Gol fatti', U.gf, O.gf], ['Gol subiti', U.gs, O.gs], ['Ammonizioni', cu.amm||0, co.amm||0], ['Disciplina', U.cd||0, O.cd||0]];
   // solo il grafico (scelta dell'amministratore): ragnatele sovrapposte + legenda, valori sotto ogni voce
-  openSheet(`${head('📊 Statistiche')}${radar2(rows.map(([l,u,t])=>({l,u,t})), '', '', usN, opN)}`);
+  openSheet(`${head('Statistiche')}${radar2(rows.map(([l,u,t])=>({l,u,t})), '', '', usN, opN)}`);
 }
 function vStats(L){
   const teams = L.standings.map(r=>r.team);
@@ -424,7 +424,7 @@ function vHome(){
     <div class="row mute" style="gap:6px"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s7-6.5 7-12a7 7 0 0 0-14 0c0 5.5 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg>${esc(nx.location||'Campo da definire')}</div>
     ${rsvpBtns(nx.id)}${bar(nx.id, true)}
     <div class="btns"><button class="sec" style="flex:1" data-act="who" data-e="${esc(nx.id)}">Presenti (${pres})</button>${isM?`<button class="pri" style="flex:1" data-act="openLu" data-e="${esc(nx.id)}">${nLu>1?'Formazioni ('+nLu+')':'Formazione'}</button>`:''}</div>
-    ${isM && teamRow(nx.opponent) ? `<button class="sec" data-act="vsStats" data-e="${esc(nx.id)}">📊 Statistiche delle due squadre</button>` : ''}
+    ${isM && teamRow(nx.opponent) ? `<button class="sec" data-act="vsStats" data-e="${esc(nx.id)}">Statistiche delle due squadre</button>` : ''}
     <button class="lnk" style="align-self:flex-end;min-height:32px" data-act="go" data-t="presenze">Tutte le presenze ›</button></section>`; }
   const lp = ourPos(); if (lp) h += `<button class="card" style="flex-direction:row;align-items:center;border:0;text-align:left;width:100%" data-act="go" data-t="campionato"><span class="num" style="width:46px;height:46px;font-size:24px">${lp.pos}°</span><span style="flex:1;min-width:0"><b>Campionato UISP · ${lp.pt} punti</b><br><span class="mute" style="white-space:nowrap;font-size:13.5px">${lp.v} vinte · ${lp.n} pareggiate · ${lp.p} perse</span></span>›</button>`;
   if (!nx) h += `<section class="card dark"><span class="lab" style="color:#FF4D5E">CALENDARIO</span><p class="txt">Nessun evento in programma.${S.coach?' Aggiungilo dal Calendario.':''}</p></section>`;
