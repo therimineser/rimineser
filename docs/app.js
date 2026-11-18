@@ -1007,7 +1007,7 @@ function shell(){
 function vLogin(){
   const m = S.login;
   return `<div class="login"><img src="icons/logo-256.png" alt="Logo The Rimineser F.P." width="220" height="220"><h1>${m==='up'?'Entra in squadra':m==='reset'?'Recupera password':'Bentornato'}</h1>
-  <button class="lvbtn" data-act="guestOn">📡 Segui la partita in diretta<small>senza registrarti</small></button>
+  <button class="lvbtn" data-act="guestOn">Segui la partita in diretta<small>senza registrarti</small></button>
   <form data-form="auth" novalidate>
     ${m==='up'?`<label>Nome e cognome<input name="nome" autocomplete="name" required></label><label>Entro in squadra come${catSel('giocatore', false)}</label>`:''}
     <label>Email<input type="email" name="email" autocomplete="email" required></label>
