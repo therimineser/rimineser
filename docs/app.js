@@ -344,6 +344,27 @@ function hbars(rows, opts){
   const max = Math.max(1, ...rows.map(r=>r.v));
   return `<div class="hb" role="list">${rows.map(r=>`<div class="hbr ${r.sel?'sel':''}" role="listitem" title="${esc(r.name)}: ${r.v} ${opts.unit}"><span class="hbn">${esc(r.name)}</span><span class="hbt"><i style="width:${Math.max(r.v?3:0, r.v/max*100)}%;background:${r.sel?opts.on:opts.off}"></i></span><b class="hbv">${r.v}</b></div>`).join('')}</div>`;
 }
+// statistiche di campionato (UISP) di una squadra: riga di classifica + cartellini + capocannoniere
+function teamRow(name){ const L = LG(); if (!L || !name) return null; const i = L.standings.findIndex(r=>norm(r.team)===norm(name)); return i < 0 ? null : {pos:i+1, ...L.standings[i]}; }
+function teamCards(name){ const L = LG(), c = L && L.cards ? Object.entries(L.cards).find(([t])=>norm(t)===norm(name)) : null; return c ? c[1] : {amm:0, esp:0}; }
+function teamTop(name){ const L = LG(), a = (L && L.scorers || []).filter(x=>norm(x.team)===norm(name)).sort((x,y)=>y.goals-x.goals); return a.length ? a.filter(x=>x.goals===a[0].goals) : []; }
+const tShort = n => String(n||'').replace(/^(the|a\.?c\.?)\s+/i,'').replace(/\s+(f\.?\s?p\.?|f\.?c\.?|calcio)$/i,'').trim() || n;
+function vsStatsSheet(eid){
+  const e = S.events.find(v=>v.id===eid), L = LG(); if (!e || !L) return;
+  const usN = TEAM(), opN = e.opponent || 'Avversario', U = teamRow(L.team), O = teamRow(opN); if (!U || !O) return toast('Statistiche non disponibili per questa squadra');
+  const cu = teamCards(L.team), co = teamCards(opN);
+  const rows = [['Punti', U.pt, O.pt], ['Vittorie', U.v, O.v], ['Gol fatti', U.gf, O.gf], ['Gol subiti', U.gs, O.gs], ['Ammonizioni', cu.amm||0, co.amm||0], ['Disciplina', U.cd||0, O.cd||0]];
+  const top = n => { const t = teamTop(n); return t.length ? t.map(x=>esc(x.name)).join(', ')+` (${t[0].goals})` : '—'; };
+  const line = (l, a, b) => `<tr><td>${l}</td><td>${a}</td><td>${b}</td></tr>`;
+  openSheet(`${head('📊 Statistiche')}
+    <p class="mute" style="margin:0">${esc(usN)} <b style="color:var(--red)">vs</b> ${esc(opN)} · campionato UISP${L.updated?' · aggiornato al '+esc(new Date(L.updated).toLocaleDateString('it-IT',{day:'numeric',month:'short'})):''}</p>
+    ${radar2(rows.map(([l,u,t])=>({l,u,t})), 'Le due squadre a confronto', `Ragnatele sovrapposte: ogni raggio arriva al bordo con il più alto dei due. Sotto ogni voce: ${esc(tShort(usN))} · ${esc(tShort(opN))}. Gol subiti, ammonizioni e disciplina: meno è meglio.`, usN, opN)}
+    <p class="sc-tip mute" id="scTip" aria-live="polite">Tocca un punto per vedere il valore.</p>
+    <table class="sc-tab"><thead><tr><th></th><th>${esc(tShort(usN))}</th><th>${esc(tShort(opN))}</th></tr></thead><tbody>
+      ${line('Posizione', U.pos+'°', O.pos+'°')}${line('Partite', U.g, O.g)}${line('V · N · P', `${U.v} · ${U.n} · ${U.p}`, `${O.v} · ${O.n} · ${O.p}`)}
+      ${line('Gol fatti · subiti', `${U.gf} · ${U.gs}`, `${O.gf} · ${O.gs}`)}${line('Ammonizioni · espulsioni', `${cu.amm||0} · ${cu.esp||0}`, `${co.amm||0} · ${co.esp||0}`)}
+      ${line('Capocannoniere', top(L.team), top(opN))}</tbody></table>`);
+}
 function vStats(L){
   const teams = L.standings.map(r=>r.team);
   if (!S.steam || !teams.includes(S.steam)) S.steam = (L.standings.find(r=>isUs(r.team))||L.standings[0]||{}).team;
@@ -413,6 +434,7 @@ function vHome(){
     <div class="row mute" style="gap:6px"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s7-6.5 7-12a7 7 0 0 0-14 0c0 5.5 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg>${esc(nx.location||'Campo da definire')}</div>
     ${rsvpBtns(nx.id)}${bar(nx.id, true)}
     <div class="btns"><button class="sec" style="flex:1" data-act="who" data-e="${esc(nx.id)}">Presenti (${pres})</button>${isM?`<button class="pri" style="flex:1" data-act="openLu" data-e="${esc(nx.id)}">${nLu>1?'Formazioni ('+nLu+')':'Formazione'}</button>`:''}</div>
+    ${isM && teamRow(nx.opponent) ? `<button class="sec" data-act="vsStats" data-e="${esc(nx.id)}">📊 Statistiche delle due squadre</button>` : ''}
     <button class="lnk" style="align-self:flex-end;min-height:32px" data-act="go" data-t="presenze">Tutte le presenze ›</button></section>`; }
   const lp = ourPos(); if (lp) h += `<button class="card" style="flex-direction:row;align-items:center;border:0;text-align:left;width:100%" data-act="go" data-t="campionato"><span class="num" style="width:46px;height:46px;font-size:24px">${lp.pos}°</span><span style="flex:1;min-width:0"><b>Campionato UISP · ${lp.pt} punti</b><br><span class="mute" style="white-space:nowrap;font-size:13.5px">${lp.v} vinte · ${lp.n} pareggiate · ${lp.p} perse</span></span>›</button>`;
   if (!nx) h += `<section class="card dark"><span class="lab" style="color:#FF4D5E">CALENDARIO</span><p class="txt">Nessun evento in programma.${S.coach?' Aggiungilo dal Calendario.':''}</p></section>`;
@@ -779,16 +801,20 @@ const SC_SHOTS = ['on_in','on_out','off_in','off_out','blk','goal'];
 function scRadar(A, us, opp){
   const axes = [['Gol',['goal']],['Tiri',SC_SHOTS],['In porta',['on_in','on_out','goal']],['Angoli',['corner']],['Parate',['save']],['Falli',['foul']]];
   const val = (t, ks) => A.filter(a=>a.t===t && ks.includes(a.k)).length;
-  const W = 340, H = 270, cx = 170, cy = 140, R = 88, n = axes.length;
+  return radar2(axes.map(([l,ks])=>({l, u:val('us',ks), t:val('them',ks)})), 'Confronto con l\'avversario', `Ogni raggio: il più alto dei due arriva al bordo. Sotto ogni voce: ${esc(us)} · ${esc(opp)}.`, us, opp);
+}
+// radar con due squadre sovrapposte (rosso = The Rimineser, blu = avversario); data = [{l, u, t}], ogni raggio normalizzato sul più alto dei due
+function radar2(rows, title, sub, us, opp){
+  const W = 340, H = 270, cx = 170, cy = 140, R = 88, n = rows.length;
   const pt = (i, r) => { const ang = -Math.PI/2 + i*2*Math.PI/n; return [cx + r*Math.cos(ang), cy + r*Math.sin(ang)]; };
-  const data = axes.map(([l,ks])=>({l, u:val('us',ks), t:val('them',ks)})).map(d=>({...d, m:Math.max(d.u, d.t, 1)}));
+  const data = rows.map(d=>({...d, m:Math.max(d.u, d.t, 1)}));
   const poly = key => data.map((d,i)=>pt(i, R*d[key]/d.m).map(v=>v.toFixed(1)).join(',')).join(' ');
   const grid = [0.25,0.5,0.75,1].map(f=>`<polygon points="${data.map((_,i)=>pt(i,R*f).map(v=>v.toFixed(1)).join(',')).join(' ')}" class="sc-grid"/>`).join('')
     + data.map((_,i)=>{ const [x,y]=pt(i,R); return `<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" class="sc-grid"/>`; }).join('');
   const lab = data.map((d,i)=>{ const [x,y]=pt(i,R+22); const anc = Math.abs(x-cx)<6 ? 'middle' : x>cx ? 'start' : 'end';
     return `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="${anc}" class="sc-ax"><tspan font-weight="700">${d.l}</tspan><tspan x="${x.toFixed(1)}" dy="13">${d.u} · ${d.t}</tspan></text>`; }).join('');
   const dots = key => data.map((d,i)=>{ const [x,y]=pt(i, R*d[key]/d.m); return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4" class="sc-dot ${key==='u'?'us':'them'}"/><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="14" fill="transparent" data-act="scTip" data-tip="${esc(d.l)}: ${key==='u'?esc(us)+' '+d.u:esc(opp)+' '+d.t}"/>`; }).join('');
-  return `<figure class="sc-fig"><figcaption><b>Confronto con l'avversario</b><span class="mute">Ogni raggio: il più alto dei due arriva al bordo. Sotto ogni voce: ${esc(us)} · ${esc(opp)}.</span></figcaption>
+  return `<figure class="sc-fig"><figcaption><b>${title}</b><span class="mute">${sub}</span></figcaption>
     <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Radar: ${data.map(d=>`${d.l} ${d.u} a ${d.t}`).join(', ')}">${grid}
       <polygon points="${poly('t')}" class="sc-area them"/><polygon points="${poly('u')}" class="sc-area us"/>${dots('t')}${dots('u')}${lab}</svg>
     <div class="sc-legend"><span><i class="us"></i>${esc(us)}</span><span><i class="them"></i>${esc(opp)}</span></div></figure>`;
@@ -960,6 +986,7 @@ const ACT = {
     if (d.id) { const b = {...a, [d.f]: d.id}; x.acts[+d.i] = b; draw();
       await write(()=>updateDoc(D('scout/'+x.eid), {acts: arrayRemove(a)})); await write(()=>updateDoc(D('scout/'+x.eid), {acts: arrayUnion(b)})); id = b.id; }
     if (d.f==='p' && a.k==='goal') scAskHow(x.acts.findIndex(z=>z.id===id)); },
+  vsStats: d => vsStatsSheet(d.e),
   scTip: d => { const el = document.getElementById('scTip'); if (el) el.textContent = d.tip; },
   scEditLu: d => { if (!scMine(S.scout)) return; S.fe = d.e; S.draft = null; S.tab = 'formazione'; history.replaceState(null,'','#formazione'); draw(); scrollTo(0,0); },
   scSubStart: () => { if (scMine(S.scout)) scSubSheet('out'); },
