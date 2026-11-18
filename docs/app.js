@@ -351,13 +351,18 @@ function vsStatsSheet(eid){
   const usN = TEAM(), opN = e.opponent || 'Avversario', U = teamRow(L.team), O = teamRow(opN); if (!U || !O) return toast('Statistiche non disponibili per questa squadra');
   const avg = (x, g) => g ? Math.round(x/g*10)/10 : 0;   // media a partita, 1 decimale
   const rows = [['Punti', U.pt, O.pt], ['Vittorie', U.v, O.v], ['Pareggi', U.n, O.n], ['Sconfitte', U.p, O.p], ['Gol fatti\na partita', avg(U.gf, U.g), avg(O.gf, O.g)], ['Gol subiti\na partita', avg(U.gs, U.g), avg(O.gs, O.g)]];
-  // istogramma a barre VERTICALI (scelta dell'amministratore, al posto del radar): per ogni voce due barre affiancate, rossa The Rimineser
-  // e blu avversario, alte in proporzione al più alto dei due (ogni voce ha la sua scala; la più alta = 150 px), con il valore sopra e il nome sotto
-  const nf = v => Number.isInteger(v) ? String(v) : v.toLocaleString('it-IT', {maximumFractionDigits:1});
-  const bar = (cls, v, m, who) => `<div class="vs-c"><b>${nf(v)}</b><i class="${cls}" style="height:${v && m ? Math.max(3, v/m*150).toFixed(1) : 0}px"></i><span class="sr">${esc(who)}</span></div>`;
+  // istogramma a barre VERTICALI (scelta dell'amministratore, al posto del radar), helper colBars
   openSheet(`${head('Statistiche')}<div class="sc-legend"><span><i class="us"></i>${esc(usN)}</span><span><i class="them"></i>${esc(opN)}</span></div>
-    <div class="vs-bars" role="list">${rows.map(([l,u,t])=>{ const m = Math.max(u, t);
-      return `<div class="vs-g" role="listitem" aria-label="${esc(l.replace('\n',' '))}: ${esc(usN)} ${nf(u)}, ${esc(opN)} ${nf(t)}"><div class="vs-p">${bar('us', u, m, usN)}${bar('them', t, m, opN)}</div><span class="vs-l">${esc(l).replace('\n','<br>')}</span></div>`; }).join('')}</div>`);
+    ${colBars(rows.map(([l,u,t])=>[l, [u, t]]), [usN, opN], 150)}`);
+}
+/* istogramma a barre verticali: rows = [[nome (\n = a capo), [valore noi, valore avversario?]]]; una colonna per voce,
+   barre affiancate (rossa noi, blu avversario), alte in proporzione al più alto della colonna (ogni voce ha la sua scala),
+   valore sopra e nome sotto; basi allineate. names = nomi delle serie (per chi usa il lettore di schermo). */
+function colBars(rows, names, hmax, common){   // common: una sola scala per tutto il grafico (serve con una serie sola)
+  const nf = v => Number.isInteger(v) ? String(v) : v.toLocaleString('it-IT', {maximumFractionDigits:1}), cls = ['us','them'];
+  const bar = (v, m, k) => `<div class="vs-c"><b>${nf(v)}</b><i class="${cls[k]}" style="height:${v && m ? Math.max(3, v/m*hmax).toFixed(1) : 0}px"></i><span class="sr">${esc(names[k]||'')}</span></div>`;
+  return `<div class="vs-bars" role="list" style="grid-template-columns:repeat(${rows.length},1fr)">${rows.map(([l,vs])=>{ const m = common ? Math.max(...rows.flatMap(r=>r[1])) : Math.max(...vs);
+    return `<div class="vs-g" role="listitem" aria-label="${esc(l.replace('\n',' '))}: ${vs.map((v,k)=>`${esc(names[k]||'')} ${nf(v)}`).join(', ')}"><div class="vs-p" style="height:${hmax+20}px">${vs.map((v,k)=>bar(v,m,k)).join('')}</div><span class="vs-l">${esc(l).replace('\n','<br>')}</span></div>`; }).join('')}</div>`;
 }
 function vStats(L){
   const teams = L.standings.map(r=>r.team);
@@ -699,24 +704,22 @@ function vScouting(){
       <button class="${L?'lnk':'pri'}" data-act="scEditLu" data-e="${esc(e.id)}">${L?'✏️ Modifica formazione':'✏️ Inserisci formazione'}</button></div>`;
     if (locked && L) h += `<span class="mute" style="font-size:13px">🔒 Formazione bloccata (5 ore dopo l'inizio).</span>`;
     h += `</section>`; }
-  // riepilogo per tempo
-  const pct = (a,b) => a+b ? Math.round(a/(a+b)*100)+'%' : '–';
-  const cols = [1,2,0];   // 1T, 2T, totale
-  const val = (f) => cols.map(x=>`<td>${f(x||null)}</td>`).join('');
-  const shots = (t,h) => ['on_in','on_out','off_in','off_out','blk'].reduce((n,k)=>n+scCount(A,k,t,h),0);
-  const onT = (t,h) => scCount(A,'on_in',t,h)+scCount(A,'on_out',t,h);
-  const rows = [
-    ['Passaggi riusciti', h=>`${scCount(A,'pass_ok','us',h)}/${scCount(A,'pass_ok','us',h)+scCount(A,'pass_ko','us',h)}<br><span class="mute">${pct(scCount(A,'pass_ok','us',h),scCount(A,'pass_ko','us',h))}</span>`],
-    ['Tiri in porta / totali', h=>`${onT('us',h)}/${shots('us',h)} · ${onT('them',h)}/${shots('them',h)}`],
-    ['Tiri da area · fuori', h=>`${scCount(A,'on_in','us',h)+scCount(A,'off_in','us',h)} · ${scCount(A,'on_out','us',h)+scCount(A,'off_out','us',h)}`],
-    ['Palle recuperate · perse', h=>`${scCount(A,'recov','us',h)} · ${scCount(A,'lost','us',h)}`],
-    ['Angoli', h=>`${scCount(A,'corner','us',h)} · ${scCount(A,'corner','them',h)}`],
-    ['Falli', h=>`${scCount(A,'foul','us',h)} · ${scCount(A,'foul','them',h)}`],
-    ['Parate', h=>`${scCount(A,'save','us',h)} · ${scCount(A,'save','them',h)}`]
-  ];
+  // riepilogo per tempo: istogrammi verticali (scelta dell'amministratore, al posto della tabella); 1° T / 2° T / Tot. con i tasti
+  const sh = [1,2,0].includes(S.scSumH) ? S.scSumH : 0, hh = sh || null;
+  const shots = (t,h) => ['on_in','on_out','off_in','off_out','blk','goal'].reduce((n,k)=>n+scCount(A,k,t,h),0);
+  const onT = (t,h) => scCount(A,'on_in',t,h)+scCount(A,'on_out',t,h)+scCount(A,'goal',t,h);
+  const both = (k) => [scCount(A,k,'us',hh), scCount(A,k,'them',hh)];
+  const vsRows = [['Tiri', [shots('us',hh), shots('them',hh)]], ['In porta', [onT('us',hh), onT('them',hh)]], ['Angoli', both('corner')], ['Falli', both('foul')], ['Parate', both('save')]];
+  const usRows = [['Passaggi\nriusciti', [scCount(A,'pass_ok','us',hh)]], ['Passaggi\nerrati', [scCount(A,'pass_ko','us',hh)]], ['Recuperi', [scCount(A,'recov','us',hh)]],
+    ['Palle\nperse', [scCount(A,'lost','us',hh)]], ['Tiri\nda area', [scCount(A,'on_in','us',hh)+scCount(A,'off_in','us',hh)]], ['Tiri fuori\narea', [scCount(A,'on_out','us',hh)+scCount(A,'off_out','us',hh)]]];
+  const pOk = scCount(A,'pass_ok','us',hh), pKo = scCount(A,'pass_ko','us',hh);
   const scorers = A.filter(a=>a.k==='goal' && a.t==='us'), subs = A.filter(a=>a.k==='sub');
-  h += `<section class="card"><span class="lab">RIEPILOGO</span><span class="mute" style="font-size:13px">Dove ci sono due numeri: ${esc(TEAM())} · ${opp}</span>
-    <div style="overflow-x:auto"><table class="sc-tab"><thead><tr><th></th><th>1° T</th><th>2° T</th><th>Tot.</th></tr></thead><tbody>${rows.map(([l,f])=>`<tr><td>${l}</td>${val(f)}</tr>`).join('')}</tbody></table></div>
+  h += `<section class="card"><span class="lab">RIEPILOGO</span>
+    <div class="vs-tabs" role="group" aria-label="Tempo">${[[1,'1° T'],[2,'2° T'],[0,'Tot.']].map(([v,l])=>`<button class="${sh===v?'on':''}" aria-pressed="${sh===v}" data-act="scSum" data-h="${v}">${l}</button>`).join('')}</div>
+    <div class="sc-legend"><span><i class="us"></i>${us}</span><span><i class="them"></i>${opp}</span></div>
+    ${colBars(vsRows, [TEAM(), e.opponent||'Avversari'], 110)}
+    <b style="margin-top:6px">${us}</b>${pOk+pKo?`<span class="mute" style="font-size:13px">Passaggi riusciti: ${Math.round(pOk/(pOk+pKo)*100)}%</span>`:''}
+    ${colBars(usRows, [TEAM()], 110, true)}
     ${scorers.length?`<div><b>Marcatori</b><div class="sc-log">${scorers.map(a=>`<div><b>${a.h}T ${scMin(a.s)}'</b> ${a.p?esc(nameOf(a.p)):'gol'}${a.k==='goal'&&scGoalNote(a)?' ('+esc(scGoalNote(a))+')':''}</div>`).join('')}</div></div>`:''}
     ${subs.length?`<div><b>Sostituzioni</b><div class="sc-log">${subs.map(a=>`<div><b>${a.h}T ${scMin(a.s)}'</b> esce ${esc(nameOf(a.o))} · entra ${esc(nameOf(a.p))}</div>`).join('')}</div></div>`:''}
     ${A.length&&mine?`<button class="lnk" data-act="scReset">Azzera i dati di questa partita</button>`:''}</section>`;
@@ -1012,6 +1015,7 @@ const ACT = {
       await write(()=>updateDoc(D('scout/'+x.eid), {acts: arrayRemove(a)})); await write(()=>updateDoc(D('scout/'+x.eid), {acts: arrayUnion(b)})); id = b.id; }
     if (d.f==='p' && a.k==='goal') scAskHow(x.acts.findIndex(z=>z.id===id)); },
   vsStats: d => vsStatsSheet(d.e),
+  scSum: d => { S.scSumH = +d.h; draw(); },
   scTip: d => { const el = document.getElementById('scTip'); if (el) el.textContent = d.tip; },
   scEditLu: d => { if (!scMine(S.scout)) return; S.fe = d.e; S.draft = null; S.tab = 'formazione'; history.replaceState(null,'','#formazione'); draw(); scrollTo(0,0); },
   scSubStart: () => { if (scMine(S.scout)) scSubSheet('out'); },
