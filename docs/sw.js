@@ -1,6 +1,6 @@
 // Service worker: rende l'app installabile e apribile anche con rete debole.
 // I dati della squadra li gestisce Firebase (con la sua cache offline).
-const CACHE = 'rimineser-v78';
+const CACHE = 'rimineser-v79';
 const SHELL = ['./', './index.html', './app.js', './firebase-config.js', './campionato.json', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/logo-256.png', './icons/favicon.png'];
 
@@ -26,14 +26,20 @@ self.addEventListener('push', e => {
   let p = {};
   try { p = e.data ? e.data.json() : {}; } catch (_) { p = { data: { body: e.data && e.data.text() } }; }
   const d = p.data || p.notification || p;
+  // nuovo evento: tasti "Presente" / "Assente" (Android e Chrome ne mostrano al massimo 2; su iPhone niente tasti: si tocca la notifica)
+  const ev = d.rsvp && d.eid;
   e.waitUntil(self.registration.showNotification(d.title || 'The Rimineser F.P.', {
     body: d.body || '', icon: 'icons/icon-192.png', badge: 'icons/badge.png',
-    tag: d.tag || undefined, data: { url: d.url || '#home' }
+    tag: d.tag || undefined, data: { url: d.url || '#home', eid: ev ? d.eid : '' },
+    ...(ev ? { actions: [{ action: 'si', title: '✅ Presente' }, { action: 'no', title: '❌ Assente' }] } : {})
   }));
 });
 self.addEventListener('notificationclick', e => {
   e.notification.close();
-  const url = new URL((e.notification.data && e.notification.data.url) || '#home', self.registration.scope).href;
+  const nd = e.notification.data || {}, eid = nd.eid ? encodeURIComponent(nd.eid) : '';
+  // tasto Presente/Assente → l'app salva la risposta; tocco sul testo → l'app apre quell'evento nelle Presenze (anche "Presente come dirigenza")
+  const hash = eid && (e.action === 'si' || e.action === 'no') ? `#r=${eid}&v=${e.action}` : eid ? `#ev=${eid}` : (nd.url || '#home');
+  const url = new URL(hash, self.registration.scope).href;
   e.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
     for (const c of list) { if (c.url.startsWith(self.registration.scope)) { c.navigate(url).catch(() => {}); return c.focus(); } }
     return clients.openWindow(url);

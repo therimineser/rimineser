@@ -132,6 +132,8 @@ check(eq(who(await go('ping'), 'promemoria'), ['f1', 'm1', 'p3', 'p4']), 'Promem
 base(T0); get('tokens/p3').prefs = { events: false }; put('outbox/e', { kind: 'event', eventId: 'ev2', by: 'p2', title: '📅 Nuovo allenamento', body: 'Allenamento · gio 20 nov', sent: false });
 s = await go('ping');
 check(eq(who(s, 'Nuovo allenamento'), ['admin', 'c1', 'f1', 'm1', 'p4']), 'Nuovo evento: a tutti, non a chi l\'ha creato (p2) né a chi ha spento "Nuovi eventi" (p3)', who(s));
+check(s.filter(([, d]) => d.title.includes('Nuovo allenamento')).every(([, d]) => d.eid === 'ev2' && d.rsvp === '1'), 'Nuovo evento: la notifica porta l\'id dell\'evento per i tasti Presente/Assente');
+check(!(await go()).length, 'Nuovo evento: non reinviato');
 base(T0); put('outbox/e', { kind: 'event', by: 'admin_g', title: '📅 Nuova partita', sent: false });
 check(!who(await go('ping'), 'Nuova partita').includes('admin'), 'Nuovo evento creato dall\'admin col profilo giocatore: non arriva all\'admin');
 // due giri contemporanei (chiamata dell'app + minuto): nessun doppione

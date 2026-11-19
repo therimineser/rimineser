@@ -119,7 +119,9 @@ check(who(run(), 'promemoria') == ['f1', 'm1', 'p3', 'p4'], 'Promemoria manuale:
 
 base(NOW); DB['tokens/p3']['prefs'] = {'events': False}
 DB['outbox/e'] = {'kind': 'event', 'eventId': 'ev2', 'by': 'p2', 'title': '📅 Nuovo allenamento', 'sent': False}
-check(who(run(), 'Nuovo allenamento') == ['admin', 'c1', 'f1', 'm1', 'p4'], 'Nuovo evento: a tutti, non a chi l\'ha creato né a chi ha spento "Nuovi eventi"')
+s = run()
+check(who(s, 'Nuovo allenamento') == ['admin', 'c1', 'f1', 'm1', 'p4'], 'Nuovo evento: a tutti, non a chi l\'ha creato né a chi ha spento "Nuovi eventi"')
+check(all(d.get('eid') == 'ev2' and d.get('rsvp') == '1' for _, d in s if 'Nuovo allenamento' in d.get('title', '')), 'Nuovo evento: la notifica porta l\'id dell\'evento (tasti Presente/Assente)')
 
 # 3. promemoria partite 24/12/2 ore
 def match_setup(now, answers):

@@ -121,7 +121,7 @@ export async function run(env, opt) {
       }
       if (kind === 'test') { const c = await coaches(); targets = targets.filter(u => c.includes(u)); }
       if (kind === 'event' && o.by) targets = targets.filter(u => u !== o.by && u + '_g' !== o.by);   // non a chi ha creato l'evento
-      const n = await send(targets, { title: o.title || 'The Rimineser F.P.', body: o.body || '', url: o.url || '#home', tag: kind + '-' + oid }, PREF_OF[kind]);
+      const n = await send(targets, { title: o.title || 'The Rimineser F.P.', body: o.body || '', url: o.url || '#home', tag: kind + '-' + oid, ...(kind === 'event' && o.eventId ? { eid: o.eventId, rsvp: '1' } : {}) }, PREF_OF[kind]);   // rsvp: tasti Presente/Assente
       const wait = typeof o.createdAt === 'number' && o.createdAt > 0 ? ` (in coda da ${Math.max(0, Math.round((nowMs - o.createdAt) / 1000))} s)` : '';
       log(`Coda: "${o.title || ''}" → ${n} telefoni${wait}`);
     }

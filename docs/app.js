@@ -460,7 +460,7 @@ function vPresenze(){
   const ev = upcoming().slice(0,8);
   if (!ev.length) return `<h2>Presenze</h2><div class="empty">Nessun evento in arrivo.</div>`;
   return `<h2>Presenze</h2>` + ev.map(e=>{
-    return `<section class="card"><div class="row sp"><span class="chip ${e.type==='partita'?'partita':''}">${e.type==='partita'?'Partita':'Allenamento'}</span><span class="mute">${esc(fmtD(e))} · ${esc(timesTxt(e))}</span></div>
+    return `<section class="card" id="ev-${esc(e.id)}"><div class="row sp"><span class="chip ${e.type==='partita'?'partita':''}">${e.type==='partita'?'Partita':'Allenamento'}</span><span class="mute">${esc(fmtD(e))} · ${esc(timesTxt(e))}</span></div>
     <h3>${esc(evName(e))}</h3>${rsvpBtns(e.id)}${bar(e.id)}
     <details><summary>Presenti</summary>
       ${attendees(e,true)}
@@ -1042,6 +1042,17 @@ function draw(){
     h += ({home:vHome,presenze:vPresenze,formazione:vFormazione,calendario:vCalendario,campionato:vCampionato,archivio:vArchivio,rosa:vRosa,impostazioni:vImpostazioni,scouting:vScouting,live:vLive}[S.tab]||vHome)();
   }
   $('#app').innerHTML = h;
+  notifAnswer();
+}
+// risposta arrivata dal tasto della notifica (Presente/Assente): la salva per chi risponde (profilo giocatore), poi mostra l'evento
+function notifAnswer(){
+  const n = S.fromNotif; if (!n || S.phase!=='app' || !['events','rsvp'].every(k=>S.loaded.has(k))) return;
+  S.fromNotif = null; const e = S.events.find(x=>x.id===n.e);
+  if (!e) return toast('Evento non trovato');
+  if (n.v) { const id = actId();
+    write(()=>setDoc(D('rsvp/'+id), {answers:{[n.e]: n.v}, roles:{[n.e]: deleteField()}}, {merge:true}));
+    toast(`${n.v==='si'?'✅ Presente':'❌ Assente'} · ${evName(e)} ${fmtD(e)}`); }
+  setTimeout(()=>{ const c = document.getElementById('ev-'+n.e); if (c) { c.scrollIntoView({block:'center'}); c.classList.add('flash'); setTimeout(()=>c.classList.remove('flash'), 1800); } }, 50);
 }
 document.addEventListener('focusout', ()=>setTimeout(()=>{ if (S.pending) draw(); }, 400));
 
@@ -1229,6 +1240,8 @@ document.addEventListener('change', e=>{ const t=e.target, c=t.dataset.ch; if (!
 });
 document.addEventListener('input', e=>{ const k=e.target.dataset.in, L=S.draft&&S.draft.items[S.draft.idx]; if (!L) return; if (k==='tac') L.tactic = e.target.value; if (k==='luname') L.name = e.target.value; if (k==='tac'||k==='luname') S.draft.dirty = true; });
 addEventListener('beforeinstallprompt', e=>{ e.preventDefault(); installEvt = e; if (S.phase==='app') draw(); });
-const fromHash = () => { const h=location.hash.slice(1); if (h==='live' && S.phase!=='app') { S.guest = true; draw(); }   // link #live: diretta anche senza account
+const fromHash = () => { const h=location.hash.slice(1);
+  // dalla notifica di un nuovo evento: #r=<evento>&v=si|no (tasto) oppure #ev=<evento> (tocco sul testo)
+  if (/^(r|ev)=/.test(h)) { const q = new URLSearchParams(h); S.fromNotif = {e:q.get('r')||q.get('ev'), v:['si','no'].includes(q.get('v'))?q.get('v'):''}; S.tab = 'presenze'; history.replaceState(null,'','#presenze'); if (S.phase==='app') draw(); return; } if (h==='live' && S.phase!=='app') { S.guest = true; draw(); }   // link #live: diretta anche senza account
   if (['home','presenze','formazione','calendario','campionato','archivio','rosa','impostazioni','scouting','live'].includes(h)) { S.tab=h; if (S.phase==='app') draw(); } };
 addEventListener('hashchange', fromHash); fromHash();

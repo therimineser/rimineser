@@ -266,7 +266,10 @@ def main():
             targets = [u for u in everyone if u in (team.get('coaches') or [])]
         if kind == 'event' and o.get('by'):
             targets = [u for u in everyone if u != o['by'] and u + '_g' != o['by']]   # non a chi ha creato l'evento
-        n = sender.send(targets, {'title': o.get('title', 'The Rimineser F.P.'), 'body': o.get('body', ''), 'url': o.get('url', '#home'), 'tag': kind + '-' + oid}, PREF_OF.get(kind))
+        msg = {'title': o.get('title', 'The Rimineser F.P.'), 'body': o.get('body', ''), 'url': o.get('url', '#home'), 'tag': kind + '-' + oid}
+        if kind == 'event' and o.get('eventId'):
+            msg.update({'eid': o['eventId'], 'rsvp': '1'})   # tasti Presente/Assente sulla notifica
+        n = sender.send(targets, msg, PREF_OF.get(kind))
         ca = o.get('createdAt')
         log('Coda: "%s" → %d telefoni%s' % (o.get('title', ''), n, ' (in coda da %d min)' % ((dt.datetime.now().timestamp() * 1000 - ca) // 60000) if isinstance(ca, (int, float)) and ca > 0 else ''))
         st.patch('outbox/' + oid, {'sent': True, 'sentAt': int(dt.datetime.now().timestamp() * 1000)})
