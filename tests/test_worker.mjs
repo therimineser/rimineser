@@ -128,6 +128,12 @@ base(T0); put('events/ev', { type: 'partita', date: '2026-11-25', time: '21:00',
 put('rsvp/p2', { answers: { ev: 'no' } }); put('rsvp/c1', { answers: { ev: 'si' } }); put('rsvp/admin_g', { answers: { ev: 'forse' } });
 put('outbox/r', { kind: 'remind', eventId: 'ev', title: '⏰ promemoria', sent: false });
 check(eq(who(await go('ping'), 'promemoria'), ['f1', 'm1', 'p3', 'p4']), 'Promemoria manuale: solo a chi non ha risposto');
+// nuovo evento: a tutti tranne chi l'ha creato, rispetta la preferenza "Nuovi eventi"
+base(T0); get('tokens/p3').prefs = { events: false }; put('outbox/e', { kind: 'event', eventId: 'ev2', by: 'p2', title: '📅 Nuovo allenamento', body: 'Allenamento · gio 20 nov', sent: false });
+s = await go('ping');
+check(eq(who(s, 'Nuovo allenamento'), ['admin', 'c1', 'f1', 'm1', 'p4']), 'Nuovo evento: a tutti, non a chi l\'ha creato (p2) né a chi ha spento "Nuovi eventi" (p3)', who(s));
+base(T0); put('outbox/e', { kind: 'event', by: 'admin_g', title: '📅 Nuova partita', sent: false });
+check(!who(await go('ping'), 'Nuova partita').includes('admin'), 'Nuovo evento creato dall\'admin col profilo giocatore: non arriva all\'admin');
 // due giri contemporanei (chiamata dell'app + minuto): nessun doppione
 base(T0); put('outbox/a', { kind: 'post', title: 'Doppia', sent: false });
 SENT = []; await Promise.all([run(ENV, { mode: 'ping', now: NOW, fetch: counted(fakeFetch) }), run(ENV, { mode: 'cron', now: NOW, fetch: counted(fakeFetch) })]);

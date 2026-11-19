@@ -13,7 +13,7 @@ import { accessToken, Store, fcmSend } from './google.js';
 const MATCH_REMINDERS = [24, 12, 2];   // partite: ore prima dell'inizio
 const REMIND_FROM_HOUR = 12;           // allenamenti: il giorno prima, dalle 12
 const RESERVE = 6;                     // chiamate tenute da parte per le scritture finali
-const PREF_OF = { post: 'posts', poll: 'posts', lineup: 'lineup', remind: 'remind', uisp: 'uisp', test: null };
+const PREF_OF = { post: 'posts', poll: 'posts', lineup: 'lineup', remind: 'remind', uisp: 'uisp', event: 'events', test: null };
 // promemoria partita: scelta separata per 24/12/2 ore (r24, r12, r2); chi non l'ha ancora fatta segue la vecchia scelta "remind"
 const PREF_FALLBACK = { r24: 'remind', r12: 'remind', r2: 'remind' };
 export const prefOn = (p, k) => { p = p || {}; if (p[k] !== undefined) return p[k] !== false; return PREF_FALLBACK[k] ? p[PREF_FALLBACK[k]] !== false : true; };
@@ -120,6 +120,7 @@ export async function run(env, opt) {
         targets = targets.filter(u => ![u, u + '_g'].some(k => ((r[k] || {}).answers || {})[o.eventId]));
       }
       if (kind === 'test') { const c = await coaches(); targets = targets.filter(u => c.includes(u)); }
+      if (kind === 'event' && o.by) targets = targets.filter(u => u !== o.by && u + '_g' !== o.by);   // non a chi ha creato l'evento
       const n = await send(targets, { title: o.title || 'The Rimineser F.P.', body: o.body || '', url: o.url || '#home', tag: kind + '-' + oid }, PREF_OF[kind]);
       const wait = typeof o.createdAt === 'number' && o.createdAt > 0 ? ` (in coda da ${Math.max(0, Math.round((nowMs - o.createdAt) / 1000))} s)` : '';
       log(`Coda: "${o.title || ''}" → ${n} telefoni${wait}`);

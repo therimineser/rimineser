@@ -117,6 +117,10 @@ DB['rsvp/p2'] = {'answers': {'ev': 'no'}}; DB['rsvp/c1'] = {'answers': {'ev': 's
 DB['outbox/r'] = {'kind': 'remind', 'eventId': 'ev', 'title': '⏰ promemoria', 'sent': False}
 check(who(run(), 'promemoria') == ['f1', 'm1', 'p3', 'p4'], 'Promemoria manuale: solo a chi non ha risposto (admin risponde col profilo Giacomo)')
 
+base(NOW); DB['tokens/p3']['prefs'] = {'events': False}
+DB['outbox/e'] = {'kind': 'event', 'eventId': 'ev2', 'by': 'p2', 'title': '📅 Nuovo allenamento', 'sent': False}
+check(who(run(), 'Nuovo allenamento') == ['admin', 'c1', 'f1', 'm1', 'p4'], 'Nuovo evento: a tutti, non a chi l\'ha creato né a chi ha spento "Nuovi eventi"')
+
 # 3. promemoria partite 24/12/2 ore
 def match_setup(now, answers):
     base(now)

@@ -54,6 +54,7 @@ for (const u of ALL) {
   await t(`${u}: notifica "comunicazione" in coda`, can, () => addDoc(collection(db(u), 'outbox'), { kind: 'post', title: 't', body: 'b', sent: false }));
   await t(`${u}: notifica "formazione" in coda`, lu, () => addDoc(collection(db(u), 'outbox'), { kind: 'lineup', title: 't', body: 'b', sent: false }));
   await t(`${u}: notifica "promemoria presenze" in coda`, u === 'admin', () => addDoc(collection(db(u), 'outbox'), { kind: 'remind', eventId: 'ev', title: 't', body: 'b', sent: false }));
+  await t(`${u}: notifica "nuovo evento" in coda`, true, () => addDoc(collection(db(u), 'outbox'), { kind: 'event', eventId: 'ev', by: u, title: 't', body: 'b', sent: false }));
   await t(`${u}: notifica di prova`, u === 'admin', () => addDoc(collection(db(u), 'outbox'), { kind: 'test', title: 't', body: 'b', sent: false }));
   await t(`${u}: notifica senza tipo (= comunicazione)`, can, () => addDoc(collection(db(u), 'outbox'), { title: 't', body: 'b', sent: false }));
   await t(`${u}: notifica di tipo inventato`, false, () => addDoc(collection(db(u), 'outbox'), { kind: 'boh', title: 't', sent: false }));
