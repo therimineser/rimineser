@@ -257,7 +257,7 @@ function pitch(lu, sm){
 }
 
 /* ---------- notifiche ---------- */
-const PREFS = [['posts','Comunicazioni e sondaggi'],['lineup','Formazione pubblicata'],['r24','Promemoria partita 24 ore prima'],['r12','Promemoria partita 12 ore prima'],['r2','Promemoria partita 2 ore prima'],['remind','Promemoria allenamenti e presenze'],['uisp','Risultati e classifica UISP']];
+const PREFS = [['posts','Comunicazioni e sondaggi'],['events','Nuovi eventi (partite, allenamenti)'],['lineup','Formazione pubblicata'],['r24','Promemoria partita 24 ore prima'],['r12','Promemoria partita 12 ore prima'],['r2','Promemoria partita 2 ore prima'],['remind','Promemoria allenamenti e presenze'],['uisp','Risultati e classifica UISP']];
 // prima c'era un'unica scelta "remind" anche per le partite: chi l'aveva tolta resta senza promemoria partite finché non li riattiva
 const PREF_FALLBACK = { r24:'remind', r12:'remind', r2:'remind' };
 const prefOn = (p, k) => (p||{})[k] !== undefined ? p[k] !== false : PREF_FALLBACK[k] ? (p||{})[PREF_FALLBACK[k]] !== false : true;
@@ -1198,7 +1198,10 @@ const FORMS = {
     // se la partita viene spostata prima che inizi, il blocco delle formazioni segue il nuovo orario
     if (old.lockAt && !luLocked(old) && canLineup() && data.type==='partita') data.lockAt = lockAtFor(data);
     const ref = id ? D('events/'+id) : doc(C('events'));
-    if (await write(()=>setDoc(ref, data, {merge:true}), 'Evento salvato')) closeSheet(); },
+    if (await write(()=>setDoc(ref, data, {merge:true}), 'Evento salvato')) { closeSheet();
+      // evento NUOVO: notifica a tutti gli iscritti (non a chi l'ha creato); si spegne da Impostazioni → "Nuovi eventi"
+      if (!id) { const e = {...data, id:ref.id}; notifyTeam('event', `📅 ${data.type==='partita' ? 'Nuova partita' : data.type==='allenamento' ? 'Nuovo allenamento' : 'Nuovo evento'}`,
+        `${evName(e)} · ${fmtD(e)}${meetOf(e)?' · ritrovo '+meetOf(e):''}${data.time?' · inizio '+data.time:''}${data.location?' · '+data.location:''}`, '#calendario', {eventId:ref.id, by:S.uid}); } } },
   me: async f => { if (S.admin && /amministratore/i.test(val(f,'nome'))) return toast('Come giocatore usa il tuo nome, non "Amministratore".');
     const data={name:val(f,'nome'), number:val(f,'numero'), cat:val(f,'cat')||'giocatore'}; if (!data.name) return;
     const ok = S.admin ? await write(()=>setDoc(D('players/'+gid()), {...data, approved:true, owner:S.uid}, {merge:true}), 'Profilo giocatore salvato')

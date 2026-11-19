@@ -39,7 +39,7 @@ def pref_on(p, k):
     return p.get(PREF_FALLBACK[k]) is not False if k in PREF_FALLBACK else True
 
 
-PREF_OF = {'post': 'posts', 'poll': 'posts', 'lineup': 'lineup', 'remind': 'remind', 'uisp': 'uisp', 'test': None}
+PREF_OF = {'post': 'posts', 'poll': 'posts', 'lineup': 'lineup', 'remind': 'remind', 'uisp': 'uisp', 'event': 'events', 'test': None}
 
 
 def log(*a):
@@ -264,6 +264,8 @@ def main():
             targets = [u for u in everyone if not answered(u, o['eventId'])]
         if kind == 'test':
             targets = [u for u in everyone if u in (team.get('coaches') or [])]
+        if kind == 'event' and o.get('by'):
+            targets = [u for u in everyone if u != o['by'] and u + '_g' != o['by']]   # non a chi ha creato l'evento
         n = sender.send(targets, {'title': o.get('title', 'The Rimineser F.P.'), 'body': o.get('body', ''), 'url': o.get('url', '#home'), 'tag': kind + '-' + oid}, PREF_OF.get(kind))
         ca = o.get('createdAt')
         log('Coda: "%s" → %d telefoni%s' % (o.get('title', ''), n, ' (in coda da %d min)' % ((dt.datetime.now().timestamp() * 1000 - ca) // 60000) if isinstance(ca, (int, float)) and ca > 0 else ''))

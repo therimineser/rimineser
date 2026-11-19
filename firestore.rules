@@ -73,7 +73,7 @@ service cloud.firestore {
     match /outbox/{id} {
       // gli iscritti possono solo mettere in coda nuove notifiche; le invia e le segna il robot
       // ognuno può mettere in coda solo le notifiche che ha il diritto di mandare
-      allow create: if isMember() && request.resource.data.sent == false && outKind() in ['post', 'poll', 'lineup', 'remind', 'test']
+      allow create: if isMember() && request.resource.data.sent == false && outKind() in ['post', 'poll', 'lineup', 'remind', 'test', 'event']
                        && (!(outKind() in ['post', 'poll']) || canPost())
                        && (outKind() != 'lineup' || canLineup())
                        && (!(outKind() in ['test', 'remind']) || isAdmin());
