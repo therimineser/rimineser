@@ -1,0 +1,287 @@
+=== 2026-11-17 15:26:13 · avvio: push · esito: success
+    Fatto: 0 notifiche consegnate a Google.
+=== 2026-11-17 15:35:56 · avvio: schedule · esito: success
+    Fatto: 0 notifiche consegnate a Google.
+=== 2026-11-17 16:28:42 · avvio: schedule · esito: success
+    Fatto: 0 notifiche consegnate a Google.
+=== 2026-11-17 17:25:14 · avvio: workflow_dispatch · esito: success
+    Fatto: 0 notifiche consegnate a Google.
+=== 2026-11-17 17:28:09 · avvio: schedule · esito: success
+    Fatto: 0 notifiche consegnate a Google.
+=== 2026-11-17 17:28:52 · avvio: workflow_dispatch · esito: success
+    Fatto: 0 notifiche consegnate a Google.
+=== 2026-11-17 17:31:10 · avvio: workflow_dispatch · esito: success
+    Robot Cloudflare attivo (ultimo giro 49 s fa): qui niente da inviare.
+=== 2026-11-17 17:32:11 · avvio: workflow_dispatch · esito: success
+    Cloudflare: 2026-11-17 17:31:20 · cron · Coda: "🔔 Prova notifiche" → 1 telefoni (in coda da 23 s)
+    Cloudflare: 2026-11-17 17:31:20 · cron · Fatto: 1 notifiche consegnate a Google.
+    Robot Cloudflare attivo (ultimo giro 50 s fa): qui niente da inviare.
+=== 2026-11-17 17:34:15 · avvio: workflow_dispatch · esito: success
+    Robot Cloudflare attivo (ultimo giro 54 s fa): qui niente da inviare.
+=== 2026-11-17 17:35:05 · avvio: workflow_dispatch · esito: success
+    Cloudflare: 2026-11-17 17:34:21 · cron · Coda: "🔔 Prova notifiche" → 1 telefoni (in coda da 16 s)
+    Cloudflare: 2026-11-17 17:34:21 · cron · Fatto: 1 notifiche consegnate a Google.
+    Robot Cloudflare attivo (ultimo giro 44 s fa): qui niente da inviare.
+=== 2026-11-17 18:00:11 · avvio: push · esito: success
+    Cloudflare: 2026-11-17 17:38:39 · ping · Coda: "🔔 Prova notifiche" → 1 telefoni (in coda da 1 s)
+    Cloudflare: 2026-11-17 17:38:39 · ping · Fatto: 1 notifiche consegnate a Google.
+    Robot Cloudflare attivo (ultimo giro 50 s fa): qui niente da inviare.
+=== 2026-11-17 18:02:41 · avvio: workflow_dispatch · esito: success
+    Cloudflare: 2026-11-17 18:00:20 · cron · Notifica di esempio "undefined" → 1 telefoni
+    Cloudflare: 2026-11-17 18:00:20 · cron · Fatto: 1 notifiche consegnate a Google.
+    Cloudflare: 2026-11-17 18:01:47 · ping · Coda: "🔔 Prova notifiche" → 1 telefoni (in coda da 1 s)
+    Cloudflare: 2026-11-17 18:01:47 · ping · Fatto: 1 notifiche consegnate a Google.
+    Robot Cloudflare attivo (ultimo giro 20 s fa): qui niente da inviare.
+=== 2026-11-17 18:04:02 · avvio: push · esito: success
+    Robot Cloudflare attivo (ultimo giro 41 s fa): qui niente da inviare.
+=== 2026-11-17 18:07:44 · avvio: workflow_dispatch · esito: success
+    Cloudflare: 2026-11-17 18:05:20 · cron · Notifiche di esempio "tutte-le-notifiche-2" (11) → 11 invii all'amministratore
+    Cloudflare: 2026-11-17 18:05:20 · cron · Fatto: 11 notifiche consegnate a Google.
+    Robot Cloudflare attivo (ultimo giro 24 s fa): qui niente da inviare.
+=== 2026-11-17 18:10:20 · avvio: push · esito: success
+    Cloudflare: 2026-11-17 18:05:20 · cron · Notifiche di esempio "tutte-le-notifiche-2" (11) → 11 invii all'amministratore
+    Robot Cloudflare attivo (ultimo giro 59 s fa): qui niente da inviare.
+=== 2026-11-17 18:29:33 · avvio: schedule · esito: success
+    Cloudflare: 2026-11-17 18:11:20 · cron · Notifica di esempio 1/11 "📣 Nuova comunicazione" → 2 telefoni
+    Cloudflare: 2026-11-17 18:11:20 · cron · Fatto: 1 notifiche consegnate a Google.
+    Cloudflare: 2026-11-17 18:12:20 · cron · Notifica di esempio 2/11 "📊 Nuovo sondaggio" → 1 telefoni
+    Cloudflare: 2026-11-17 18:12:20 · cron · Fatto: 1 notifiche consegnate a Google.
+    Cloudflare: 2026-11-17 18:13:20 · cron · Notifica di esempio 3/11 "⚽ Formazione pubblicata" → 1 telefoni
+    Cloudflare: 2026-11-17 18:13:20 · cron · Fatto: 1 notifiche consegnate a Google.
+    Cloudflare: 2026-11-17 18:14:20 · cron · Notifica di esempio 4/11 "⏰ vs Oasi del Mare · mer 18 nov 22:00" → 1 telefoni
+    Cloudflare: 2026-11-17 18:14:20 · cron · Fatto: 1 notifiche consegnate a Google.
+    Cloudflare: 2026-11-17 18:15:20 · cron · Notifica di esempio 5/11 "⚽ Domani: The Rimineser F.P. vs Oasi del Mare" → 1 telefoni
+    Cloudflare: 2026-11-17 18:15:20 · cron · Fatto: 1 notifiche consegnate a Google.
+    Cloudflare: 2026-11-17 18:16:20 · cron · Notifica di esempio 6/11 "⚽ Tra 12 ore: The Rimineser F.P. vs Oasi del Mare" → 1 telefoni
+    Cloudflare: 2026-11-17 18:16:20 · cron · Fatto: 1 notifiche consegnate a Google.
+    Cloudflare: 2026-11-17 18:17:20 · cron · Notifica di esempio 7/11 "⚽ Tra 2 ore: The Rimineser F.P. vs Oasi del Mare" → 1 telefoni
+    Cloudflare: 2026-11-17 18:17:20 · cron · Fatto: 1 notifiche consegnate a Google.
+    Cloudflare: 2026-11-17 18:18:20 · cron · Notifica di esempio 8/11 "⏰ Domani: Allenamento" → 1 telefoni
+    Cloudflare: 2026-11-17 18:18:20 · cron · Fatto: 1 notifiche consegnate a Google.
+    Cloudflare: 2026-11-17 18:19:20 · cron · Notifica di esempio 9/11 "🏆 Nuovo comunicato UISP" → 1 telefoni
+    Cloudflare: 2026-11-17 18:19:20 · cron · Fatto: 1 notifiche consegnate a Google.
+    Cloudflare: 2026-11-17 18:20:20 · cron · Notifica di esempio 10/11 "👤 Nuova richiesta di iscrizione" → 1 telefoni
+    Cloudflare: 2026-11-17 18:20:20 · cron · Fatto: 1 notifiche consegnate a Google.
+    Cloudflare: 2026-11-17 18:21:20 · cron · Notifica di esempio 11/11 "🔔 Prova notifiche" → 1 telefoni
+    Cloudflare: 2026-11-17 18:21:20 · cron · Fatto: 1 notifiche consegnate a Google.
+    Robot Cloudflare attivo (ultimo giro 12 s fa): qui niente da inviare.
+=== 2026-11-17 18:46:21 · avvio: workflow_dispatch · esito: success
+    Cloudflare: 2026-11-17 18:21:20 · cron · Notifica di esempio 11/11 "🔔 Prova notifiche" → 1 telefoni
+    Robot Cloudflare attivo (ultimo giro 60 s fa): qui niente da inviare.
+=== 2026-11-17 19:21:04 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 43 s fa): qui niente da inviare.
+=== 2026-11-17 20:27:17 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 56 s fa): qui niente da inviare.
+=== 2026-11-17 21:22:17 · avvio: schedule · esito: success
+    Cloudflare: 2026-11-17 21:12:35 · ping · Nuova richiesta di pietro baroncini → amministratore (iscritto 1 s fa)
+    Cloudflare: 2026-11-17 21:12:35 · ping · Fatto: 1 notifiche consegnate a Google.
+    Robot Cloudflare attivo (ultimo giro 56 s fa): qui niente da inviare.
+=== 2026-11-17 22:14:48 · avvio: schedule · esito: success
+    Cloudflare: 2026-11-17 21:12:35 · ping · Nuova richiesta di pietro baroncini → amministratore (iscritto 1 s fa)
+    Cloudflare: 2026-11-17 21:36:37 · ping · Nuova richiesta di Pietro D’Angelo → amministratore (iscritto 1 s fa)
+    Cloudflare: 2026-11-17 21:36:37 · ping · Fatto: 1 notifiche consegnate a Google.
+    Cloudflare: 2026-11-17 21:36:40 · ping · Nuova richiesta di Giacomo Fornari → amministratore (iscritto 0 s fa)
+    Cloudflare: 2026-11-17 21:36:40 · ping · Fatto: 1 notifiche consegnate a Google.
+    Cloudflare: 2026-11-17 22:00:20 · cron · Promemoria partita uisp-5 (24 ore prima) → 5 telefoni
+    Cloudflare: 2026-11-17 22:00:20 · cron · Fatto: 4 notifiche consegnate a Google.
+    Cloudflare: 2026-11-17 22:03:25 · ping · Nuova richiesta di Giacomo Maioli → amministratore (iscritto 1 s fa)
+    Cloudflare: 2026-11-17 22:03:25 · ping · Fatto: 1 notifiche consegnate a Google.
+    Robot Cloudflare attivo (ultimo giro 27 s fa): qui niente da inviare.
+=== 2026-11-17 23:04:48 · avvio: schedule · esito: success
+    Cloudflare: 2026-11-17 22:03:25 · ping · Nuova richiesta di Giacomo Maioli → amministratore (iscritto 1 s fa)
+    Robot Cloudflare attivo (ultimo giro 27 s fa): qui niente da inviare.
+=== 2026-11-17 23:55:42 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 22 s fa): qui niente da inviare.
+=== 2026-11-18 00:39:20 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 59 s fa): qui niente da inviare.
+=== 2026-11-18 01:29:12 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 51 s fa): qui niente da inviare.
+=== 2026-11-18 02:50:11 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 50 s fa): qui niente da inviare.
+=== 2026-11-18 03:39:59 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 39 s fa): qui niente da inviare.
+=== 2026-11-18 04:32:53 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 32 s fa): qui niente da inviare.
+=== 2026-11-18 05:33:54 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 33 s fa): qui niente da inviare.
+=== 2026-11-18 06:35:40 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 20 s fa): qui niente da inviare.
+=== 2026-11-18 07:36:19 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 59 s fa): qui niente da inviare.
+=== 2026-11-18 08:52:52 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 32 s fa): qui niente da inviare.
+=== 2026-11-18 09:46:06 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 45 s fa): qui niente da inviare.
+=== 2026-11-18 10:41:05 · avvio: schedule · esito: success
+    Cloudflare: 2026-11-18 10:00:20 · cron · Promemoria partita uisp-5 (12 ore prima) → 4 telefoni
+    Cloudflare: 2026-11-18 10:00:20 · cron · Fatto: 4 notifiche consegnate a Google.
+    Robot Cloudflare attivo (ultimo giro 45 s fa): qui niente da inviare.
+=== 2026-11-18 11:39:05 · avvio: schedule · esito: success
+    Cloudflare: 2026-11-18 10:00:20 · cron · Promemoria partita uisp-5 (12 ore prima) → 4 telefoni
+    Robot Cloudflare attivo (ultimo giro 44 s fa): qui niente da inviare.
+=== 2026-11-18 12:34:07 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 46 s fa): qui niente da inviare.
+=== 2026-11-18 13:30:15 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 54 s fa): qui niente da inviare.
+=== 2026-11-18 14:47:52 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 32 s fa): qui niente da inviare.
+=== 2026-11-18 15:38:05 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 45 s fa): qui niente da inviare.
+=== 2026-11-18 16:32:45 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 24 s fa): qui niente da inviare.
+=== 2026-11-18 17:34:10 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 49 s fa): qui niente da inviare.
+=== 2026-11-18 18:31:12 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 51 s fa): qui niente da inviare.
+=== 2026-11-18 19:18:59 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 38 s fa): qui niente da inviare.
+=== 2026-11-18 20:20:08 · avvio: schedule · esito: success
+    Cloudflare: 2026-11-18 20:00:20 · cron · Promemoria partita uisp-5 (2 ore prima) → 4 telefoni
+    Cloudflare: 2026-11-18 20:00:20 · cron · Fatto: 4 notifiche consegnate a Google.
+    Robot Cloudflare attivo (ultimo giro 47 s fa): qui niente da inviare.
+=== 2026-11-18 21:16:50 · avvio: schedule · esito: success
+    Cloudflare: 2026-11-18 20:00:20 · cron · Promemoria partita uisp-5 (2 ore prima) → 4 telefoni
+    Robot Cloudflare attivo (ultimo giro 29 s fa): qui niente da inviare.
+=== 2026-11-18 22:08:56 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 35 s fa): qui niente da inviare.
+=== 2026-11-18 22:56:38 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 17 s fa): qui niente da inviare.
+=== 2026-11-18 23:43:17 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 57 s fa): qui niente da inviare.
+=== 2026-11-19 00:32:47 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 26 s fa): qui niente da inviare.
+=== 2026-11-19 01:23:51 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 30 s fa): qui niente da inviare.
+=== 2026-11-19 02:43:04 · avvio: schedule · esito: success
+    Cloudflare: 2026-11-19 01:55:31 · ping · Nuova richiesta di Andrea Lunedei → amministratore (iscritto 1 s fa)
+    Cloudflare: 2026-11-19 01:55:31 · ping · Fatto: 1 notifiche consegnate a Google.
+    Robot Cloudflare attivo (ultimo giro 43 s fa): qui niente da inviare.
+=== 2026-11-19 03:35:14 · avvio: schedule · esito: success
+    Cloudflare: 2026-11-19 01:55:31 · ping · Nuova richiesta di Andrea Lunedei → amministratore (iscritto 1 s fa)
+    Robot Cloudflare attivo (ultimo giro 54 s fa): qui niente da inviare.
+=== 2026-11-19 04:28:20 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 60 s fa): qui niente da inviare.
+=== 2026-11-19 05:30:17 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 56 s fa): qui niente da inviare.
+=== 2026-11-19 06:32:25 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 4 s fa): qui niente da inviare.
+=== 2026-11-19 07:29:50 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 29 s fa): qui niente da inviare.
+=== 2026-11-19 08:50:55 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 34 s fa): qui niente da inviare.
+=== 2026-11-19 09:47:25 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 5 s fa): qui niente da inviare.
+=== 2026-11-19 10:19:30 · avvio: workflow_dispatch · esito: success
+    Cloudflare: 2026-11-19 10:17:48 · ping · Coda: "📅 Nuovo allenamento" → 4 telefoni (in coda da 1 s)
+    Cloudflare: 2026-11-19 10:17:48 · ping · Fatto: 4 notifiche consegnate a Google.
+    Robot Cloudflare attivo (ultimo giro 69 s fa): qui niente da inviare.
+=== 2026-11-19 10:43:49 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 29 s fa): qui niente da inviare.
+=== 2026-11-19 11:38:33 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 12 s fa): qui niente da inviare.
+=== 2026-11-19 12:32:05 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 45 s fa): qui niente da inviare.
+=== 2026-11-19 13:30:56 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 35 s fa): qui niente da inviare.
+=== 2026-11-19 14:48:21 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 61 s fa): qui niente da inviare.
+=== 2026-11-19 15:39:15 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 54 s fa): qui niente da inviare.
+=== 2026-11-19 16:36:33 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 13 s fa): qui niente da inviare.
+=== 2026-11-19 17:39:36 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 16 s fa): qui niente da inviare.
+=== 2026-11-19 18:34:32 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 11 s fa): qui niente da inviare.
+=== 2026-11-19 19:27:34 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 14 s fa): qui niente da inviare.
+=== 2026-11-19 20:30:30 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 9 s fa): qui niente da inviare.
+=== 2026-11-19 21:26:01 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 40 s fa): qui niente da inviare.
+=== 2026-11-19 22:17:30 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 10 s fa): qui niente da inviare.
+=== 2026-11-19 23:07:36 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 16 s fa): qui niente da inviare.
+=== 2026-11-19 23:54:07 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 46 s fa): qui niente da inviare.
+=== 2026-11-20 00:31:39 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 19 s fa): qui niente da inviare.
+=== 2026-11-20 01:17:20 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 59 s fa): qui niente da inviare.
+=== 2026-11-20 02:29:10 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 50 s fa): qui niente da inviare.
+=== 2026-11-20 03:29:13 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 52 s fa): qui niente da inviare.
+=== 2026-11-20 04:15:49 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 29 s fa): qui niente da inviare.
+=== 2026-11-20 05:10:13 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 52 s fa): qui niente da inviare.
+=== 2026-11-20 06:05:59 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 38 s fa): qui niente da inviare.
+=== 2026-11-20 07:06:44 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 23 s fa): qui niente da inviare.
+=== 2026-11-20 08:19:40 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 19 s fa): qui niente da inviare.
+=== 2026-11-20 09:32:52 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 32 s fa): qui niente da inviare.
+=== 2026-11-20 10:32:58 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 37 s fa): qui niente da inviare.
+=== 2026-11-20 11:31:29 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 8 s fa): qui niente da inviare.
+=== 2026-11-20 12:27:09 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 48 s fa): qui niente da inviare.
+=== 2026-11-20 13:22:26 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 6 s fa): qui niente da inviare.
+=== 2026-11-20 14:39:08 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 47 s fa): qui niente da inviare.
+=== 2026-11-20 15:34:02 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 41 s fa): qui niente da inviare.
+=== 2026-11-20 16:29:16 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 55 s fa): qui niente da inviare.
+=== 2026-11-20 17:25:16 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 55 s fa): qui niente da inviare.
+=== 2026-11-20 18:22:14 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 53 s fa): qui niente da inviare.
+=== 2026-11-20 19:18:11 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 50 s fa): qui niente da inviare.
+=== 2026-11-20 20:24:35 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 14 s fa): qui niente da inviare.
+=== 2026-11-20 21:17:53 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 32 s fa): qui niente da inviare.
+=== 2026-11-20 22:08:33 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 12 s fa): qui niente da inviare.
+=== 2026-11-20 22:53:32 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 11 s fa): qui niente da inviare.
+=== 2026-11-20 23:31:59 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 38 s fa): qui niente da inviare.
+=== 2026-11-21 00:20:43 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 22 s fa): qui niente da inviare.
+=== 2026-11-21 01:06:35 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 14 s fa): qui niente da inviare.
+=== 2026-11-21 02:10:13 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 53 s fa): qui niente da inviare.
+=== 2026-11-21 03:15:35 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 14 s fa): qui niente da inviare.
+=== 2026-11-21 03:59:41 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 20 s fa): qui niente da inviare.
+=== 2026-11-21 04:47:17 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 56 s fa): qui niente da inviare.
+=== 2026-11-21 05:40:32 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 12 s fa): qui niente da inviare.
+=== 2026-11-21 06:36:07 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 47 s fa): qui niente da inviare.
+=== 2026-11-21 07:33:26 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 65 s fa): qui niente da inviare.
+=== 2026-11-21 08:46:26 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 5 s fa): qui niente da inviare.
+=== 2026-11-21 09:33:53 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 33 s fa): qui niente da inviare.
+=== 2026-11-21 10:21:05 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 45 s fa): qui niente da inviare.
+=== 2026-11-21 11:09:35 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 14 s fa): qui niente da inviare.
+=== 2026-11-21 11:52:54 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 33 s fa): qui niente da inviare.
+=== 2026-11-21 12:30:40 · avvio: schedule · esito: success
+    Robot Cloudflare attivo (ultimo giro 20 s fa): qui niente da inviare.
