@@ -1,0 +1,21 @@
+{
+ "evento": {
+  "date": "2026-11-23",
+  "home": true,
+  "location": "Riccione",
+  "time": "21:30",
+  "type": "allenamento"
+ },
+ "id": "svsUAGPfovefUxtcP7aR",
+ "presenze": {
+  "7XualbAJAjXK8W8L23PzxIbANTO2": "si",
+  "EgpfaLP5JRRXDlxgPdSim7RM3L32": "si",
+  "Hrwtdbro9WejSGkD635PZjqExE62": "forse",
+  "P6WHZwAkwIcp2ni55XIJx6SQ8wa2": "si",
+  "TQChPP48csUPHpbRX6IfQb0M4yI2": "si",
+  "YvOEjWytl7fYt7GYdNi2HbhNvB23": "si",
+  "njHoEzFq2agJXVbtUHo7kEqvdTc2": "si",
+  "s6ypPNERITXefCjh1MnGTL9ZwKO2": "forse",
+  "tffWl3sZvkWdNQbDjHaYEvJC6J33_g": "si"
+ }
+}
