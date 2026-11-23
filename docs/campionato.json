@@ -3,41 +3,63 @@
  "org": "UISP Rimini",
  "season": "2026/2027",
  "team": "The Rimineser F.P.",
- "updated": "2026-11-13",
+ "updated": "2026-11-20",
  "source": "https://www.uisp.it/rimini/pagina/uisp-rimini-20252026",
  "standings": [
   {
    "team": "AC Ciechi",
-   "pt": 12,
-   "g": 4,
-   "v": 4,
+   "pt": 15,
+   "g": 5,
+   "v": 5,
    "n": 0,
    "p": 0,
-   "gf": 29,
-   "gs": 2,
+   "gf": 34,
+   "gs": 3,
    "cd": 2
+  },
+  {
+   "team": "Barrumba Calcio Rimini",
+   "pt": 15,
+   "g": 5,
+   "v": 5,
+   "n": 0,
+   "p": 0,
+   "gf": 26,
+   "gs": 16,
+   "cd": 4
   },
   {
    "team": "Rose and Crown",
    "pt": 12,
-   "g": 4,
+   "g": 5,
    "v": 4,
    "n": 0,
-   "p": 0,
-   "gf": 29,
-   "gs": 7,
-   "cd": 0
+   "p": 1,
+   "gf": 32,
+   "gs": 13,
+   "cd": 1
+  },
+  {
+   "team": "Oasi del Mare",
+   "pt": 12,
+   "g": 5,
+   "v": 4,
+   "n": 0,
+   "p": 1,
+   "gf": 30,
+   "gs": 18,
+   "cd": 4
   },
   {
    "team": "The Rimineser F.P.",
    "pt": 12,
-   "g": 4,
+   "g": 5,
    "v": 4,
    "n": 0,
-   "p": 0,
-   "gf": 18,
-   "gs": 6,
-   "cd": 2
+   "p": 1,
+   "gf": 22,
+   "gs": 11,
+   "cd": 4
   },
   {
    "team": "Tinto Team",
@@ -51,212 +73,190 @@
    "cd": 4
   },
   {
-   "team": "Barrumba Calcio Rimini",
-   "pt": 12,
-   "g": 4,
-   "v": 4,
+   "team": "Riccione's Brothers FC",
+   "pt": 9,
+   "g": 5,
+   "v": 3,
    "n": 0,
-   "p": 0,
-   "gf": 20,
-   "gs": 13,
+   "p": 2,
+   "gf": 27,
+   "gs": 17,
    "cd": 4
   },
   {
-   "team": "Oasi del Mare",
-   "pt": 9,
+   "team": "Quei Bravi Ragazzi",
+   "pt": 7,
    "g": 4,
-   "v": 3,
-   "n": 0,
+   "v": 2,
+   "n": 1,
    "p": 1,
-   "gf": 25,
-   "gs": 14,
-   "cd": 1
-  },
-  {
-   "team": "Vibes Viserbella",
-   "pt": 6,
-   "g": 3,
-   "v": 2,
-   "n": 0,
-   "p": 1,
-   "gf": 12,
-   "gs": 6,
-   "cd": 3
-  },
-  {
-   "team": "Riccione's Brothers FC",
-   "pt": 6,
-   "g": 4,
-   "v": 2,
-   "n": 0,
-   "p": 2,
-   "gf": 15,
-   "gs": 12,
-   "cd": 3
-  },
-  {
-   "team": "Los Diez",
-   "pt": 6,
-   "g": 4,
-   "v": 2,
-   "n": 0,
-   "p": 2,
-   "gf": 12,
-   "gs": 10,
-   "cd": 2
-  },
-  {
-   "team": "Siamo Questi",
-   "pt": 6,
-   "g": 4,
-   "v": 2,
-   "n": 0,
-   "p": 2,
-   "gf": 8,
+   "gf": 19,
    "gs": 9,
    "cd": 1
   },
   {
-   "team": "Quei Bravi Ragazzi",
+   "team": "Vibes Viserbella",
+   "pt": 7,
+   "g": 4,
+   "v": 2,
+   "n": 1,
+   "p": 1,
+   "gf": 14,
+   "gs": 8,
+   "cd": 4
+  },
+  {
+   "team": "A.C. Arzon",
+   "pt": 7,
+   "g": 5,
+   "v": 2,
+   "n": 1,
+   "p": 2,
+   "gf": 16,
+   "gs": 9,
+   "cd": 1
+  },
+  {
+   "team": "Casa Beach 27 Riccione",
+   "pt": 7,
+   "g": 5,
+   "v": 2,
+   "n": 1,
+   "p": 2,
+   "gf": 16,
+   "gs": 20,
+   "cd": 1
+  },
+  {
+   "team": "Los Diez",
    "pt": 6,
-   "g": 3,
+   "g": 5,
    "v": 2,
    "n": 0,
-   "p": 1,
-   "gf": 17,
-   "gs": 7,
+   "p": 3,
+   "gf": 13,
+   "gs": 15,
+   "cd": 3
+  },
+  {
+   "team": "Siamo Questi",
+   "pt": 6,
+   "g": 5,
+   "v": 2,
+   "n": 0,
+   "p": 3,
+   "gf": 9,
+   "gs": 12,
+   "cd": 4
+  },
+  {
+   "team": "Manicommio F.C.",
+   "pt": 6,
+   "g": 4,
+   "v": 2,
+   "n": 0,
+   "p": 2,
+   "gf": 11,
+   "gs": 12,
    "cd": 1
   },
   {
    "team": "Tiki FC",
    "pt": 6,
+   "g": 5,
+   "v": 2,
+   "n": 0,
+   "p": 3,
+   "gf": 20,
+   "gs": 23,
+   "cd": 0
+  },
+  {
+   "team": "Anfiteatro FC",
+   "pt": 6,
+   "g": 5,
+   "v": 2,
+   "n": 0,
+   "p": 3,
+   "gf": 20,
+   "gs": 29,
+   "cd": 2
+  },
+  {
+   "team": "Apay Ewallet Team",
+   "pt": 6,
    "g": 4,
    "v": 2,
    "n": 0,
    "p": 2,
-   "gf": 15,
-   "gs": 17,
-   "cd": 0
-  },
-  {
-   "team": "A.C. Arzon",
-   "pt": 4,
-   "g": 4,
-   "v": 1,
-   "n": 1,
-   "p": 2,
-   "gf": 10,
-   "gs": 7,
-   "cd": 1
-  },
-  {
-   "team": "Casa Beach 27 Riccione",
-   "pt": 4,
-   "g": 4,
-   "v": 1,
-   "n": 1,
-   "p": 2,
    "gf": 9,
-   "gs": 17,
+   "gs": 15,
    "cd": 1
   },
   {
    "team": "Nelson's",
    "pt": 3,
-   "g": 4,
+   "g": 5,
    "v": 1,
    "n": 0,
-   "p": 3,
-   "gf": 5,
-   "gs": 9,
+   "p": 4,
+   "gf": 6,
+   "gs": 14,
    "cd": 6
   },
   {
-   "team": "Anfiteatro FC",
+   "team": "Flamingo FC",
    "pt": 3,
-   "g": 4,
+   "g": 5,
    "v": 1,
    "n": 0,
-   "p": 3,
-   "gf": 14,
-   "gs": 24,
-   "cd": 1
-  },
-  {
-   "team": "Colorimini FC",
-   "pt": 3,
-   "g": 4,
-   "v": 1,
-   "n": 0,
-   "p": 3,
-   "gf": 8,
-   "gs": 29,
-   "cd": 1
+   "p": 4,
+   "gf": 21,
+   "gs": 26,
+   "cd": 4
   },
   {
    "team": "Post Meridian FC",
    "pt": 3,
-   "g": 4,
+   "g": 5,
    "v": 1,
    "n": 0,
-   "p": 3,
-   "gf": 9,
-   "gs": 21,
+   "p": 4,
+   "gf": 11,
+   "gs": 27,
    "cd": 2
   },
   {
-   "team": "Manicommio F.C.",
+   "team": "Colorimini FC",
    "pt": 3,
-   "g": 3,
+   "g": 5,
    "v": 1,
    "n": 0,
-   "p": 2,
-   "gf": 6,
-   "gs": 11,
-   "cd": 1
-  },
-  {
-   "team": "Apay Ewallet Team",
-   "pt": 3,
-   "g": 3,
-   "v": 1,
-   "n": 0,
-   "p": 2,
-   "gf": 6,
-   "gs": 14,
-   "cd": 1
+   "p": 4,
+   "gf": 11,
+   "gs": 36,
+   "cd": 2
   },
   {
    "team": "Ziba's FC",
    "pt": 0,
-   "g": 4,
+   "g": 5,
    "v": 0,
    "n": 0,
-   "p": 4,
-   "gf": 10,
-   "gs": 21,
-   "cd": 0
-  },
-  {
-   "team": "Flamingo FC",
-   "pt": 0,
-   "g": 4,
-   "v": 0,
-   "n": 0,
-   "p": 4,
-   "gf": 14,
-   "gs": 21,
-   "cd": 4
+   "p": 5,
+   "gf": 15,
+   "gs": 36,
+   "cd": 1
   },
   {
    "team": "Vergiano Calcio",
    "pt": 0,
-   "g": 4,
+   "g": 5,
    "v": 0,
    "n": 0,
-   "p": 4,
-   "gf": 6,
-   "gs": 30,
+   "p": 5,
+   "gf": 11,
+   "gs": 37,
    "cd": 0
   }
  ],
@@ -657,96 +657,206 @@
      "time": "21:00",
      "field": "Riccione",
      "home": "Siamo Questi",
-     "away": "Apay Ewallet Team"
+     "away": "Apay Ewallet Team",
+     "hg": 1,
+     "ag": 3
     },
     {
      "date": "2026-11-16",
      "time": "22:00",
      "field": "Riccione",
      "home": "Manicommio F.C.",
-     "away": "Nelson's"
+     "away": "Nelson's",
+     "hg": 5,
+     "ag": 1
     },
     {
      "date": "2026-11-17",
      "time": "20:45",
      "field": "Coriano",
      "home": "Anfiteatro FC",
-     "away": "Tiki FC"
+     "away": "Tiki FC",
+     "hg": 6,
+     "ag": 5
     },
     {
      "date": "2026-11-17",
      "time": "21:45",
      "field": "Coriano",
      "home": "Los Diez",
-     "away": "AC Ciechi"
+     "away": "AC Ciechi",
+     "hg": 1,
+     "ag": 5
     },
     {
      "date": "2026-11-18",
      "time": "21:00",
      "field": "Riccione",
      "home": "Riccione's Brothers FC",
-     "away": "Ziba's FC"
+     "away": "Ziba's FC",
+     "hg": 12,
+     "ag": 5
     },
     {
      "date": "2026-11-18",
      "time": "22:00",
      "field": "Riccione",
      "home": "The Rimineser F.P.",
-     "away": "Oasi del Mare"
+     "away": "Oasi del Mare",
+     "hg": 4,
+     "ag": 5
     },
     {
      "date": "2026-11-18",
      "time": "21:00",
      "field": "Stella",
      "home": "Casa Beach 27 Riccione",
-     "away": "Colorimini FC"
+     "away": "Colorimini FC",
+     "hg": 7,
+     "ag": 3
     },
     {
      "date": "2026-11-18",
      "time": "22:00",
      "field": "Stella",
      "home": "Flamingo FC",
-     "away": "Vergiano Calcio"
+     "away": "Vergiano Calcio",
+     "hg": 7,
+     "ag": 5
     },
     {
      "date": "2026-11-19",
      "time": "21:00",
      "field": "Riccione",
      "home": "A.C. Arzon",
-     "away": "Post Meridian FC"
+     "away": "Post Meridian FC",
+     "hg": 6,
+     "ag": 2
     },
     {
      "date": "2026-11-19",
      "time": "22:00",
      "field": "Riccione",
      "home": "Barrumba Calcio Rimini",
-     "away": "Rose and Crown"
+     "away": "Rose and Crown",
+     "hg": 6,
+     "ag": 3
     },
     {
      "date": "2026-11-19",
      "time": "21:00",
      "field": "Stella",
      "home": "Quei Bravi Ragazzi",
-     "away": "Vibes Viserbella"
+     "away": "Vibes Viserbella",
+     "hg": 2,
+     "ag": 2
     }
    ]
+  },
+  {
+   "n": 6,
+   "matches": [
+    {
+     "home": "Vergiano Calcio",
+     "away": "Apay Ewallet Team",
+     "date": "2026-11-23",
+     "time": "21:00",
+     "field": "Riccione"
+    },
+    {
+     "home": "Tinto Team",
+     "away": "Nelson's",
+     "date": "2026-11-23",
+     "time": "22:00",
+     "field": "Riccione"
+    },
+    {
+     "home": "AC Ciechi",
+     "away": "Tiki FC",
+     "date": "2026-11-23",
+     "time": "21:00",
+     "field": "Stella"
+    },
+    {
+     "home": "Manicommio F.C.",
+     "away": "Ziba's FC",
+     "date": "2026-11-24",
+     "time": "20:45",
+     "field": "Coriano"
+    },
+    {
+     "home": "Los Diez",
+     "away": "A.C. Arzon",
+     "date": "2026-11-24",
+     "time": "21:45",
+     "field": "Coriano"
+    },
+    {
+     "home": "Barrumba Calcio Rimini",
+     "away": "Vibes Viserbella",
+     "date": "2026-11-25",
+     "time": "21:00",
+     "field": "Riccione"
+    },
+    {
+     "home": "Riccione's Brothers FC",
+     "away": "Flamingo FC",
+     "date": "2026-11-25",
+     "time": "22:00",
+     "field": "Riccione"
+    },
+    {
+     "home": "Oasi del Mare",
+     "away": "Siamo Questi",
+     "date": "2026-11-25",
+     "time": "21:00",
+     "field": "Stella"
+    },
+    {
+     "home": "Post Meridian FC",
+     "away": "Casa Beach 27 Riccione",
+     "date": "2026-11-25",
+     "time": "22:00",
+     "field": "Stella"
+    },
+    {
+     "home": "The Rimineser F.P.",
+     "away": "Quei Bravi Ragazzi",
+     "date": "2026-11-26",
+     "time": "21:00",
+     "field": "Riccione"
+    },
+    {
+     "home": "Rose and Crown",
+     "away": "Anfiteatro FC",
+     "date": "2026-11-26",
+     "time": "22:00",
+     "field": "Riccione"
+    }
+   ],
+   "rest": "Colorimini FC"
   }
  ],
  "scorers": [
   {
    "name": "Klyvchuk Denys",
    "team": "Rose and Crown",
-   "goals": 11
+   "goals": 13
   },
   {
    "name": "Lasagni Edoardo",
    "team": "Oasi del Mare",
-   "goals": 9
+   "goals": 11
   },
   {
    "name": "Re Pietro",
    "team": "Tiki FC",
-   "goals": 8
+   "goals": 10
+  },
+  {
+   "name": "Ugolini Luca",
+   "team": "Flamingo FC",
+   "goals": 9
   },
   {
    "name": "Parrotta Alex",
@@ -759,18 +869,38 @@
    "goals": 7
   },
   {
-   "name": "Ugolini Luca",
-   "team": "Flamingo FC",
+   "name": "Pompei Giovanni",
+   "team": "The Rimineser F.P.",
    "goals": 7
   },
   {
-   "name": "Pompei Giovanni",
-   "team": "The Rimineser F.P.",
-   "goals": 6
+   "name": "Punzo Alessandro",
+   "team": "AC Ciechi",
+   "goals": 7
   },
   {
    "name": "Gottardi Teo",
    "team": "Casa Beach 27 Riccione",
+   "goals": 6
+  },
+  {
+   "name": "Zoppis Andrea",
+   "team": "Siamo Questi",
+   "goals": 6
+  },
+  {
+   "name": "Lepri Alessandro",
+   "team": "Oasi del Mare",
+   "goals": 6
+  },
+  {
+   "name": "Billi Matteo",
+   "team": "AC Ciechi",
+   "goals": 6
+  },
+  {
+   "name": "Conti Carlo",
+   "team": "Riccione's Brothers FC",
    "goals": 5
   },
   {
@@ -779,8 +909,8 @@
    "goals": 5
   },
   {
-   "name": "Punzo Alessandro",
-   "team": "AC Ciechi",
+   "name": "Ricci Andrea",
+   "team": "Riccione's Brothers FC",
    "goals": 5
   },
   {
@@ -789,13 +919,23 @@
    "goals": 5
   },
   {
-   "name": "Conti Carlo",
-   "team": "Riccione's Brothers FC",
-   "goals": 4
+   "name": "Bartolucci Dennis",
+   "team": "Manicommio F.C.",
+   "goals": 5
+  },
+  {
+   "name": "Sarti Lorenzo",
+   "team": "Quei Bravi Ragazzi",
+   "goals": 5
   },
   {
    "name": "Biagioli Giovanni",
    "team": "Flamingo FC",
+   "goals": 4
+  },
+  {
+   "name": "Amadori Francesco",
+   "team": "Riccione's Brothers FC",
    "goals": 4
   },
   {
@@ -804,13 +944,43 @@
    "goals": 4
   },
   {
-   "name": "Billi Matteo",
-   "team": "AC Ciechi",
+   "name": "Capitani Alessandro",
+   "team": "Los Diez",
    "goals": 4
   },
   {
-   "name": "Marigliano Kevin",
-   "team": "Barrumba Calcio Rimini",
+   "name": "Rojas Saravia Walter Jair",
+   "team": "Anfiteatro FC",
+   "goals": 4
+  },
+  {
+   "name": "Ancora Jacopo",
+   "team": "Tiki FC",
+   "goals": 4
+  },
+  {
+   "name": "Montemaggi Matteo",
+   "team": "Vergiano Calcio",
+   "goals": 4
+  },
+  {
+   "name": "Fabbri Nicola",
+   "team": "Casa Beach 27 Riccione",
+   "goals": 4
+  },
+  {
+   "name": "Dioletta Filippo",
+   "team": "Colorimini FC",
+   "goals": 4
+  },
+  {
+   "name": "Cavalieri Luca",
+   "team": "The Rimineser F.P.",
+   "goals": 4
+  },
+  {
+   "name": "Magi Mirco",
+   "team": "A.C. Arzon",
    "goals": 4
   },
   {
@@ -819,161 +989,67 @@
    "goals": 4
   },
   {
-   "name": "Capitani Alessandro",
-   "team": "Los Diez",
-   "goals": 3
-  },
-  {
-   "name": "Amadori Francesco",
-   "team": "Riccione's Brothers FC",
-   "goals": 3
-  },
-  {
-   "name": "Capi Enea",
-   "team": "Rose and Crown",
-   "goals": 3
-  },
-  {
-   "name": "Scarpellini Rayan",
-   "team": "Rose and Crown",
-   "goals": 3
-  },
-  {
-   "name": "Tandaspina Riccardo",
-   "team": "Tiki FC",
-   "goals": 3
-  },
-  {
-   "name": "Labudiak Valerii",
-   "team": "Rose and Crown",
-   "goals": 3
-  },
-  {
-   "name": "Fattori Enrico",
+   "name": "Marigliano Kevin",
    "team": "Barrumba Calcio Rimini",
-   "goals": 3
-  },
-  {
-   "name": "Montemaggi Matteo",
-   "team": "Vergiano Calcio",
-   "goals": 3
-  },
-  {
-   "name": "Paglia Nicola",
-   "team": "Tinto Team",
-   "goals": 3
-  },
-  {
-   "name": "Tomassoni Luca",
-   "team": "Ziba's FC",
-   "goals": 3
-  },
-  {
-   "name": "Dioletta Filippo",
-   "team": "Colorimini FC",
-   "goals": 3
-  },
-  {
-   "name": "Sarti Lorenzo",
-   "team": "Quei Bravi Ragazzi",
-   "goals": 3
-  },
-  {
-   "name": "Matute Montesdeoca Joseph Anthony",
-   "team": "Quei Bravi Ragazzi",
-   "goals": 3
-  },
-  {
-   "name": "Paolucci Nicola",
-   "team": "Quei Bravi Ragazzi",
-   "goals": 3
-  },
-  {
-   "name": "Bartolucci Dennis",
-   "team": "Manicommio F.C.",
-   "goals": 3
-  },
-  {
-   "name": "Ancora Jacopo",
-   "team": "Tiki FC",
-   "goals": 3
-  },
-  {
-   "name": "Tamburini Filippo",
-   "team": "Colorimini FC",
-   "goals": 3
-  },
-  {
-   "name": "Perilli Stefano",
-   "team": "Ziba's FC",
-   "goals": 3
-  },
-  {
-   "name": "Cavalieri Luca",
-   "team": "The Rimineser F.P.",
-   "goals": 3
-  },
-  {
-   "name": "Pierini Federico",
-   "team": "Rose and Crown",
-   "goals": 3
-  },
-  {
-   "name": "Mondaini Andrea",
-   "team": "AC Ciechi",
-   "goals": 3
-  },
-  {
-   "name": "Giammaria Alessandro",
-   "team": "AC Ciechi",
-   "goals": 3
-  },
-  {
-   "name": "Perazzini Luca",
-   "team": "Tinto Team",
-   "goals": 3
+   "goals": 4
   }
  ],
  "processed": [
   "Calcio a 7 _ giornata 1 _ N. 2 del 23-10-26 - gg 1.pdf",
   "Calcio a 7 _ giornata 2 _ N. 3 del 30-10-26 - gg 2.pdf",
   "Calcio a 7 _ giornata 3 _ N. 4 del 06-11-26 - gg 3.pdf",
-  "Calcio a 7 _ giornata 4 _ N. 5 del 13-11-26 - gg 4.pdf"
+  "Calcio a 7 _ giornata 4 _ N. 5 del 13-11-26 - gg 4.pdf",
+  "Calcio a 7 _ giornata 5 _ N. 6 del 20-11-26 - gg 5.pdf"
  ],
  "discipline": {
   "ammonizioni": [
    {
-    "name": "Pecci Lorenzo",
-    "team": "Nelson's",
+    "name": "Romani Jacopo",
+    "team": "Los Diez",
     "note": ""
    },
    {
-    "name": "Marzouk Federico",
-    "team": "Nelson's",
-    "note": ""
-   },
-   {
-    "name": "Giammaria Alessandro",
-    "team": "AC Ciechi",
-    "note": ""
-   },
-   {
-    "name": "Mussoni Filippo",
-    "team": "Tinto Team",
-    "note": ""
-   },
-   {
-    "name": "Paglia Nicola",
-    "team": "Tinto Team",
-    "note": ""
-   },
-   {
-    "name": "D'Agostino Matteo",
+    "name": "Piscopiello Francesco",
     "team": "Anfiteatro FC",
+    "note": ""
+   },
+   {
+    "name": "Casalboni Federico",
+    "team": "The Rimineser F.P.",
+    "note": ""
+   },
+   {
+    "name": "Ricci Andrea",
+    "team": "Riccione's Brothers FC",
+    "note": ""
+   },
+   {
+    "name": "Manzi Michele",
+    "team": "Ziba's FC",
+    "note": ""
+   },
+   {
+    "name": "Lotti Andrea",
+    "team": "Vibes Viserbella",
+    "note": ""
+   },
+   {
+    "name": "Vitali Gianluca",
+    "team": "Rose and Crown",
     "note": ""
    }
   ],
   "diffide": [
+   {
+    "name": "Tamburini Filippo",
+    "team": "Colorimini FC",
+    "note": ""
+   },
+   {
+    "name": "Placucci Giacomo",
+    "team": "The Rimineser F.P.",
+    "note": ""
+   },
    {
     "name": "Fattori Enrico",
     "team": "Barrumba Calcio Rimini",
@@ -1006,7 +1082,7 @@
   "Barrumba Calcio Rimini": {
    "amm": 3,
    "esp": 0,
-   "diff": 3
+   "diff": 4
   },
   "Manicommio F.C.": {
    "amm": 1,
@@ -1019,7 +1095,7 @@
    "diff": 0
   },
   "Riccione's Brothers FC": {
-   "amm": 3,
+   "amm": 4,
    "esp": 0,
    "diff": 0
   },
@@ -1034,7 +1110,7 @@
    "diff": 0
   },
   "Vibes Viserbella": {
-   "amm": 3,
+   "amm": 4,
    "esp": 0,
    "diff": 0
   },
@@ -1049,7 +1125,7 @@
    "diff": 0
   },
   "Los Diez": {
-   "amm": 2,
+   "amm": 3,
    "esp": 0,
    "diff": 0
   },
@@ -1059,9 +1135,9 @@
    "diff": 0
   },
   "The Rimineser F.P.": {
-   "amm": 2,
+   "amm": 3,
    "esp": 0,
-   "diff": 0
+   "diff": 1
   },
   "Oasi del Mare": {
    "amm": 1,
@@ -1071,9 +1147,19 @@
   "Colorimini FC": {
    "amm": 1,
    "esp": 0,
-   "diff": 0
+   "diff": 1
   },
   "Anfiteatro FC": {
+   "amm": 2,
+   "esp": 0,
+   "diff": 0
+  },
+  "Ziba's FC": {
+   "amm": 1,
+   "esp": 0,
+   "diff": 0
+  },
+  "Rose and Crown": {
    "amm": 1,
    "esp": 0,
    "diff": 0
