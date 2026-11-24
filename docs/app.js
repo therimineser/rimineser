@@ -554,8 +554,9 @@ function vLeagueCal(){
   const up = S.calUp, st = up && up.status==='new' ? '⏳ Sto leggendo il calendario caricato (di solito 1-2 minuti)…'
     : up && up.status==='errore' ? '⚠️ ' + (up.msg || 'Non sono riuscito a leggere il calendario') + (up.name?` (${up.name})`:'')
     : L.calendar ? `Calendario completo caricato: ${L.calendar.ours} partite nostre${L.calendar.file?' · '+L.calendar.file:''}` : 'La UISP pubblica una giornata alla volta: carica il calendario completo che vi manda in PDF.';
-  return `<section class="card"><div class="row sp"><span class="lab">CAMPIONATO UISP · PROSSIMA GIORNATA</span></div>
-    ${next ? `<div class="lc">${line(next)}</div>` : '<span class="mute">La prossima giornata non è ancora stata pubblicata.</span>'}
+  // solo il tasto per caricare il calendario e il suo stato: la prossima partita è già nell'elenco sopra (scelta dell'amministratore)
+  if (!S.coach) return '';
+  return `<section class="card">
     ${S.coach?`<label class="lc-up" role="button" tabindex="0"><span class="lc-ic" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M12 17v-6M9.5 13.5 12 11l2.5 2.5"/></svg></span>
       <span class="lc-tx"><b>Carica calendario UISP</b><small>Il PDF completo che la UISP manda alla squadra</small></span><span class="lc-go" aria-hidden="true">›</span>
       <input type="file" accept="application/pdf,.pdf" data-ch="calfile" hidden></label>`:''}
