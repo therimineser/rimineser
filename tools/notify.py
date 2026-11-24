@@ -264,8 +264,6 @@ def main():
             targets = [u for u in everyone if not answered(u, o['eventId'])]
         if kind == 'test':
             targets = [u for u in everyone if u in (team.get('coaches') or [])]
-        if kind == 'event' and o.get('by'):
-            targets = [u for u in everyone if u != o['by'] and u + '_g' != o['by']]   # non a chi ha creato l'evento
         msg = {'title': o.get('title', 'The Rimineser F.P.'), 'body': o.get('body', ''), 'url': o.get('url', '#home'), 'tag': kind + '-' + oid}
         if kind == 'event' and o.get('eventId'):
             msg.update({'eid': o['eventId'], 'rsvp': '1'})   # tasti Presente/Assente sulla notifica
@@ -382,6 +380,31 @@ def main():
             n = sender.send(everyone, {'title': '🏆 Nuovo comunicato UISP', 'body': ' · '.join(parts) or 'Risultati e classifica aggiornati', 'url': '#campionato', 'tag': 'uisp-' + L['updated']}, 'uisp')
             log('Comunicato UISP → %d telefoni' % n)
         changed_state['uisp'] = L['updated']
+
+    # 4b) nuova partita del campionato (arriva in automatico dai comunicati): notifica a tutti con i tasti Presente/Assente,
+    #     una volta per partita quando compare con la data; al primissimo avvio segna quelle già note senza avvisare (come il Worker)
+    if L:
+        us, today = norm(L.get('team', '')), now_rome().date().isoformat()
+        known, first, cur = set(state.get('uispMatches') or []), state.get('uispMatches') is None, []
+        GG, MM = ['lun', 'mar', 'mer', 'gio', 'ven', 'sab', 'dom'], ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic']
+        for r in L.get('rounds', []):
+            for m in r.get('matches', []):
+                home = norm(m.get('home')) == us
+                if (not home and norm(m.get('away')) != us) or not m.get('date'):
+                    continue
+                eid = 'uisp-%s' % r['n']
+                cur.append(eid)
+                if first or eid in known or m['date'] < today:
+                    continue
+                d = dt.date.fromisoformat(m['date'])
+                day = '%s %d %s' % (GG[d.weekday()], d.day, MM[d.month - 1])
+                body = 'vs %s · %sª giornata · %s · %s%s' % (m['away'] if home else m['home'], r['n'], day, times_of({'type': 'partita', 'time': m.get('time', '')}),
+                                                         ' · Campo ' + m['field'] if m.get('field') else '')
+                n = sender.send(everyone, {'title': '📅 Nuova partita', 'body': body, 'url': '#calendario', 'tag': 'nuovapartita-' + eid, 'eid': eid, 'rsvp': '1'}, 'events')
+                log('Nuova partita %s → %d telefoni' % (eid, n))
+        allm = sorted(known | set(cur))
+        if allm != sorted(known) or first:
+            changed_state['uispMatches'] = allm[-80:]
 
     # 5) quante persone sono online (solo il numero, in stats/online)
     try:

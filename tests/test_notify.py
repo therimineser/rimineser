@@ -120,7 +120,7 @@ check(who(run(), 'promemoria') == ['f1', 'm1', 'p3', 'p4'], 'Promemoria manuale:
 base(NOW); DB['tokens/p3']['prefs'] = {'events': False}
 DB['outbox/e'] = {'kind': 'event', 'eventId': 'ev2', 'by': 'p2', 'title': '📅 Nuovo allenamento', 'sent': False}
 s = run()
-check(who(s, 'Nuovo allenamento') == ['admin', 'c1', 'f1', 'm1', 'p4'], 'Nuovo evento: a tutti, non a chi l\'ha creato né a chi ha spento "Nuovi eventi"')
+check(who(s, 'Nuovo allenamento') == ['admin', 'c1', 'f1', 'm1', 'p2', 'p4'], 'Nuovo evento: a tutti, anche a chi l\'ha creato, non a chi ha spento "Nuovi eventi"')
 check(all(d.get('eid') == 'ev2' and d.get('rsvp') == '1' for _, d in s if 'Nuovo allenamento' in d.get('title', '')), 'Nuovo evento: la notifica porta l\'id dell\'evento (tasti Presente/Assente)')
 
 # 3. promemoria partite 24/12/2 ore
@@ -182,6 +182,17 @@ base(NOW); now_utc = dt.datetime.now(dt.timezone.utc)
 DB['presence/p2'] = {'at': (now_utc - dt.timedelta(seconds=30)).strftime('%Y-%m-%dT%H:%M:%S.%fZ')}
 DB['presence/m1'] = {'at': (now_utc - dt.timedelta(minutes=10)).strftime('%Y-%m-%dT%H:%M:%S.%fZ')}
 run(); check(DB.get('stats/online', {}).get('n') == 1, 'Online (riserva): solo il numero, battiti recenti', DB.get('stats/online'))
+
+# nuova partita del campionato (riserva): come il Worker
+M = lambda n, d: {'n': n, 'matches': [{'home': 'The Rimineser F.P.', 'away': 'Avversari %d' % n, 'date': d, 'time': '21:00', 'field': 'Riccione'}]}
+LG = {'team': 'The Rimineser F.P.', 'updated': 'x', 'standings': [], 'rounds': [M(5, '2026-11-18')]}
+base(dt.datetime(2026, 11, 17, 14, 0, tzinfo=TZ)); notify.league = lambda: LG
+s = run(); check(not who(s, 'Nuova partita') and DB['robot/state'].get('uispMatches') == ['uisp-5'], 'Nuova partita (riserva): al primo avvio nessun avviso', DB['robot/state'])
+LG['rounds'].append(M(6, '2026-11-26')); s = run()
+np = [d for _, d in s if d['title'] == '📅 Nuova partita']
+check(who(s, 'Nuova partita') == ['admin', 'c1', 'f1', 'm1', 'p2', 'p3', 'p4'] and all(d['eid'] == 'uisp-6' and d['rsvp'] == '1' and 'vs Avversari 6 · 6ª giornata · gio 26 nov · Ritrovo 20:15 · inizio 21:00 · Campo Riccione' == d['body'] for d in np),
+      'Nuova partita (riserva): a tutti, testo e tasti Presente/Assente', np[:1])
+check(not who(run(), 'Nuova partita'), 'Nuova partita (riserva): non ripetuta')
 
 bad = [r for r in R if not r[0]]
 for r in bad: print('FALLITO', r[1], '->', str(r[2])[:300])

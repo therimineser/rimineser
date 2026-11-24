@@ -9,6 +9,7 @@
 // Cloudflare (piano gratuito) consente ~50 chiamate esterne per giro: gli invii che non ci stanno
 // finiscono in robot/coda e partono al giro successivo (un minuto dopo).
 import { accessToken, Store, fcmSend } from './google.js';
+import { findPdfs } from './uisp.js';
 
 const MATCH_REMINDERS = [24, 12, 2];   // partite: ore prima dell'inizio
 const REMIND_FROM_HOUR = 12;           // allenamenti: il giorno prima, dalle 12
@@ -120,7 +121,6 @@ export async function run(env, opt) {
         targets = targets.filter(u => ![u, u + '_g'].some(k => ((r[k] || {}).answers || {})[o.eventId]));
       }
       if (kind === 'test') { const c = await coaches(); targets = targets.filter(u => c.includes(u)); }
-      if (kind === 'event' && o.by) targets = targets.filter(u => u !== o.by && u + '_g' !== o.by);   // non a chi ha creato l'evento
       const n = await send(targets, { title: o.title || 'The Rimineser F.P.', body: o.body || '', url: o.url || '#home', tag: kind + '-' + oid, ...(kind === 'event' && o.eventId ? { eid: o.eventId, rsvp: '1' } : {}) }, PREF_OF[kind]);   // rsvp: tasti Presente/Assente
       const wait = typeof o.createdAt === 'number' && o.createdAt > 0 ? ` (in coda da ${Math.max(0, Math.round((nowMs - o.createdAt) / 1000))} s)` : '';
       log(`Coda: "${o.title || ''}" → ${n} telefoni${wait}`);
@@ -149,6 +149,48 @@ export async function run(env, opt) {
 
   if (opt.mode === 'cron' && !busy()) {
     const L = await getJson(f, env.LEAGUE_URL);
+
+    // 2b) VENERDÌ (giorno dei comunicati UISP): controllo del sito ogni minuto. Se c'è un PDF "Calcio a 7" che
+    //     campionato.json non ha ancora letto, avvia subito il robot UISP su GitHub (uisp.yml) con il gettone salvato
+    //     in private/robot. Se dopo 10 minuti non risulta ancora letto, lo riavvia. Gli altri giorni resta il controllo di GitHub.
+    const weekday = new Date(R.date + 'T12:00:00Z').getUTCDay();
+    if (weekday === 5 && L && !busy()) {
+      const found = await findPdfs(f, nowMs), done = new Set(L.processed || []);
+      const fresh = Object.keys(found).filter(n => !done.has(n)).sort();
+      const last = state.uispTrig || {}, key = fresh.join('|');
+      if (fresh.length && (last.key !== key || nowMs - (last.at || 0) > 10 * 60000)) {
+        const tok = ((await st.get('private/robot')) || {}).token;
+        if (!tok) log('Comunicato UISP nuovo sul sito, ma manca il gettone GitHub (private/robot): resta il controllo di GitHub');
+        else {
+          const r = await f(`https://api.github.com/repos/${env.GH_REPO || 'therimineser/rimineser'}/actions/workflows/uisp.yml/dispatches`, {
+            method: 'POST', headers: { Authorization: 'Bearer ' + tok, Accept: 'application/vnd.github+json', 'User-Agent': 'rimineser-robot', 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ref: 'main' }) }).catch(e => ({ ok: false, status: e.message }));
+          log(`Nuovo comunicato UISP sul sito (${fresh.join(', ')}) → robot UISP avviato: ${r.ok ? 'ok' : 'errore ' + r.status}`);
+          changed.uispTrig = { key, at: nowMs };
+        }
+      }
+    }
+
+    // 2c) nuova partita del campionato (arriva in automatico dai comunicati UISP): notifica a tutti, con i tasti Presente/Assente.
+    //     Una volta per partita (uisp-<giornata>), quando compare con la data; al primissimo avvio segna tutte quelle già note senza avvisare.
+    if (L && !busy()) {
+      const us = norm(L.team), known = new Set(state.uispMatches || []), first = !state.uispMatches, now = [];
+      for (const r of L.rounds || []) for (const m of r.matches || []) {
+        const home = norm(m.home) === us;
+        if ((!home && norm(m.away) !== us) || !m.date) continue;
+        const eid = 'uisp-' + r.n; now.push(eid);
+        if (first || known.has(eid) || m.date < R.date || busy()) continue;
+        if (await claim('nuovapartita-' + eid)) {
+          const e = { type: 'partita', time: m.time || '' }, opp = home ? m.away : m.home;
+          const day = new Intl.DateTimeFormat('it-IT', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(m.date + 'T12:00:00Z'));
+          const n = await send(await everyone(), { title: '📅 Nuova partita', body: `vs ${opp} · ${r.n}ª giornata · ${day} · ${timesOf(e)}${m.field ? ' · Campo ' + m.field : ''}`,
+            url: '#calendario', tag: 'nuovapartita-' + eid, eid, rsvp: '1' }, 'events');
+          log(`Nuova partita ${eid} (vs ${opp}) → ${n} telefoni`);
+        }
+      }
+      const all = [...new Set([...known, ...now])].sort();
+      if (all.join() !== [...known].sort().join()) changed.uispMatches = all.slice(-80);
+    }
 
     // 3) promemoria
     //    partite: 24, 12 e 2 ore prima, a chi ha detto Presente/Forse e a chi non ha risposto; mai agli Assenti

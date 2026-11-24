@@ -11,6 +11,7 @@ crons = ["* * * * *"]
 
 [vars]
 LEAGUE_URL = "https://raw.githubusercontent.com/therimineser/rimineser/main/docs/campionato.json"
+GH_REPO = "therimineser/rimineser"
 EXAMPLE_URL = "https://raw.githubusercontent.com/therimineser/rimineser/main/tools/esempio-notifica.json"
 
 [observability]
