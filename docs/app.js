@@ -542,20 +542,20 @@ function vLeagueCal(){
   const d0 = new Date(), today = `${d0.getFullYear()}-${String(d0.getMonth()+1).padStart(2,'0')}-${String(d0.getDate()).padStart(2,'0')}`, rows = [];
   for (const r of L.rounds||[]) { const m = (r.matches||[]).find(x=>isUs(x.home)||isUs(x.away));
     if (m) rows.push({n:r.n, m}); else if (isUs(r.rest)) rows.push({n:r.n, rest:true}); }
-  if (!rows.length && !S.coach) return '';
   const next = rows.find(x=>x.m && x.m.hg==null && (!x.m.date || x.m.date >= today));
+  if (!next && !S.coach) return '';   // solo la prossima giornata: le passate sono nell'Archivio (scelta dell'amministratore)
   const line = x => { if (x.rest) return `<div class="lc-row"><span class="lc-n">${x.n}ª</span><div class="lc-main"><b>Turno di riposo</b></div></div>`;
     const m = x.m, home = isUs(m.home), opp = home ? m.away : m.home, played = m.hg!=null;
     const us = played ? (home?m.hg:m.ag) : null, th = played ? (home?m.ag:m.hg) : null, out = played ? (us>th?'w':us===th?'d':'l') : '';
     const when = m.date ? `${new Date(m.date+'T12:00').toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'}).replace(/^./, c=>c.toUpperCase())}${m.time?' · '+m.time:''}${m.field?' · '+m.field:''}` : 'Data da comunicare';
     return `<div class="lc-row ${x===next?'next':''} ${played?'done':''}"><span class="lc-n">${x.n}ª</span>
       <div class="lc-main"><b>${home?'vs':'@'} ${esc(opp)}</b><span class="mute">${esc(when)}${m.cal?' · <i>dal calendario</i>':''}</span></div>
-      ${played?`<span class="lc-res ${out}">${us}–${th}</span>`:x===next?'<span class="chip partita">Prossima</span>':''}</div>`; };
+      ${played?`<span class="lc-res ${out}">${us}–${th}</span>`:''}</div>`; };
   const up = S.calUp, st = up && up.status==='new' ? '⏳ Sto leggendo il calendario caricato (di solito 1-2 minuti)…'
     : up && up.status==='errore' ? '⚠️ ' + (up.msg || 'Non sono riuscito a leggere il calendario') + (up.name?` (${up.name})`:'')
     : L.calendar ? `Calendario completo caricato: ${L.calendar.ours} partite nostre${L.calendar.file?' · '+L.calendar.file:''}` : 'La UISP pubblica una giornata alla volta: carica il calendario completo che vi manda in PDF.';
-  return `<section class="card"><div class="row sp"><span class="lab">CAMPIONATO UISP · TUTTE LE GIORNATE</span></div>
-    ${rows.length ? `<div class="lc">${rows.map(line).join('')}</div>` : '<span class="mute">Nessuna giornata ancora.</span>'}
+  return `<section class="card"><div class="row sp"><span class="lab">CAMPIONATO UISP · PROSSIMA GIORNATA</span></div>
+    ${next ? `<div class="lc">${line(next)}</div>` : '<span class="mute">La prossima giornata non è ancora stata pubblicata.</span>'}
     <span class="mute" style="font-size:13px">${st}</span>
     ${S.coach?`<label class="sec lc-up">📄 Carica calendario UISP (PDF)<input type="file" accept="application/pdf,.pdf" data-ch="calfile" hidden></label>`:''}</section>`;
 }
