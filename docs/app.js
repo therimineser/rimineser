@@ -527,11 +527,11 @@ function byMonth(list){
   return Object.entries(g).map(([k,v])=>`<section class="card"><span class="lab" style="text-transform:capitalize">${esc(k)}</span>${v.map(evRow).join('')}</section>`).join('');
 }
 function vCalendario(){
-  const up = upcoming(), pa = past();
+  // solo ciò che deve ancora succedere: le partite giocate stanno nell'Archivio (scelta dell'amministratore)
+  const up = upcoming();
   return `<div class="row sp"><h2>Calendario</h2>${S.coach?'<button class="pri" data-act="newEv">+ Evento</button>':''}</div>
   ${up.length?byMonth(up):'<div class="empty">Nessun evento in programma.</div>'}
-  ${vLeagueCal()}
-  ${pa.length?`<details><summary>Eventi passati (${pa.length})</summary>${byMonth(pa)}</details>`:''}`;
+  ${vLeagueCal()}`;
 }
 /* ---- campionato UISP: tutte le nostre giornate (dai comunicati + dal calendario completo caricato dall'app).
    La UISP pubblica sul sito solo una giornata in avanti; il calendario completo lo manda alle squadre in PDF:
@@ -550,14 +550,16 @@ function vLeagueCal(){
     const when = m.date ? `${new Date(m.date+'T12:00').toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'}).replace(/^./, c=>c.toUpperCase())}${m.time?' · '+m.time:''}${m.field?' · '+m.field:''}` : 'Data da comunicare';
     return `<div class="lc-row ${x===next?'next':''} ${played?'done':''}"><span class="lc-n">${x.n}ª</span>
       <div class="lc-main"><b>${home?'vs':'@'} ${esc(opp)}</b><span class="mute">${esc(when)}${m.cal?' · <i>dal calendario</i>':''}</span></div>
-      ${played?`<span class="lc-res ${out}">${us}–${th}</span>`:''}</div>`; };
+      ${played?`<span class="lc-res ${out}">${us}–${th}</span>`:x===next?'<span class="chip partita">Prossima</span>':''}</div>`; };
   const up = S.calUp, st = up && up.status==='new' ? '⏳ Sto leggendo il calendario caricato (di solito 1-2 minuti)…'
     : up && up.status==='errore' ? '⚠️ ' + (up.msg || 'Non sono riuscito a leggere il calendario') + (up.name?` (${up.name})`:'')
     : L.calendar ? `Calendario completo caricato: ${L.calendar.ours} partite nostre${L.calendar.file?' · '+L.calendar.file:''}` : 'La UISP pubblica una giornata alla volta: carica il calendario completo che vi manda in PDF.';
   return `<section class="card"><div class="row sp"><span class="lab">CAMPIONATO UISP · PROSSIMA GIORNATA</span></div>
     ${next ? `<div class="lc">${line(next)}</div>` : '<span class="mute">La prossima giornata non è ancora stata pubblicata.</span>'}
-    <span class="mute" style="font-size:13px">${st}</span>
-    ${S.coach?`<label class="sec lc-up">📄 Carica calendario UISP (PDF)<input type="file" accept="application/pdf,.pdf" data-ch="calfile" hidden></label>`:''}</section>`;
+    ${S.coach?`<label class="lc-up" role="button" tabindex="0"><span class="lc-ic" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M12 17v-6M9.5 13.5 12 11l2.5 2.5"/></svg></span>
+      <span class="lc-tx"><b>Carica calendario UISP</b><small>Il PDF completo che la UISP manda alla squadra</small></span><span class="lc-go" aria-hidden="true">›</span>
+      <input type="file" accept="application/pdf,.pdf" data-ch="calfile" hidden></label>`:''}
+    <span class="mute lc-st">${st}</span></section>`;
 }
 let pdfjsP = null;
 const loadPdfjs = () => pdfjsP || (pdfjsP = new Promise((ok, ko)=>{ const sc = document.createElement('script');
@@ -1114,6 +1116,8 @@ function openSheet(html){ $('#panel').innerHTML = html; $('#sheet').hidden = fal
 function closeSheet(){ $('#sheet').hidden = true; $('#panel').innerHTML = ''; document.body.classList.remove('sheet-open'); }
 $('#sheet').addEventListener('click', e=>{ if (e.target.id==='sheet') closeSheet(); });
 document.addEventListener('keydown', e=>{ if (e.key==='Escape' && !$('#sheet').hidden) closeSheet(); });
+// tasto "Carica calendario UISP": si apre anche da tastiera
+document.addEventListener('keydown', e=>{ const l = e.target.closest && e.target.closest('.lc-up'); if (l && (e.key==='Enter' || e.key===' ')) { e.preventDefault(); l.querySelector('input').click(); } });
 const head = t => `<div class="row sp"><h2 id="shT">${t}</h2><button class="lnk" type="button" data-act="close">Chiudi</button></div>`;
 function evForm(e){
   e = e || {type:'partita', home:true};
