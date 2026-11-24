@@ -269,67 +269,100 @@
      "home": "A.C. Arzon",
      "away": "Nelson's",
      "hg": 1,
-     "ag": 2
+     "ag": 2,
+     "date": "2026-10-19",
+     "time": "21:00",
+     "field": "Riccione"
     },
     {
      "home": "Tinto Team",
      "away": "Tiki FC",
      "hg": 6,
-     "ag": 3
+     "ag": 3,
+     "date": "2026-10-19",
+     "time": "22:00",
+     "field": "Riccione"
     },
     {
      "home": "The Rimineser F.P.",
      "away": "Vergiano Calcio",
      "hg": 5,
-     "ag": 1
+     "ag": 1,
+     "date": "2026-10-20",
+     "time": "20:45",
+     "field": "Coriano"
     },
     {
      "home": "Rose and Crown",
      "away": "Apay Ewallet Team",
      "hg": 6,
-     "ag": 2
+     "ag": 2,
+     "date": "2026-10-20",
+     "time": "21:45",
+     "field": "Coriano"
     },
     {
      "home": "Colorimini FC",
      "away": "Manicommio F.C.",
      "hg": 5,
-     "ag": 1
+     "ag": 1,
+     "date": "2026-10-21",
+     "time": "21:00",
+     "field": "Riccione"
     },
     {
      "home": "Casa Beach 27 Riccione",
      "away": "AC Ciechi",
      "hg": 0,
-     "ag": 8
+     "ag": 8,
+     "date": "2026-10-21",
+     "time": "22:00",
+     "field": "Riccione"
     },
     {
      "home": "Flamingo FC",
      "away": "Oasi del Mare",
      "hg": 2,
-     "ag": 5
+     "ag": 5,
+     "date": "2026-10-21",
+     "time": "21:00",
+     "field": "Stella"
     },
     {
      "home": "Post Meridian FC",
      "away": "Siamo Questi",
      "hg": 1,
-     "ag": 0
+     "ag": 0,
+     "date": "2026-10-21",
+     "time": "22:00",
+     "field": "Stella"
     },
     {
      "home": "Los Diez",
      "away": "Vibes Viserbella",
      "hg": 0,
-     "ag": 3
+     "ag": 3,
+     "date": "2026-10-22",
+     "time": "21:00",
+     "field": "Riccione"
     },
     {
      "home": "Anfiteatro FC",
      "away": "Riccione's Brothers FC",
      "hg": 3,
-     "ag": 5
+     "ag": 5,
+     "date": "2026-10-22",
+     "time": "22:00",
+     "field": "Riccione"
     },
     {
      "home": "Barrumba Calcio Rimini",
      "away": "Ziba's FC",
      "hg": 4,
-     "ag": 3
+     "ag": 3,
+     "date": "2026-10-22",
+     "time": "21:30",
+     "field": "Stella"
     }
    ]
   },
@@ -835,6 +868,288 @@
     }
    ],
    "rest": "Colorimini FC"
+  },
+  {
+   "n": 7,
+   "matches": [
+    {
+     "home": "Casa Beach 27 Riccione",
+     "away": "Oasi del Mare",
+     "cal": true,
+     "date": "2026-11-30",
+     "time": "21:00",
+     "field": "Riccione"
+    },
+    {
+     "home": "A.C. Arzon",
+     "away": "Colorimini FC",
+     "cal": true,
+     "date": "2026-11-30",
+     "time": "22:00",
+     "field": "Riccione"
+    },
+    {
+     "home": "Nelson's",
+     "away": "Vergiano Calcio",
+     "cal": true,
+     "date": "2026-12-01",
+     "time": "20:45",
+     "field": "Coriano"
+    },
+    {
+     "home": "Manicommio F.C.",
+     "away": "The Rimineser F.P.",
+     "cal": true,
+     "date": "2026-12-01",
+     "time": "21:45",
+     "field": "Coriano"
+    },
+    {
+     "home": "Tiki FC",
+     "away": "Ziba's FC",
+     "cal": true,
+     "date": "2026-12-02",
+     "time": "21:00",
+     "field": "Riccione"
+    },
+    {
+     "home": "Tinto Team",
+     "away": "Anfiteatro FC",
+     "cal": true,
+     "date": "2026-12-02",
+     "time": "22:00",
+     "field": "Riccione"
+    },
+    {
+     "home": "Apay Ewallet Team",
+     "away": "Flamingo FC",
+     "cal": true,
+     "date": "2026-12-02",
+     "time": "21:00",
+     "field": "Stella"
+    },
+    {
+     "home": "AC Ciechi",
+     "away": "Vibes Viserbella",
+     "cal": true,
+     "date": "2026-12-02",
+     "time": "22:00",
+     "field": "Stella"
+    },
+    {
+     "home": "Quei Bravi Ragazzi",
+     "away": "Post Meridian FC",
+     "cal": true,
+     "date": "2026-12-03",
+     "time": "21:00",
+     "field": "Riccione"
+    },
+    {
+     "home": "Riccione's Brothers FC",
+     "away": "Los Diez",
+     "cal": true,
+     "date": "2026-12-03",
+     "time": "22:00",
+     "field": "Riccione"
+    },
+    {
+     "home": "Siamo Questi",
+     "away": "Barrumba Calcio Rimini",
+     "cal": true,
+     "date": "2026-12-03",
+     "time": "21:00",
+     "field": "Stella"
+    }
+   ],
+   "rest": "Rose and Crown"
+  },
+  {
+   "n": 8,
+   "matches": [
+    {
+     "home": "Ziba's FC",
+     "away": "Nelson's",
+     "cal": true,
+     "date": "2026-12-07",
+     "time": "21:00",
+     "field": "Riccione"
+    },
+    {
+     "home": "AC Ciechi",
+     "away": "A.C. Arzon",
+     "cal": true,
+     "date": "2026-12-07",
+     "time": "22:00",
+     "field": "Riccione"
+    },
+    {
+     "home": "Oasi del Mare",
+     "away": "Anfiteatro FC",
+     "cal": true,
+     "date": "2026-12-09",
+     "time": "21:00",
+     "field": "Riccione"
+    },
+    {
+     "home": "The Rimineser F.P.",
+     "away": "Casa Beach 27 Riccione",
+     "cal": true,
+     "date": "2026-12-09",
+     "time": "22:00",
+     "field": "Riccione"
+    },
+    {
+     "home": "Post Meridian FC",
+     "away": "Vibes Viserbella",
+     "cal": true,
+     "date": "2026-12-09",
+     "time": "21:00",
+     "field": "Stella"
+    },
+    {
+     "home": "Apay Ewallet Team",
+     "away": "Tinto Team",
+     "cal": true,
+     "date": "2026-12-09",
+     "time": "22:00",
+     "field": "Stella"
+    },
+    {
+     "home": "Colorimini FC",
+     "away": "Tiki FC",
+     "cal": true,
+     "date": "2026-12-10",
+     "time": "20:45",
+     "field": "Coriano"
+    },
+    {
+     "home": "Quei Bravi Ragazzi",
+     "away": "Flamingo FC",
+     "cal": true,
+     "date": "2026-12-10",
+     "time": "21:45",
+     "field": "Coriano"
+    },
+    {
+     "home": "Riccione's Brothers FC",
+     "away": "Vergiano Calcio",
+     "cal": true,
+     "date": "2026-12-10",
+     "time": "21:00",
+     "field": "Riccione"
+    },
+    {
+     "home": "Barrumba Calcio Rimini",
+     "away": "Manicommio F.C.",
+     "cal": true,
+     "date": "2026-12-10",
+     "time": "22:00",
+     "field": "Riccione"
+    },
+    {
+     "home": "Siamo Questi",
+     "away": "Rose and Crown",
+     "cal": true,
+     "date": "2026-12-10",
+     "time": "21:00",
+     "field": "Stella"
+    }
+   ],
+   "rest": "Los Diez"
+  },
+  {
+   "n": 9,
+   "matches": [
+    {
+     "home": "Manicommio F.C.",
+     "away": "Tinto Team",
+     "cal": true,
+     "date": "2026-12-14",
+     "time": "21:00",
+     "field": "Riccione"
+    },
+    {
+     "home": "Quei Bravi Ragazzi",
+     "away": "Rose and Crown",
+     "cal": true,
+     "date": "2026-12-14",
+     "time": "22:00",
+     "field": "Riccione"
+    },
+    {
+     "home": "Anfiteatro FC",
+     "away": "Ziba's FC",
+     "cal": true,
+     "date": "2026-12-15",
+     "time": "20:45",
+     "field": "Coriano"
+    },
+    {
+     "home": "Apay Ewallet Team",
+     "away": "AC Ciechi",
+     "cal": true,
+     "date": "2026-12-15",
+     "time": "21:45",
+     "field": "Coriano"
+    },
+    {
+     "home": "Casa Beach 27 Riccione",
+     "away": "Los Diez",
+     "cal": true,
+     "date": "2026-12-16",
+     "time": "21:00",
+     "field": "Riccione"
+    },
+    {
+     "home": "Oasi del Mare",
+     "away": "A.C. Arzon",
+     "cal": true,
+     "date": "2026-12-16",
+     "time": "22:00",
+     "field": "Riccione"
+    },
+    {
+     "home": "Post Meridian FC",
+     "away": "Riccione's Brothers FC",
+     "cal": true,
+     "date": "2026-12-16",
+     "time": "21:00",
+     "field": "Stella"
+    },
+    {
+     "home": "Vergiano Calcio",
+     "away": "Tiki FC",
+     "cal": true,
+     "date": "2026-12-16",
+     "time": "22:00",
+     "field": "Stella"
+    },
+    {
+     "home": "Vibes Viserbella",
+     "away": "Flamingo FC",
+     "cal": true,
+     "date": "2026-12-17",
+     "time": "21:00",
+     "field": "Riccione"
+    },
+    {
+     "home": "Nelson's",
+     "away": "Colorimini FC",
+     "cal": true,
+     "date": "2026-12-17",
+     "time": "22:00",
+     "field": "Riccione"
+    },
+    {
+     "home": "Siamo Questi",
+     "away": "The Rimineser F.P.",
+     "cal": true,
+     "date": "2026-12-17",
+     "time": "21:00",
+     "field": "Stella"
+    }
+   ],
+   "rest": "Barrumba Calcio Rimini"
   }
  ],
  "scorers": [
@@ -1164,5 +1479,11 @@
    "esp": 0,
    "diff": 0
   }
+ },
+ "calendar": {
+  "file": "calendario 1-9 GG-1.pdf",
+  "at": 1795559443897,
+  "matches": 99,
+  "ours": 9
  }
 }
