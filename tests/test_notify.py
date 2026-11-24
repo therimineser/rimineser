@@ -194,6 +194,10 @@ check(who(s, 'Nuova partita') == ['admin', 'c1', 'f1', 'm1', 'p2', 'p3', 'p4'] a
       'Nuova partita (riserva): a tutti, testo e tasti Presente/Assente', np[:1])
 check(not who(run(), 'Nuova partita'), 'Nuova partita (riserva): non ripetuta')
 
+C = lambda n, d: {'n': n, 'matches': [{'home': 'The Rimineser F.P.', 'away': 'Avv %d' % n, 'date': d, 'time': '21:00', 'cal': True}]}
+LG['rounds'] += [C(7, '2026-12-03'), C(8, '2026-12-10')]; s = run()
+check(len(who(s, 'Calendario UISP completo')) == 7 and not who(s, 'Nuova partita'), 'Calendario (riserva): una sola notifica riassuntiva', [d['title'] for _, d in s][:3])
+
 bad = [r for r in R if not r[0]]
 for r in bad: print('FALLITO', r[1], '->', str(r[2])[:300])
 print('Robot notifiche: %d/%d controlli superati' % (len(R) - len(bad), len(R)))

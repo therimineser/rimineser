@@ -70,6 +70,17 @@ export async function run(env, opt) {
   const busy = () => f.left() < RESERVE + 4;   // poche chiamate rimaste: il resto al prossimo minuto
   const claim = key => st.create('robotlog', keyOf(key), { at: nowMs, mode: opt.mode });
 
+  // ---- avvia il robot UISP su GitHub (uisp.yml) con il gettone salvato in private/robot
+  async function startUisp(why) {
+    const tok = ((await st.get('private/robot')) || {}).token;
+    if (!tok) { log(`${why}, ma manca il gettone GitHub (private/robot): resta il controllo di GitHub`); return false; }
+    const r = await f(`https://api.github.com/repos/${env.GH_REPO || 'therimineser/rimineser'}/actions/workflows/uisp.yml/dispatches`, {
+      method: 'POST', headers: { Authorization: 'Bearer ' + tok, Accept: 'application/vnd.github+json', 'User-Agent': 'rimineser-robot', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ref: 'main' }) }).catch(e => ({ ok: false, status: e.message }));
+    log(`${why} → robot UISP avviato: ${r.ok ? 'ok' : 'errore ' + r.status}`);
+    return true;
+  }
+
   // ---- invio
   let sent = 0;
   const leftover = [], dead = {};
@@ -147,6 +158,16 @@ export async function run(env, opt) {
   }
   if (seen.size !== (state.requests || []).length) changed.requests = [...seen].sort().slice(-300);
 
+  // 2a) calendario completo UISP caricato dall'app (uploads/calendar, status 'new'): avvia subito la lettura su GitHub (una volta per caricamento)
+  if (!busy()) {
+    const cal = await st.get('uploads/calendar');
+    const calKey = cal && cal.status === 'new' ? String(cal.at || '') + '|' + (cal.name || '') : '';
+    if (calKey && calKey !== state.calTrig && await claim('calendario-' + calKey)) {
+      await startUisp(`Calendario UISP caricato dall'app (${cal.name || 'file'})`);
+      changed.calTrig = calKey;
+    }
+  }
+
   if (opt.mode === 'cron' && !busy()) {
     const L = await getJson(f, env.LEAGUE_URL);
 
@@ -159,15 +180,7 @@ export async function run(env, opt) {
       const fresh = Object.keys(found).filter(n => !done.has(n)).sort();
       const last = state.uispTrig || {}, key = fresh.join('|');
       if (fresh.length && (last.key !== key || nowMs - (last.at || 0) > 10 * 60000)) {
-        const tok = ((await st.get('private/robot')) || {}).token;
-        if (!tok) log('Comunicato UISP nuovo sul sito, ma manca il gettone GitHub (private/robot): resta il controllo di GitHub');
-        else {
-          const r = await f(`https://api.github.com/repos/${env.GH_REPO || 'therimineser/rimineser'}/actions/workflows/uisp.yml/dispatches`, {
-            method: 'POST', headers: { Authorization: 'Bearer ' + tok, Accept: 'application/vnd.github+json', 'User-Agent': 'rimineser-robot', 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ref: 'main' }) }).catch(e => ({ ok: false, status: e.message }));
-          log(`Nuovo comunicato UISP sul sito (${fresh.join(', ')}) → robot UISP avviato: ${r.ok ? 'ok' : 'errore ' + r.status}`);
-          changed.uispTrig = { key, at: nowMs };
-        }
+        if (await startUisp(`Nuovo comunicato UISP sul sito (${fresh.join(', ')})`)) changed.uispTrig = { key, at: nowMs };
       }
     }
 
@@ -175,6 +188,12 @@ export async function run(env, opt) {
     //     Una volta per partita (uisp-<giornata>), quando compare con la data; al primissimo avvio segna tutte quelle già note senza avvisare.
     if (L && !busy()) {
       const us = norm(L.team), known = new Set(state.uispMatches || []), first = !state.uispMatches, now = [];
+      const fromCal = (L.rounds || []).filter(r => (r.matches || []).some(m => m.cal && m.date && m.date >= R.date && !known.has('uisp-' + r.n) && [norm(m.home), norm(m.away)].includes(us)));
+      if (!first && fromCal.length > 1 && !busy() && await claim('calendario-partite-' + fromCal.map(r => r.n).join('-'))) {
+        const n = await send(await everyone(), { title: '📅 Calendario UISP completo', body: `${fromCal.length} nuove partite in calendario: dalla ${fromCal[0].n}ª alla ${fromCal[fromCal.length - 1].n}ª giornata`, url: '#calendario', tag: 'calendario-' + fromCal[0].n }, 'events');
+        log(`Calendario completo: ${fromCal.length} partite nuove → una notifica a ${n} telefoni`);
+        for (const r of fromCal) known.add('uisp-' + r.n);
+      }
       for (const r of L.rounds || []) for (const m of r.matches || []) {
         const home = norm(m.home) === us;
         if ((!home && norm(m.away) !== us) || !m.date) continue;
@@ -189,7 +208,7 @@ export async function run(env, opt) {
         }
       }
       const all = [...new Set([...known, ...now])].sort();
-      if (all.join() !== [...known].sort().join()) changed.uispMatches = all.slice(-80);
+      if (all.join() !== (state.uispMatches || []).slice().sort().join()) changed.uispMatches = all.slice(-80);
     }
 
     // 3) promemoria

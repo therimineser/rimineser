@@ -122,6 +122,18 @@ service cloud.firestore {
     function liveOk(eid) { let d = request.resource.data;
       return d.keys().hasOnly(['eid', 'us', 'opp', 'date', 'time', 'field', 'half', 'base', 'start', 'ended', 'gu', 'gt', 'acts', 'lu', 'updatedAt'])
              && d.eid == eid && d.updatedAt == request.time && d.get('acts', []) is list && d.get('acts', []).size() <= 3000; }
+    // Calendario completo UISP caricato dall'app (testo estratto dal PDF): lo carica qualunque iscritto approvato,
+    // lo legge il robot (uisp.yml → tools/uisp_calendar.py) che poi scrive l'esito (status ok/errore) con l'account di servizio.
+    match /uploads/{id} {
+      allow read: if isMember();
+      allow create, update: if isMember() && id == 'calendar'
+                       && request.resource.data.keys().hasOnly(['text', 'name', 'by', 'at', 'status'])
+                       && request.resource.data.status == 'new' && request.resource.data.by == request.auth.uid
+                       && request.resource.data.text is string && request.resource.data.text.size() > 0 && request.resource.data.text.size() < 400000
+                       && request.resource.data.name is string && request.resource.data.name.size() < 200
+                       && request.resource.data.at == request.time;
+      allow delete: if isAdmin();
+    }
     match /live/{eid} {
       allow read: if true;
       allow create, update: if scoutHolder(eid) && liveOk(eid);

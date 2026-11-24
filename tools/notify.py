@@ -387,6 +387,14 @@ def main():
         us, today = norm(L.get('team', '')), now_rome().date().isoformat()
         known, first, cur = set(state.get('uispMatches') or []), state.get('uispMatches') is None, []
         GG, MM = ['lun', 'mar', 'mer', 'gio', 'ven', 'sab', 'dom'], ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic']
+        # tante partite nuove insieme dal calendario caricato dall'app ("cal"): una sola notifica riassuntiva
+        cal = [r for r in L.get('rounds', []) if any(m.get('cal') and m.get('date') and m['date'] >= today and 'uisp-%s' % r['n'] not in known
+                                                      and us in (norm(m.get('home')), norm(m.get('away'))) for m in r.get('matches', []))]
+        if not first and len(cal) > 1:
+            n = sender.send(everyone, {'title': '📅 Calendario UISP completo', 'body': '%d nuove partite in calendario: dalla %sª alla %sª giornata' % (len(cal), cal[0]['n'], cal[-1]['n']),
+                                       'url': '#calendario', 'tag': 'calendario-%s' % cal[0]['n']}, 'events')
+            log('Calendario completo: %d partite nuove → una notifica a %d telefoni' % (len(cal), n))
+            known |= {'uisp-%s' % r['n'] for r in cal}
         for r in L.get('rounds', []):
             for m in r.get('matches', []):
                 home = norm(m.get('home')) == us

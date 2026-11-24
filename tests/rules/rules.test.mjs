@@ -243,6 +243,22 @@ await t('in attesa: scrive la diretta', false, async () => { await seedSc(LK('pe
 await t('membro: cancella la diretta', false, async () => { await seedLv(); return deleteDoc(doc(db('p2'), 'live/ev')); });
 await t('admin: cancella la diretta', true, async () => { await seedLv(); return deleteDoc(doc(db('admin'), 'live/ev')); });
 
+// calendario completo UISP caricato dall'app: qualunque iscritto approvato; il robot scrive l'esito
+const CAL = (u) => ({ text: '6^ GIORNATA\nTHE RIMINESER F.P. TIKI FC', name: 'calendario.pdf', by: u, at: serverTimestamp(), status: 'new' });
+for (const u of ['admin', 'p2', 'd1', 'f1']) await t(`${u}: carica il calendario UISP`, true, () => setDoc(doc(db(u), 'uploads/calendar'), CAL(u)));
+await t('membro: legge lo stato del calendario caricato', true, async () => { await env.withSecurityRulesDisabled(c => setDoc(doc(c.firestore(), 'uploads/calendar'), { status: 'ok' })); return getDoc(doc(db('p2'), 'uploads/calendar')); });
+await t('in attesa: carica il calendario', false, () => setDoc(doc(db('pend'), 'uploads/calendar'), CAL('pend')));
+await t('non registrato: carica il calendario', false, () => setDoc(doc(db(null), 'uploads/calendar'), CAL('x')));
+await t('non registrato: legge il calendario caricato', false, () => getDoc(doc(db(null), 'uploads/calendar')));
+await t('membro: calendario a nome di un altro', false, () => setDoc(doc(db('p2'), 'uploads/calendar'), CAL('altro')));
+await t('membro: si scrive da solo l\'esito "ok"', false, () => setDoc(doc(db('p2'), 'uploads/calendar'), { ...CAL('p2'), status: 'ok' }));
+await t('membro: calendario vuoto', false, () => setDoc(doc(db('p2'), 'uploads/calendar'), { ...CAL('p2'), text: '' }));
+await t('membro: file troppo grande', false, () => setDoc(doc(db('p2'), 'uploads/calendar'), { ...CAL('p2'), text: 'x'.repeat(400001) }));
+await t('membro: campi inventati', false, () => setDoc(doc(db('p2'), 'uploads/calendar'), { ...CAL('p2'), nomi: 'x' }));
+await t('membro: altro documento in uploads', false, () => setDoc(doc(db('p2'), 'uploads/altro'), CAL('p2')));
+await t('membro: data finta', false, () => setDoc(doc(db('p2'), 'uploads/calendar'), { ...CAL('p2'), at: new Date(2030, 0, 1) }));
+await t('membro: cancella il calendario caricato', false, async () => { await env.withSecurityRulesDisabled(c => setDoc(doc(c.firestore(), 'uploads/calendar'), { status: 'ok' })); return deleteDoc(doc(db('p2'), 'uploads/calendar')); });
+
 await env.cleanup();
 const bad = results.filter(r => !r.ok);
 const out = [`Test regole Firestore: ${results.length - bad.length}/${results.length} superati`, '', ...bad.map(r => `FALLITO ${r.name} ${r.err}`)].join('\n');

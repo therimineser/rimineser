@@ -218,7 +218,7 @@ const per = new Set(all.map(([u, d]) => u + '|' + d.title));
 check(all.length === 201 && per.size === 201, 'Tre comunicazioni a 67 telefoni: 201 notifiche, nessun doppione', all.length);
 check(maxCalls <= 48, 'Tre comunicazioni: mai oltre 48 chiamate per giro', maxCalls);
 // giro tranquillo: poche letture di Firestore
-base(T0); await go(); check(CALLS <= 11, 'Giro senza novità: poche chiamate (' + CALLS + ')', CALLS);
+base(T0); await go(); check(CALLS <= 12, 'Giro senza novità: poche chiamate (' + CALLS + ', compresa la lettura del calendario caricato)', CALLS);
 check(typeof get('robot/state').workerAt === 'number', 'Battito del Worker salvato per il robot di riserva');
 
 // 8. quante persone sono online: solo il numero in stats/online
@@ -260,6 +260,20 @@ check(eq(who(s, 'Nuova partita'), ['admin', 'c1', 'f1', 'm1', 'p2', 'p4']), 'Nuo
 check(np.length && np.every(([, d]) => d.eid === 'uisp-6' && d.rsvp === '1' && d.body.includes('vs Avversari 6 · 6ª giornata') && d.body.includes('Ritrovo 20:15 · inizio 21:00') && d.body.includes('Campo Riccione')), 'Nuova partita: testo con avversario, giornata, ritrovo, campo e tasti Presente/Assente', np[0] && np[0][1]);
 check(!who(await go(), 'Nuova partita').length, 'Nuova partita: non ripetuta');
 LEAGUE.rounds.push(M(7, '2026-11-10')); check(!who(await go(), 'Nuova partita').length, 'Partita nuova ma già passata: nessuna notifica');
+
+// calendario completo caricato dall'app: avvia subito la lettura su GitHub, una volta sola per caricamento
+base(T0); put('private/robot', { token: 'gh-tok' }); put('uploads/calendar', { status: 'new', at: '2026-11-24T10:00:00Z', name: 'calendario.pdf', text: 'x', by: 'p2' });
+await go('ping'); check(GH.length === 1 && GH[0][0].endsWith('/uisp.yml/dispatches'), 'Calendario caricato: lettura avviata subito (anche con la chiamata dell\'app)', GH);
+await go(); check(GH.length === 1, 'Calendario caricato: non riavviata al giro dopo', GH.length);
+put('uploads/calendar', { ...get('uploads/calendar'), status: 'ok' }); await go(); check(GH.length === 1, 'Calendario già letto: niente');
+put('uploads/calendar', { status: 'new', at: '2026-11-25T09:00:00Z', name: 'calendario2.pdf', text: 'y', by: 'p3' }); await go(); check(GH.length === 2, 'Nuovo caricamento: lettura avviata di nuovo', GH.length);
+// tante partite nuove insieme dal calendario: una sola notifica riassuntiva
+base(T0); LEAGUE = { team: 'The Rimineser F.P.', updated: 'x', standings: [], rounds: [M(5, '2026-11-18')] }; await go();
+const C = (n, d) => ({ n, matches: [{ home: 'The Rimineser F.P.', away: 'Avv ' + n, date: d, time: '21:00', cal: true }] });
+LEAGUE.rounds.push(C(6, '2026-11-26'), C(7, '2026-12-03'), C(8, '2026-12-10'));
+s = await go();
+check(who(s, 'Calendario UISP completo').length === 7 && !who(s, 'Nuova partita').length && s.find(([, d]) => d.title.includes('Calendario'))[1].body === '3 nuove partite in calendario: dalla 6ª alla 8ª giornata', 'Calendario caricato con 3 partite: una sola notifica riassuntiva, non 3', s.map(([, d]) => d.title + ' | ' + d.body).slice(0, 2));
+check(!(await go()).length && eq(get('robot/state').uispMatches, ['uisp-5', 'uisp-6', 'uisp-7', 'uisp-8']), 'Calendario: poi nessuna notifica ripetuta', get('robot/state').uispMatches);
 
 globalThis.fetch = fakeFetch;
 base(T0); put('outbox/a', { kind: 'post', title: 'Da app', sent: false });
