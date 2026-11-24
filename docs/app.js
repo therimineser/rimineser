@@ -258,7 +258,7 @@ function pitch(lu, sm){
 }
 
 /* ---------- notifiche ---------- */
-const PREFS = [['posts','Comunicazioni e sondaggi'],['events','Nuovi eventi (partite, allenamenti)'],['lineup','Formazione pubblicata'],['r24','Promemoria partita 24 ore prima'],['r12','Promemoria partita 12 ore prima'],['r2','Promemoria partita 2 ore prima'],['remind','Promemoria allenamenti e presenze'],['uisp','Risultati e classifica UISP']];
+const PREFS = [['posts','Comunicazioni e sondaggi'],['events','Nuovi eventi (partite, allenamenti)'],['r24','Promemoria partita 24 ore prima'],['r12','Promemoria partita 12 ore prima'],['r2','Promemoria partita 2 ore prima'],['remind','Promemoria allenamenti e presenze'],['uisp','Risultati e classifica UISP']];
 // prima c'era un'unica scelta "remind" anche per le partite: chi l'aveva tolta resta senza promemoria partite finché non li riattiva
 const PREF_FALLBACK = { r24:'remind', r12:'remind', r2:'remind' };
 const prefOn = (p, k) => (p||{})[k] !== undefined ? p[k] !== false : PREF_FALLBACK[k] ? (p||{})[PREF_FALLBACK[k]] !== false : true;
@@ -427,14 +427,14 @@ function vHome(){
   const nx = upcoming()[0]; let h = vInstall() + vPushCard(false);
   if (asAdmin() && pendingP().length) h += `<section class="card install"><b>${pendingP().length} giocator${pendingP().length>1?'i aspettano':'e aspetta'} la tua approvazione</b><button class="sec" data-act="go" data-t="rosa">Vai alla Rosa</button></section>`;
   // Un solo riquadro: il prossimo evento, partita o allenamento.
-  if (nx) { const isM = nx.type==='partita', pres = roster().filter(id=>ans(id,nx.id)==='si').length, nLu = isM ? getLus(nx).filter(l=>canLineup()||l.published).length : 0;
+  if (nx) { const isM = nx.type==='partita', pres = roster().filter(id=>ans(id,nx.id)==='si').length;
     h += `<section class="card"><div class="row sp"><span class="lab">PROSSIMO APPUNTAMENTO</span><span class="row" style="gap:6px"><span class="chip ${isM?'partita':''}">${isM?'Partita':'Allenamento'}</span></span></div>
     <h2>${isM?'The Rimineser F.P. <span style="color:var(--red)">vs</span> '+esc(nx.opponent||'Avversario'):'Allenamento'}</h2>
     <div class="row" style="gap:14px"><span class="res" style="white-space:nowrap">${esc(nx.time||'--:--')}</span><span class="mute" style="text-transform:capitalize">${esc(fmtD(nx,{weekday:'long',day:'numeric',month:'long'}))}</span></div>
     ${meetOf(nx)?`<div class="row" style="gap:6px;font-weight:600"><span class="chip">🕘 Ritrovo ${esc(meetOf(nx))}</span>${isM?'<span class="mute" style="font-size:13px">45 minuti prima</span>':''}</div>`:''}
     <div class="row mute" style="gap:6px"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s7-6.5 7-12a7 7 0 0 0-14 0c0 5.5 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg>${esc(nx.location||'Campo da definire')}</div>
     ${rsvpBtns(nx.id)}${bar(nx.id, true)}
-    <div class="btns"><button class="sec" style="flex:1" data-act="who" data-e="${esc(nx.id)}">Presenti (${pres})</button>${isM?`<button class="pri" style="flex:1" data-act="openLu" data-e="${esc(nx.id)}">${nLu>1?'Formazioni ('+nLu+')':'Formazione'}</button>`:''}</div>
+    <div class="btns"><button class="sec" style="flex:1" data-act="who" data-e="${esc(nx.id)}">Presenti (${pres})</button></div>
     ${isM && teamRow(nx.opponent) ? `<button class="sec" data-act="vsStats" data-e="${esc(nx.id)}">Statistiche delle due squadre</button>` : ''}
     <button class="lnk" style="align-self:flex-end;min-height:32px" data-act="go" data-t="presenze">Tutte le presenze ›</button></section>`; }
   const lp = ourPos(); if (lp) h += `<button class="card" style="flex-direction:row;align-items:center;border:0;text-align:left;width:100%" data-act="go" data-t="campionato"><span class="num" style="width:46px;height:46px;font-size:24px">${lp.pos}°</span><span style="flex:1;min-width:0"><b>Campionato UISP · ${lp.pt} punti</b><br><span class="mute" style="white-space:nowrap;font-size:13.5px">${lp.v} vinte · ${lp.n} pareggiate · ${lp.p} perse</span></span>›</button>`;
@@ -480,7 +480,7 @@ function vFormazione(){
   if (!ms.find(e=>e.id===S.fe)) S.fe = ms[0].id;
   const e = ms.find(x=>x.id===S.fe);
   if (canScout()) scWatch(e.id);   // per sapere se chi guarda sta facendo lo scouting di questa partita
-  let h = `<h2>Formazione</h2><label>Partita<select data-ch="fe">${ms.map(x=>`<option value="${esc(x.id)}" ${x.id===S.fe?'selected':''}>${esc(fmtD(x))} – ${esc(evName(x))}</option>`).join('')}</select></label>`;
+  let h = `<button class="lnk" style="align-self:flex-start" data-act="go" data-t="scouting">‹ Torna allo Scouting</button><h2>Formazione</h2><label>Partita<select data-ch="fe">${ms.map(x=>`<option value="${esc(x.id)}" ${x.id===S.fe?'selected':''}>${esc(fmtD(x))} – ${esc(evName(x))}</option>`).join('')}</select></label>`;
   if (luLocked(e)){
     const lus = getLus(e).filter(l=>l.published || canLineup());
     h += `<section class="card install"><b>🔒 Formazioni bloccate</b><span class="mute">Sono passate 5 ore dall'inizio della partita: le formazioni sono salvate così per sempre e nessuno può più modificarle.</span></section>`;
@@ -593,10 +593,9 @@ function vArchivio(){
   const w = done.filter(e=>+e.result.us>+e.result.them).length, d = done.filter(e=>+e.result.us===+e.result.them).length, l = done.length-w-d;
   let h = `<h2>Archivio partite</h2><section class="card dark"><div class="score"><div><b>${w}</b>Vinte</div><div><b>${d}</b>Pareggi</div><div><b>${l}</b>Perse</div></div></section>`;
   if (!ms.length) return h + `<div class="empty">Le partite giocate, con formazione e tattica, compariranno qui.</div>`;
-  return h + ms.map(e=>{ const lus=getLus(e).filter(l=>l.published||canLineup()), lu=lus[0], res=e.result&&e.result.us!=null&&e.result.them!=null;
+  return h + ms.map(e=>{ const lus=[], lu=null, res=e.result&&e.result.us!=null&&e.result.them!=null;
     const out = res ? (+e.result.us>+e.result.them?['V','si']:+e.result.us===+e.result.them?['N','forse']:['P','no']) : null;
     return `<details class="card"><summary style="color:inherit;justify-content:space-between;gap:10px"><span><span class="mute" style="font-size:13px">${esc([e.uisp ? e.uisp+'ª giornata' : '', fmtD(e)].filter(Boolean).join(' · '))}</span><br><b class="cond" style="font-size:21px">${esc(evName(e))}</b></span><span class="row" style="gap:6px">${lu?`<span class="chip">${esc(lu.module)}${lus.length>1?' +'+(lus.length-1):''}</span>`:''}${res?`<span class="res">${esc(e.result.us)}–${esc(e.result.them)}</span><span class="chip ${out[1]}">${out[0]}</span>`:'<span class="chip forse">Risultato in aggiornamento</span>'}</span></summary>
-    ${lus.length ? lus.map(l=>`<div class="row sp"><b>${esc(l.name||'Formazione')}</b><span class="chip">${esc(l.module)}</span></div>${pitch(l,true)}${luCard(l)}`).join('') : '<p class="mute">Nessuna formazione salvata.</p>'}
     ${e.notes?`<p class="txt mute">${esc(e.notes)}</p>`:''}</details>`; }).join('');
 }
 function vRosa(){
@@ -758,7 +757,7 @@ function vScouting(){
     if (!L) h += `<span class="mute">Per questa partita non c'è ancora una formazione.</span>`;
     else h += `<div class="names">${(L.slots||[]).filter(id=>id && S.players[id]).map(chip).join('') || '<span class="mute">Nessun titolare inserito.</span>'}</div>
       <div><span class="mute" style="font-size:13px;font-weight:600">Panchina</span><div class="names">${(L.bench||[]).filter(id=>S.players[id]).map(chip).join('') || '<span class="mute">—</span>'}</div></div>`;
-    if (mine && !locked) h += `<div class="sc-cbtn">${L?`<button class="pri" data-act="scSubStart">🔁 Sostituzione</button><button class="sec" data-act="scModStart">Cambia modulo</button>`:''}
+    if ((mine || canLineup()) && !locked) h += `<div class="sc-cbtn">${L && mine?`<button class="pri" data-act="scSubStart">🔁 Sostituzione</button><button class="sec" data-act="scModStart">Cambia modulo</button>`:''}
       <button class="${L?'lnk':'pri'}" data-act="scEditLu" data-e="${esc(e.id)}">${L?'✏️ Modifica formazione':'✏️ Inserisci formazione'}</button></div>`;
     if (locked && L) h += `<span class="mute" style="font-size:13px">🔒 Formazione bloccata (5 ore dopo l'inizio).</span>`;
     h += `</section>`; }
@@ -1045,7 +1044,6 @@ setInterval(()=>{ const el = document.getElementById('scTime'); if (el && S.scou
 /* ---------- disegno ---------- */
 const TABS = [
   ['home','Bacheca','<path d="M3 10.5 12 3l9 7.5V21h-6v-6H9v6H3z"/>'],
-  ['formazione','Formazione','<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 12h18"/><circle cx="12" cy="12" r="3"/>'],
   ['calendario','Calendario','<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'],
   ['campionato','Campionato','<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/>'],
   ['archivio','Archivio','<path d="M4 4h16v5H4z"/><path d="M5 9v11h14V9"/><path d="M10 13h4"/>'],
@@ -1169,7 +1167,7 @@ const ACT = {
   vsStats: d => vsStatsSheet(d.e),
   scSum: d => { S.scSumH = +d.h; draw(); },
   scTip: d => { const el = document.getElementById('scTip'); if (el) el.textContent = d.tip; },
-  scEditLu: d => { if (!scMine(S.scout)) return; S.fe = d.e; S.draft = null; S.tab = 'formazione'; history.replaceState(null,'','#formazione'); draw(); scrollTo(0,0); },
+  scEditLu: d => { if (!scMine(S.scout) && !canLineup()) return; S.fe = d.e; S.draft = null; S.tab = 'formazione'; history.replaceState(null,'','#formazione'); draw(); scrollTo(0,0); },
   scSubStart: () => { if (scMine(S.scout)) scSubSheet('out'); },
   scSubPick: async d => { const x = S.scout; if (!scMine(x)) return closeSheet();
     if (d.step==='out') return scSubSheet('in', d.id);
@@ -1227,7 +1225,6 @@ const ACT = {
     Dr.items.splice(Dr.idx,1); if (!Dr.items.length) Dr.items.push(blankLu(1)); Dr.idx=0;
     await write(()=>setDoc(D('events/'+Dr.eid), {lineups:Dr.items, lockAt:lockAtFor(e)}, {merge:true}), 'Formazione eliminata'); Dr.dirty = false; Dr.src = JSON.stringify(Dr.items); draw(); },
   who: d => { const e=S.events.find(x=>x.id===d.e); if (!e) return; openSheet(`${head('Presenti')}<p class="mute" style="margin:0">${esc(evName(e))} · ${esc(fmtD(e))} · ${esc(timesTxt(e))}</p>${attendees(e,false)}`); },
-  openLu: d => { S.fe = d.e; S.draft = null; ACT.go({t:'formazione'}); },
   editP: d => { const p=S.players[d.id]||{}; openSheet(`${head('Modifica')}<form data-form="editp" data-id="${esc(d.id)}"><label>Nome<input name="nome" required value="${esc(p.name||'')}"></label><label>Categoria${catSel(p.cat)}</label><p class="mute" style="margin:0">Mister, Preparatore atletico, Social media manager: possono pubblicare comunicazioni. Capitano: comunicazioni e formazioni.</p><label>Numero di maglia<input type="number" min="1" max="99" name="numero" value="${esc(p.number||'')}"></label><button class="pri" type="submit">Salva</button><button class="sec" type="button" data-act="delP" data-id="${esc(d.id)}">Rimuovi dalla rosa</button></form>`); },
   copyLu: () => { const src = past().concat(upcoming()).find(e=>e.type==='partita' && e.id!==S.draft.eid && getLus(e).length); if (!src) return toast('Nessuna formazione precedente da copiare.');
     const l = getLus(src).find(x=>x.published) || getLus(src)[0], cur = S.draft.items[S.draft.idx]; S.draft.dirty = true;
@@ -1236,8 +1233,7 @@ const ACT = {
     if (!canEditLu(e)) { toast(luLocked(e) ? 'Sono passate 5 ore dall\'inizio: le formazioni non si possono più modificare.' : 'Non puoi modificare questa formazione.'); draw(); return; }
     const L = Dr.items[Dr.idx], was = L.published; L.bench = L.bench.filter(id=>!L.slots.includes(id)); L.published = pub;
     if (await write(()=>setDoc(D('events/'+e.id), {lineups:Dr.items, lockAt:lockAtFor(e)}, {merge:true}), pub?(was?'Formazione aggiornata':'Formazione pubblicata'):(was?'Formazione nascosta ai giocatori':'Bozza salvata'))) {
-      if (pub && !was) notifyTeam('lineup', '⚽ Formazione pubblicata', `${L.name} per ${evName(e)} (${fmtD(e)}): modulo ${L.module}`, '#formazione');
-      if (pub && !was) await write(()=>addDoc(C('posts'), {text:`Pubblicata la formazione "${L.name}" per ${evName(e)} di ${fmtD(e,{weekday:'long',day:'numeric',month:'long'})}: modulo ${L.module}. La trovate nella sezione Formazione.`, createdAt:Date.now(), author:asAdmin()?S.uid:actId()}));
+      // niente notifica né comunicazione "Formazione pubblicata": la formazione si usa solo nello Scouting (scelta dell'amministratore)
       Dr.dirty = false; Dr.src = JSON.stringify(Dr.items); draw(); } else L.published = was; },
   me: () => { const p=S.players[actId()]||{}; openSheet(`${head('Il mio profilo')}<form data-form="me"><label>Nome e cognome<input name="nome" required value="${esc(p.name||S.authName)}"></label><label>Numero di maglia<input type="number" min="1" max="99" name="numero" value="${esc(p.number||'')}"></label><label>Categoria${catSel(p.cat||'giocatore')}</label><button class="pri" type="submit">Salva</button></form>`); },
   addP: () => openSheet(`${head('Aggiungi giocatore')}<p class="mute" style="margin:0">Per chi non usa l'app: potrai segnare tu le sue presenze.</p><form data-form="addp"><label>Nome e cognome<input name="nome" required></label><label>Categoria${catSel('giocatore')}</label><label>Numero di maglia<input type="number" min="1" max="99" name="numero"></label><button class="pri" type="submit">Aggiungi</button></form>`),
