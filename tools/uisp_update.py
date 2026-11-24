@@ -408,6 +408,7 @@ def merge(data, p):
                 continue
             target = {'home': res['home'], 'away': res['away']}
             rnd['matches'].append(target)
+        target.pop('cal', None)   # confermata dal comunicato: non è più solo "dal calendario"
         swap = norm(target['home']) != norm(res['home'])
         target['hg'], target['ag'] = (res['ag'], res['hg']) if swap else (res['hg'], res['ag'])
     for fx in p['fixtures']:
@@ -419,6 +420,7 @@ def merge(data, p):
             target = {'home': fx['home'], 'away': fx['away']}
             rnd['matches'].append(target)
         target.update({'date': fx['date'], 'time': fx['time'], 'field': fx['field']})
+        target.pop('cal', None)
     for n, t in p['rests'].items():
         if n:
             get_round(data, int(n))['rest'] = t

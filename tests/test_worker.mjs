@@ -19,7 +19,7 @@ async function idToken(over = {}, key = authKey.privateKey) {
 }
 
 // ---------------------------------------------------------------- Firestore/FCM finti
-let DB = {}, SENT = [], LEAGUE = null, EX = null, CALLS = 0, TIME = 0, FAIL_FCM = false;
+let DB = {}, SENT = [], LEAGUE = null, EX = null, CALLS = 0, TIME = 0, FAIL_FCM = false, UISP = {}, GH = [], UISP_HITS = 0;
 const TOKOWNER = {};
 const { toFs, toJs } = await import('../worker/src/google.js');
 const fsDoc = (p) => ({ name: 'projects/rimineser/databases/(default)/documents/' + p, fields: Object.fromEntries(Object.entries(DB[p].d).map(([k, v]) => [k, toFs(v)])), updateTime: DB[p].t });
@@ -37,6 +37,8 @@ async function fakeFetch(url, init = {}) {
   if (url.includes('securetoken@system')) return res(200, { keys: [authJwk] });
   if (url.startsWith('https://raw/league.json')) return LEAGUE ? res(200, LEAGUE) : res(404, 'no');
   if (url.startsWith('https://raw/esempio.json')) return EX ? res(200, EX) : res(404, 'no');
+  if (url.startsWith('https://www.uisp.it/')) { UISP_HITS++; return UISP[url] ? res(200, UISP[url]) : res(404, 'no'); }
+  if (url.startsWith('https://api.github.com/')) { GH.push([url, init.headers && init.headers.Authorization, JSON.parse(init.body || '{}')]); return new Response(null, { status: 204 }); }
   if (url.startsWith('https://fcm.googleapis.com/')) {
     const msg = JSON.parse(init.body).message;
     if (FAIL_FCM) return res(500, 'boom');
@@ -81,7 +83,7 @@ const check = (c, name, det = '') => R.push([!!c, name, det]);
 let NOW = 0;
 const at = (date, time) => romeToMs(date, time);
 function base(now) {
-  DB = {}; SENT = []; NOW = now; LEAGUE = null; EX = null; FAIL_FCM = false;
+  DB = {}; SENT = []; NOW = now; LEAGUE = null; EX = null; FAIL_FCM = false; UISP = {}; GH = []; UISP_HITS = 0;
   for (const k of Object.keys(TOKOWNER)) delete TOKOWNER[k];
   const ppl = { admin_g: ['giocatore', true], m1: ['mister', true], c1: ['capitano', true], p2: ['giocatore', true], p3: ['giocatore', true], p4: ['giocatore', true], f1: ['pubblico', true], pend: ['giocatore', false] };
   put('config/team', { coaches: ['admin'] });
@@ -131,9 +133,11 @@ check(eq(who(await go('ping'), 'promemoria'), ['f1', 'm1', 'p3', 'p4']), 'Promem
 // nuovo evento: a tutti tranne chi l'ha creato, rispetta la preferenza "Nuovi eventi"
 base(T0); get('tokens/p3').prefs = { events: false }; put('outbox/e', { kind: 'event', eventId: 'ev2', by: 'p2', title: '📅 Nuovo allenamento', body: 'Allenamento · gio 20 nov', sent: false });
 s = await go('ping');
-check(eq(who(s, 'Nuovo allenamento'), ['admin', 'c1', 'f1', 'm1', 'p4']), 'Nuovo evento: a tutti, non a chi l\'ha creato (p2) né a chi ha spento "Nuovi eventi" (p3)', who(s));
+check(eq(who(s, 'Nuovo allenamento'), ['admin', 'c1', 'f1', 'm1', 'p2', 'p4']), 'Nuovo evento: a tutti, anche a chi l\'ha creato (p2), non a chi ha spento "Nuovi eventi" (p3)', who(s));
+check(s.filter(([, d]) => d.title.includes('Nuovo allenamento')).every(([, d]) => d.eid === 'ev2' && d.rsvp === '1'), 'Nuovo evento: la notifica porta l\'id dell\'evento per i tasti Presente/Assente');
+check(!(await go()).length, 'Nuovo evento: non reinviato');
 base(T0); put('outbox/e', { kind: 'event', by: 'admin_g', title: '📅 Nuova partita', sent: false });
-check(!who(await go('ping'), 'Nuova partita').includes('admin'), 'Nuovo evento creato dall\'admin col profilo giocatore: non arriva all\'admin');
+check(who(await go('ping'), 'Nuova partita').includes('admin'), 'Nuovo evento creato dall\'admin: arriva anche all\'admin (vede che parte)');
 // due giri contemporanei (chiamata dell'app + minuto): nessun doppione
 base(T0); put('outbox/a', { kind: 'post', title: 'Doppia', sent: false });
 SENT = []; await Promise.all([run(ENV, { mode: 'ping', now: NOW, fetch: counted(fakeFetch) }), run(ENV, { mode: 'cron', now: NOW, fetch: counted(fakeFetch) })]);
@@ -214,7 +218,7 @@ const per = new Set(all.map(([u, d]) => u + '|' + d.title));
 check(all.length === 201 && per.size === 201, 'Tre comunicazioni a 67 telefoni: 201 notifiche, nessun doppione', all.length);
 check(maxCalls <= 48, 'Tre comunicazioni: mai oltre 48 chiamate per giro', maxCalls);
 // giro tranquillo: poche letture di Firestore
-base(T0); await go(); check(CALLS <= 11, 'Giro senza novità: poche chiamate (' + CALLS + ')', CALLS);
+base(T0); await go(); check(CALLS <= 12, 'Giro senza novità: poche chiamate (' + CALLS + ', compresa la lettura del calendario caricato)', CALLS);
 check(typeof get('robot/state').workerAt === 'number', 'Battito del Worker salvato per il robot di riserva');
 
 // 8. quante persone sono online: solo il numero in stats/online
@@ -225,6 +229,52 @@ const t1 = DB['stats/online'].t; await go(); check(DB['stats/online'].t === t1, 
 delete DB['presence/p2']; await go(); check(get('stats/online').n === 1, 'Online: chi chiude l\'app non viene più contato', get('stats/online'));
 check(!Object.keys(get('stats/online')).some(k => !['n', 'at'].includes(k)), 'Online: nel numero pubblicato nessun nome', get('stats/online'));
 // 7. chiamata dall'app: accesso verificato
+// venerdì: controllo del sito UISP ogni minuto → avvia subito il robot UISP su GitHub se c'è un comunicato nuovo
+const PDF = n => `<a href="/rimini/files/principale/Calcio%20a%207%20_%20giornata%20${n}%20_%20N.%20${n + 1}%20del%20${String(20 + 7 * (n - 5)).padStart(2, '0')}-11-26%20-%20gg%20${n}.pdf">gg ${n}</a>`;
+const NAME = n => `Calcio a 7 _ giornata ${n} _ N. ${n + 1} del ${String(20 + 7 * (n - 5)).padStart(2, '0')}-11-26 - gg ${n}.pdf`;
+const FRI = at('2026-11-27', '15:02');   // venerdì
+function uispSite(ns) { UISP['https://www.uisp.it/rimini/pagina/calcio'] = '<a href="/rimini/pagina/uisp-rimini-20252026">stagione</a>'; UISP['https://www.uisp.it/rimini/pagina/uisp-rimini-20252026'] = ns.map(PDF).join(' '); }
+base(FRI); put('private/robot', { token: 'gh-tok' }); LEAGUE = { team: 'The Rimineser F.P.', updated: 'x', processed: [NAME(5)], standings: [], rounds: [] }; uispSite([5]);
+await go();
+check(UISP_HITS > 0 && GH.length === 0, 'Venerdì: guarda il sito UISP; nessun comunicato nuovo → non avvia nulla', [UISP_HITS, GH.length]);
+uispSite([5, 6]); await go();
+check(GH.length === 1 && GH[0][0].endsWith('/repos/therimineser/rimineser/actions/workflows/uisp.yml/dispatches') && GH[0][1] === 'Bearer gh-tok' && GH[0][2].ref === 'main', 'Venerdì: comunicato nuovo sul sito → robot UISP avviato subito su GitHub', GH);
+NOW += 60000; await go(); check(GH.length === 1, 'Venerdì: il minuto dopo non lo riavvia', GH.length);
+NOW += 11 * 60000; await go(); check(GH.length === 2, 'Venerdì: se dopo 10 minuti non è ancora letto, lo riavvia', GH.length);
+LEAGUE.processed.push(NAME(6)); NOW += 60000; await go(); check(GH.length === 2, 'Venerdì: comunicato letto → non riavvia più', GH.length);
+base(at('2026-11-26', '15:02')); put('private/robot', { token: 'gh-tok' }); LEAGUE = { team: 'X', updated: 'x', processed: [], rounds: [], standings: [] }; uispSite([5, 6]);
+await go(); check(UISP_HITS === 0 && GH.length === 0, 'Giovedì: il sito UISP non viene controllato dal Worker', [UISP_HITS, GH.length]);
+base(FRI); LEAGUE = { team: 'X', updated: 'x', processed: [], rounds: [], standings: [] }; uispSite([6]);
+await go(); check(GH.length === 0 && (get('robot/log').lines || []).some(l => l.includes('manca il gettone GitHub')), 'Venerdì senza gettone GitHub: non avvia nulla e lo scrive nel registro');
+
+// nuova partita del campionato arrivata in automatico: notifica a tutti con i tasti Presente/Assente
+const M = (n, date) => ({ n, matches: [{ home: 'The Rimineser F.P.', away: 'Avversari ' + n, date, time: '21:00', field: 'Riccione' }, { home: 'Altri', away: 'Altri 2', date }] });
+base(T0); LEAGUE = { team: 'The Rimineser F.P.', updated: 'x', standings: [], rounds: [M(5, '2026-11-18')] };
+s = await go(); check(!who(s, 'Nuova partita').length && eq(get('robot/state').uispMatches, ['uisp-5']), 'Nuova partita: al primo avvio segna quelle già note senza avvisare', get('robot/state').uispMatches);
+LEAGUE.rounds.push({ n: 6, matches: [{ home: 'Avversari 6', away: 'The Rimineser F.P.' }] });
+s = await go(); check(!who(s, 'Nuova partita').length, 'Nuova partita senza data: ancora nessuna notifica');
+LEAGUE.rounds[1] = M(6, '2026-11-26'); get('tokens/p3').prefs = { events: false };
+s = await go();
+const np = s.filter(([, d]) => d.title === '📅 Nuova partita');
+check(eq(who(s, 'Nuova partita'), ['admin', 'c1', 'f1', 'm1', 'p2', 'p4']), 'Nuova partita con data: a tutti (non a chi ha spento "Nuovi eventi")', who(s));
+check(np.length && np.every(([, d]) => d.eid === 'uisp-6' && d.rsvp === '1' && d.body.includes('vs Avversari 6 · 6ª giornata') && d.body.includes('Ritrovo 20:15 · inizio 21:00') && d.body.includes('Campo Riccione')), 'Nuova partita: testo con avversario, giornata, ritrovo, campo e tasti Presente/Assente', np[0] && np[0][1]);
+check(!who(await go(), 'Nuova partita').length, 'Nuova partita: non ripetuta');
+LEAGUE.rounds.push(M(7, '2026-11-10')); check(!who(await go(), 'Nuova partita').length, 'Partita nuova ma già passata: nessuna notifica');
+
+// calendario completo caricato dall'app: avvia subito la lettura su GitHub, una volta sola per caricamento
+base(T0); put('private/robot', { token: 'gh-tok' }); put('uploads/calendar', { status: 'new', at: '2026-11-24T10:00:00Z', name: 'calendario.pdf', text: 'x', by: 'p2' });
+await go('ping'); check(GH.length === 1 && GH[0][0].endsWith('/uisp.yml/dispatches'), 'Calendario caricato: lettura avviata subito (anche con la chiamata dell\'app)', GH);
+await go(); check(GH.length === 1, 'Calendario caricato: non riavviata al giro dopo', GH.length);
+put('uploads/calendar', { ...get('uploads/calendar'), status: 'ok' }); await go(); check(GH.length === 1, 'Calendario già letto: niente');
+put('uploads/calendar', { status: 'new', at: '2026-11-25T09:00:00Z', name: 'calendario2.pdf', text: 'y', by: 'p3' }); await go(); check(GH.length === 2, 'Nuovo caricamento: lettura avviata di nuovo', GH.length);
+// tante partite nuove insieme dal calendario: una sola notifica riassuntiva
+base(T0); LEAGUE = { team: 'The Rimineser F.P.', updated: 'x', standings: [], rounds: [M(5, '2026-11-18')] }; await go();
+const C = (n, d) => ({ n, matches: [{ home: 'The Rimineser F.P.', away: 'Avv ' + n, date: d, time: '21:00', cal: true }] });
+LEAGUE.rounds.push(C(6, '2026-11-26'), C(7, '2026-12-03'), C(8, '2026-12-10'));
+s = await go();
+check(who(s, 'Calendario UISP completo').length === 7 && !who(s, 'Nuova partita').length && s.find(([, d]) => d.title.includes('Calendario'))[1].body === '3 nuove partite in calendario: dalla 6ª alla 8ª giornata', 'Calendario caricato con 3 partite: una sola notifica riassuntiva, non 3', s.map(([, d]) => d.title + ' | ' + d.body).slice(0, 2));
+check(!(await go()).length && eq(get('robot/state').uispMatches, ['uisp-5', 'uisp-6', 'uisp-7', 'uisp-8']), 'Calendario: poi nessuna notifica ripetuta', get('robot/state').uispMatches);
+
 globalThis.fetch = fakeFetch;
 base(T0); put('outbox/a', { kind: 'post', title: 'Da app', sent: false });
 const req = async tok => worker.fetch(new Request('https://w/', { method: 'POST', headers: tok ? { Authorization: 'Bearer ' + tok } : {} }), ENV);

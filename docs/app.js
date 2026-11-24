@@ -125,6 +125,7 @@ function startMember(){
   if (!viewCounted) { viewCounted = true; setTimeout(countView, 0); }
   let tokChecked = false;
   watch(memberSubs, 'mytok', D('tokens/'+S.uid), s=>{ S.myTok = s.exists() ? s.data() : null; if (!tokChecked) { tokChecked = true; refreshPush(); } });
+  watch(memberSubs, 'calup', D('uploads/calendar'), s=>{ S.calUp = s.exists() ? s.data() : null; }, ()=>true);   // stato del calendario caricato dall'app
   watch(memberSubs, 'posts', query(C('posts'), orderBy('createdAt','desc'), limit(60)), s=>{ S.posts = s.docs.map(d=>({id:d.id, ...d.data()})); });
   watch(memberSubs, 'events', C('events'), s=>{ S.fsEvents = s.docs.map(d=>({id:d.id, ...d.data()})); mergeEvents(); });
   watch(memberSubs, 'players', C('players'), s=>{ S.players = toMap(s); ensureAdminPlayer(); });
@@ -460,7 +461,7 @@ function vPresenze(){
   const ev = upcoming().slice(0,8);
   if (!ev.length) return `<h2>Presenze</h2><div class="empty">Nessun evento in arrivo.</div>`;
   return `<h2>Presenze</h2>` + ev.map(e=>{
-    return `<section class="card"><div class="row sp"><span class="chip ${e.type==='partita'?'partita':''}">${e.type==='partita'?'Partita':'Allenamento'}</span><span class="mute">${esc(fmtD(e))} · ${esc(timesTxt(e))}</span></div>
+    return `<section class="card" id="ev-${esc(e.id)}"><div class="row sp"><span class="chip ${e.type==='partita'?'partita':''}">${e.type==='partita'?'Partita':'Allenamento'}</span><span class="mute">${esc(fmtD(e))} · ${esc(timesTxt(e))}</span></div>
     <h3>${esc(evName(e))}</h3>${rsvpBtns(e.id)}${bar(e.id)}
     <details><summary>Presenti</summary>
       ${attendees(e,true)}
@@ -529,7 +530,59 @@ function vCalendario(){
   const up = upcoming(), pa = past();
   return `<div class="row sp"><h2>Calendario</h2>${S.coach?'<button class="pri" data-act="newEv">+ Evento</button>':''}</div>
   ${up.length?byMonth(up):'<div class="empty">Nessun evento in programma.</div>'}
+  ${vLeagueCal()}
   ${pa.length?`<details><summary>Eventi passati (${pa.length})</summary>${byMonth(pa)}</details>`:''}`;
+}
+/* ---- campionato UISP: tutte le nostre giornate (dai comunicati + dal calendario completo caricato dall'app).
+   La UISP pubblica sul sito solo una giornata in avanti; il calendario completo lo manda alle squadre in PDF:
+   chiunque sia iscritto lo carica qui, l'app ne estrae il testo (pdf.js) e lo salva in uploads/calendar;
+   il robot (uisp.yml → tools/uisp_calendar.py) lo legge e aggiunge le partite a campionato.json ("cal": true). */
+function vLeagueCal(){
+  const L = LG(); if (!L) return '';
+  const d0 = new Date(), today = `${d0.getFullYear()}-${String(d0.getMonth()+1).padStart(2,'0')}-${String(d0.getDate()).padStart(2,'0')}`, rows = [];
+  for (const r of L.rounds||[]) { const m = (r.matches||[]).find(x=>isUs(x.home)||isUs(x.away));
+    if (m) rows.push({n:r.n, m}); else if (isUs(r.rest)) rows.push({n:r.n, rest:true}); }
+  if (!rows.length && !S.coach) return '';
+  const next = rows.find(x=>x.m && x.m.hg==null && (!x.m.date || x.m.date >= today));
+  const line = x => { if (x.rest) return `<div class="lc-row"><span class="lc-n">${x.n}ª</span><div class="lc-main"><b>Turno di riposo</b></div></div>`;
+    const m = x.m, home = isUs(m.home), opp = home ? m.away : m.home, played = m.hg!=null;
+    const us = played ? (home?m.hg:m.ag) : null, th = played ? (home?m.ag:m.hg) : null, out = played ? (us>th?'w':us===th?'d':'l') : '';
+    const when = m.date ? `${new Date(m.date+'T12:00').toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'}).replace(/^./, c=>c.toUpperCase())}${m.time?' · '+m.time:''}${m.field?' · '+m.field:''}` : 'Data da comunicare';
+    return `<div class="lc-row ${x===next?'next':''} ${played?'done':''}"><span class="lc-n">${x.n}ª</span>
+      <div class="lc-main"><b>${home?'vs':'@'} ${esc(opp)}</b><span class="mute">${esc(when)}${m.cal?' · <i>dal calendario</i>':''}</span></div>
+      ${played?`<span class="lc-res ${out}">${us}–${th}</span>`:x===next?'<span class="chip partita">Prossima</span>':''}</div>`; };
+  const up = S.calUp, st = up && up.status==='new' ? '⏳ Sto leggendo il calendario caricato (di solito 1-2 minuti)…'
+    : up && up.status==='errore' ? '⚠️ ' + (up.msg || 'Non sono riuscito a leggere il calendario') + (up.name?` (${up.name})`:'')
+    : L.calendar ? `Calendario completo caricato: ${L.calendar.ours} partite nostre${L.calendar.file?' · '+L.calendar.file:''}` : 'La UISP pubblica una giornata alla volta: carica il calendario completo che vi manda in PDF.';
+  return `<section class="card"><div class="row sp"><span class="lab">CAMPIONATO UISP · TUTTE LE GIORNATE</span></div>
+    ${rows.length ? `<div class="lc">${rows.map(line).join('')}</div>` : '<span class="mute">Nessuna giornata ancora.</span>'}
+    <span class="mute" style="font-size:13px">${st}</span>
+    ${S.coach?`<label class="sec lc-up">📄 Carica calendario UISP (PDF)<input type="file" accept="application/pdf,.pdf" data-ch="calfile" hidden></label>`:''}</section>`;
+}
+let pdfjsP = null;
+const loadPdfjs = () => pdfjsP || (pdfjsP = new Promise((ok, ko)=>{ const sc = document.createElement('script');
+  sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+  sc.onload = () => { window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; ok(window.pdfjsLib); };
+  sc.onerror = () => { pdfjsP = null; ko(new Error('lettore PDF non scaricato')); }; document.head.appendChild(sc); }));
+// testo del PDF riga per riga (le righe delle tabelle restano unite: squadre, data, ora, campo)
+async function pdfText(file){
+  const lib = await loadPdfjs(), pdf = await lib.getDocument({data: await file.arrayBuffer()}).promise, out = [];
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const items = (await (await pdf.getPage(i)).getTextContent()).items.filter(t=>t.str && t.str.trim());
+    const rows = [];
+    for (const t of items) { const y = t.transform[5], x = t.transform[4]; let r = rows.find(r=>Math.abs(r.y-y) < 3); if (!r) rows.push(r = {y, parts:[]}); r.parts.push([x, t.str]); }
+    rows.sort((a,b)=>b.y-a.y).forEach(r=>out.push(r.parts.sort((a,b)=>a[0]-b[0]).map(p=>p[1].trim()).join(' ')));
+  }
+  return out.join('\n');
+}
+async function uploadCalendar(file){
+  if (!file) return; if (!/pdf$/i.test(file.type) && !/\.pdf$/i.test(file.name)) return toast('Scegli il file PDF del calendario');
+  toast('Leggo il PDF…');
+  let text = '';
+  try { text = (await pdfText(file)).slice(0, 390000); } catch (e) { console.error(e); return toast('Non riesco ad aprire il PDF: ' + (e.message||e)); }
+  if (!/GIORNATA/i.test(text)) return toast('Nel PDF non trovo le giornate del campionato: è il calendario giusto?');
+  if (await write(()=>setDoc(D('uploads/calendar'), {text, name:file.name.slice(0,190), by:S.uid, at:serverTimestamp(), status:'new'}))) {
+    toast('Calendario caricato: lo sto leggendo, tra 1-2 minuti compare qui'); pingRobot(); }
 }
 function vArchivio(){
   const ms = past().filter(e=>e.type==='partita');
@@ -1042,6 +1095,17 @@ function draw(){
     h += ({home:vHome,presenze:vPresenze,formazione:vFormazione,calendario:vCalendario,campionato:vCampionato,archivio:vArchivio,rosa:vRosa,impostazioni:vImpostazioni,scouting:vScouting,live:vLive}[S.tab]||vHome)();
   }
   $('#app').innerHTML = h;
+  notifAnswer();
+}
+// risposta arrivata dal tasto della notifica (Presente/Assente): la salva per chi risponde (profilo giocatore), poi mostra l'evento
+function notifAnswer(){
+  const n = S.fromNotif; if (!n || S.phase!=='app' || !['events','rsvp'].every(k=>S.loaded.has(k))) return;
+  S.fromNotif = null; const e = S.events.find(x=>x.id===n.e);
+  if (!e) return toast('Evento non trovato');
+  if (n.v) { const id = actId();
+    write(()=>setDoc(D('rsvp/'+id), {answers:{[n.e]: n.v}, roles:{[n.e]: deleteField()}}, {merge:true}));
+    toast(`${n.v==='si'?'✅ Presente':'❌ Assente'} · ${evName(e)} ${fmtD(e)}`); }
+  setTimeout(()=>{ const c = document.getElementById('ev-'+n.e); if (c) { c.scrollIntoView({block:'center'}); c.classList.add('flash'); setTimeout(()=>c.classList.remove('flash'), 1800); } }, 50);
 }
 document.addEventListener('focusout', ()=>setTimeout(()=>{ if (S.pending) draw(); }, 400));
 
@@ -1219,6 +1283,7 @@ document.addEventListener('change', e=>{ const t=e.target, c=t.dataset.ch; if (!
   if (c==='fe') { S.fe=t.value; S.draft=null; t.blur(); draw(); }
   if (c==='steam') { S.steam = t.value; t.blur(); draw(); return; }
   if (c==='mycat') { write(()=>updateDoc(D('players/'+S.uid), {cat:t.value}), 'Salvato'); return; }
+  if (c==='calfile') { uploadCalendar(t.files && t.files[0]); t.value = ''; return; }
   if (c==='scev') { S.scoutEid = t.value; S.scout = null; t.blur(); draw(); return; }   // scWatch cambia abbonamento
   if (c==='dark') { setDark(t.checked); return; }
   if (c==='pref') { const prefs={...allPrefs((S.myTok||{}).prefs), [t.value]: t.checked}; write(()=>setDoc(D('tokens/'+S.uid), {prefs}, {merge:true})); return; }
@@ -1229,6 +1294,8 @@ document.addEventListener('change', e=>{ const t=e.target, c=t.dataset.ch; if (!
 });
 document.addEventListener('input', e=>{ const k=e.target.dataset.in, L=S.draft&&S.draft.items[S.draft.idx]; if (!L) return; if (k==='tac') L.tactic = e.target.value; if (k==='luname') L.name = e.target.value; if (k==='tac'||k==='luname') S.draft.dirty = true; });
 addEventListener('beforeinstallprompt', e=>{ e.preventDefault(); installEvt = e; if (S.phase==='app') draw(); });
-const fromHash = () => { const h=location.hash.slice(1); if (h==='live' && S.phase!=='app') { S.guest = true; draw(); }   // link #live: diretta anche senza account
+const fromHash = () => { const h=location.hash.slice(1);
+  // dalla notifica di un nuovo evento: #r=<evento>&v=si|no (tasto) oppure #ev=<evento> (tocco sul testo)
+  if (/^(r|ev)=/.test(h)) { const q = new URLSearchParams(h); S.fromNotif = {e:q.get('r')||q.get('ev'), v:['si','no'].includes(q.get('v'))?q.get('v'):''}; S.tab = 'presenze'; history.replaceState(null,'','#presenze'); if (S.phase==='app') draw(); return; } if (h==='live' && S.phase!=='app') { S.guest = true; draw(); }   // link #live: diretta anche senza account
   if (['home','presenze','formazione','calendario','campionato','archivio','rosa','impostazioni','scouting','live'].includes(h)) { S.tab=h; if (S.phase==='app') draw(); } };
 addEventListener('hashchange', fromHash); fromHash();

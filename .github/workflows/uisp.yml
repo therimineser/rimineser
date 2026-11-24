@@ -28,6 +28,20 @@ jobs:
       - name: Controllo rapido sito UISP
         id: check
         run: python3 tools/uisp_update.py --check
+      # calendario completo caricato dall'app (Calendario → "Carica calendario UISP"): testo salvato in Firestore uploads/calendar
+      - name: Controllo calendario caricato dall'app
+        id: cal
+        env:
+          FIREBASE_SA: ${{ secrets.FIREBASE_SA }}
+        run: |
+          python3 -m pip install -q --disable-pip-version-check --user --break-system-packages google-auth requests 2>/dev/null \
+            || python3 -m pip install -q --disable-pip-version-check --user google-auth requests
+          python3 tools/uisp_calendar.py --check || echo "new=false" >> "$GITHUB_OUTPUT"
+      - name: Leggi il calendario caricato dall'app
+        if: steps.cal.outputs.new == 'true'
+        env:
+          FIREBASE_SA: ${{ secrets.FIREBASE_SA }}
+        run: python3 tools/uisp_calendar.py
       - name: Strumenti per leggere i PDF
         if: steps.check.outputs.new == 'true'
         run: |
@@ -45,7 +59,7 @@ jobs:
             git config user.name "Robot Rimineser"
             git config user.email "robot@users.noreply.github.com"
             git add docs/campionato.json
-            git commit -m "Campionato aggiornato dal comunicato UISP"
+            git commit -m "Campionato aggiornato (comunicato o calendario UISP)"
             git push
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
