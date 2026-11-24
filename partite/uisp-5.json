@@ -2,9 +2,12 @@
  "evento": {
   "date": "2026-11-18",
   "giornata": 5,
+  "gol_fatti": 4,
+  "gol_subiti": 5,
   "home": true,
   "location": "Campo Riccione",
   "opponent": "Oasi del Mare",
+  "result": "4-5",
   "time": "22:00",
   "type": "partita"
  },
