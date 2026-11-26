@@ -1,0 +1,25 @@
+{
+ "evento": {
+  "date": "2026-11-26",
+  "giornata": 6,
+  "home": true,
+  "location": "Campo Riccione",
+  "opponent": "Quei Bravi Ragazzi",
+  "time": "21:00",
+  "type": "partita"
+ },
+ "id": "uisp-6",
+ "presenze": {
+  "7XualbAJAjXK8W8L23PzxIbANTO2": "si",
+  "EgpfaLP5JRRXDlxgPdSim7RM3L32": "no",
+  "Hrwtdbro9WejSGkD635PZjqExE62": "si",
+  "P6WHZwAkwIcp2ni55XIJx6SQ8wa2": "si",
+  "TQChPP48csUPHpbRX6IfQb0M4yI2": "forse",
+  "YJam3wCX6SRBc66GUAqeKc7ZGe23": "forse",
+  "e6B0ljKYndWrGCitTHrC6Fu4CsQ2": "si",
+  "njHoEzFq2agJXVbtUHo7kEqvdTc2": "si",
+  "pgc2M7DB29XGZLiYs9JWgXZ1XGE3": "si",
+  "s6ypPNERITXefCjh1MnGTL9ZwKO2": "no",
+  "tffWl3sZvkWdNQbDjHaYEvJC6J33_g": "si"
+ }
+}
